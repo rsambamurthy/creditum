@@ -16,7 +16,7 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY tools/guardrails/package.json tools/guardrails/
-RUN npm ci --workspace apps/api --include-workspace-root=false --omit=dev && npm cache clean --force
+RUN npm ci --workspace apps/api --include-workspace-root=false --omit=dev && npm cache clean --force && mkdir -p apps/api/node_modules
 
 FROM node:22-alpine
 ENV NODE_ENV=production
@@ -25,6 +25,8 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
  && apk upgrade --no-cache
 WORKDIR /app
 COPY --from=deps /repo/node_modules ./node_modules
+# Packages npm kept inside the workspace (version differs from the hoisted copy) take precedence.
+COPY --from=deps /repo/apps/api/node_modules ./node_modules
 COPY --from=build /repo/apps/api/dist ./dist
 COPY apps/api/seed ./seed
 COPY apps/api/package.json ./package.json

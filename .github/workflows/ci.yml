@@ -147,9 +147,16 @@ jobs:
         with: { name: sbom, path: sbom.json }
 
   containers:
-    name: Container build and scan
+    name: Container build, smoke test and scan
     needs: build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: creditum, POSTGRES_PASSWORD: creditum, POSTGRES_DB: creditum_smoke }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U creditum" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v5
       - name: Build API image
@@ -157,6 +164,21 @@ jobs:
       - name: Build web image
         if: hashFiles('apps/web/Dockerfile') != ''
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
+      - name: Smoke test — migrate, seed, start and sign in using the built image
+        run: |
+          ENVS="-e DB_TYPE=postgres -e DATABASE_URL=postgres://creditum:creditum@127.0.0.1:5432/creditum_smoke -e PORT=3000 -e AUTH_MODE=dev \
+            -e ALLOW_DEV_AUTH=true -e DEV_JWT_SECRET=ci-smoke-secret-0123456789abcdef0123456789 -e TOKEN_TTL_SECONDS=600 \
+            -e RATE_LIMIT_WINDOW_SECONDS=60 -e RATE_LIMIT_MAX=1000"
+          docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js migrate
+          docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js seed
+          docker run -d --name api --network host $ENVS creditum-api:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && break; sleep 2; done
+          curl -fsS -X POST http://127.0.0.1:3000/api/auth/dev-login -H 'content-type: application/json' \
+            -d '{"tenantCode":"xyz-bank","loginName":"ro.ahmed"}' | jq -e '.token' > /dev/null
+          docker run -d --name web --network host -e API_UPSTREAM=http://127.0.0.1:3000 creditum-web:ci
+          for i in $(seq 1 15); do curl -fsS http://127.0.0.1:8080/api/health && break; sleep 2; done
+          curl -fsS -o /dev/null http://127.0.0.1:8080/
+          docker logs api | tail -20
       - name: Scan images (fail on critical, fixable vulnerabilities)
         run: |
           status=0
