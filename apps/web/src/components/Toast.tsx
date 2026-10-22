@@ -10,7 +10,7 @@ interface ToastApi {
 }
 
 const Ctx = createContext<ToastApi | null>(null);
-export const PENDING_APPROVAL = 'Submitted for approval by a second administrator';
+export const PENDING_APPROVAL = 'Pending approval by a second administrator';
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);

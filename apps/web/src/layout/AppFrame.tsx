@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useMe } from '../auth';
 import { initials, humanize } from '../format';
 import { IconChevron, IconHelp, IconLogout, IconMenu, IconSearch } from '../components/Icons';
 import { visibleNav, type NavGroup } from './nav';
 import { CrumbProvider, type Crumb } from './crumbs';
 import { HelpPanel } from './HelpPanel';
+import { Wordmark } from '../components/Wordmark';
 
 const RAIL_KEY = 'creditum.nav.rail';
 const GROUPS_KEY = 'creditum.nav.closed';
@@ -19,6 +20,9 @@ export function AppFrame() {
   const me = useMe();
   const { signOut, hasRole } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  /** An explicit sign-out starts clean: the next user is not sent back to this user's page. */
+  const doSignOut = () => { navigate('/login', { replace: true }); signOut(); };
   const [rail, setRail] = useState(() => readPref(RAIL_KEY) === '1');
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -49,8 +53,7 @@ export function AppFrame() {
       <header className="af-header">
         <button type="button" className="af-hbtn" onClick={toggleMenu} aria-label={rail ? 'Expand navigation' : 'Collapse navigation'}
           aria-expanded={isNarrow() ? menuOpen : !rail} aria-controls="af-side"><IconMenu size={18} /></button>
-        <Link to="/" className="af-logo" aria-label="Creditum home"><span className="af-mono">CR</span></Link>
-        <span className="af-product">Creditum</span>
+        <Link to="/" className="af-brand" aria-label="Creditum home"><Wordmark light /></Link>
         <span className="af-chip" title={`Workspace: ${me.tenant.name ?? me.tenant.code}`}><span>{me.tenant.name ?? me.tenant.code}</span></span>
         <span className="af-spacer" />
         <div className="af-search" title="Ask Creditum — coming soon">
@@ -61,7 +64,7 @@ export function AppFrame() {
         </div>
         <div className="af-actions">
           <button type="button" className="af-hbtn" aria-label="Help" title="Help" onClick={() => setHelpOpen(true)}><IconHelp size={18} /></button>
-          <button type="button" className="af-hbtn" aria-label="Sign out" title="Sign out" onClick={signOut}><IconLogout size={18} /></button>
+          <button type="button" className="af-hbtn" aria-label="Sign out" title="Sign out" onClick={doSignOut}><IconLogout size={18} /></button>
           <span className="af-user-chip" title={`${me.displayName} — ${roleText}`}>
             <span className="af-avatar" aria-hidden="true">{initials(me.displayName)}</span>
             <span className="af-user-text">
@@ -106,7 +109,7 @@ export function AppFrame() {
               );
             })}
           </nav>
-          <div className="af-side-foot">Creditum · Integratatech.ai Pvt Ltd</div>
+          <div className="af-side-foot"><span>Powered by <Wordmark size={12} /> · Integratatech.ai Pvt Ltd</span></div>
         </aside>
         {menuOpen && <button type="button" className="af-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, type ConfigChange, type Parameter } from '../api';
 import { useAuth, useMe } from '../auth';
 import { useApi } from '../hooks';
@@ -82,6 +82,7 @@ function CurrenciesTab() {
   );
 }
 
+/** Read-only preview; editing lives on the Value Lists page. */
 function ValueListsTab() {
   const keys = useApi(() => api.valueListKeys(), []);
   const [selected, setSelected] = useState<string | null>(null);
@@ -89,6 +90,8 @@ function ValueListsTab() {
   const entries = useApi(() => (active ? api.valueList(active) : Promise.resolve([])), [active]);
   return (
     <Loadable state={keys}>{ks => (
+      <>
+      <p className="small" style={{ margin: '0 0 12px' }}><Link to="/admin/value-lists">Open the Value Lists editor</Link> to add, rename, reorder or retire entries.</p>
       <div className="list-layout">
         <nav className="card side-list" aria-label="Value lists">
           {ks.map(k => <button key={k} type="button" className={k === active ? 'active' : ''} aria-current={k === active ? 'true' : undefined} onClick={() => setSelected(k)}><span>{humanize(k)}</span><span className="icode">{k}</span></button>)}
@@ -105,6 +108,7 @@ function ValueListsTab() {
           )}</Loadable>
         </section>
       </div>
+      </>
     )}</Loadable>
   );
 }

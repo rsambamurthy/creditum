@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { IconBriefcase, IconCog, IconFile, IconFlow, IconGrid, IconHome, IconLayers, IconRule, IconShield } from '../components/Icons';
+import { IconBriefcase, IconCog, IconFile, IconFlow, IconFunction, IconGrid, IconHome, IconLayers, IconLayout, IconList, IconRule, IconShield } from '../components/Icons';
 import { CREDIT_ROLES } from '../auth';
 
 export interface NavItem { to: string; label: string; icon: ComponentType<{ size?: number }>; roles?: string[]; end?: boolean }
@@ -15,6 +15,9 @@ export const NAV: NavGroup[] = [
     key: 'admin', label: 'Administration', icon: IconCog, items: [
       { to: '/admin/fields', label: 'Field Library', icon: IconLayers, roles: ADMIN_READ },
       { to: '/admin/config', label: 'Configuration', icon: IconCog, roles: ADMIN_READ },
+      { to: '/admin/value-lists', label: 'Value Lists', icon: IconList, roles: ADMIN_READ },
+      { to: '/admin/formulas', label: 'Formulas', icon: IconFunction, roles: ['config_admin'] },
+      { to: '/admin/layout', label: 'Screen Layout', icon: IconLayout, roles: ['config_admin'] },
       { to: '/admin/rules', label: 'Rules', icon: IconRule, roles: ADMIN_READ },
       { to: '/admin/workflows', label: 'Workflows', icon: IconFlow, roles: ADMIN_READ },
       { to: '/admin/audit', label: 'Audit Trail', icon: IconShield, roles: ADMIN_READ },
