@@ -12,13 +12,19 @@ database their operations team already runs. Portability must be proven by tests
    (`decimal` / `number`), booleans (`boolean` / `bit` / `number(1)`), timestamps (`timestamptz` /
    `datetime2` / `timestamp`). Entities and migrations use only this helper.
 2. **Identifiers are 36-character strings**, not native UUID types (which differ per engine).
-3. **Exact decimals are strings in the application.** PostgreSQL returns DECIMAL as text; Oracle is
-   configured with `fetchAsString = [NUMBER]`; all values pass through a transformer that normalises
-   trailing zeros. The integration suite round-trips a 28-digit value on every engine. *Known risk:*
-   the SQL Server driver (tedious) parses DECIMAL into a JavaScript number; values beyond about 15
-   significant digits would lose precision. The CI round-trip test exists to catch exactly this; if it
-   fails on SQL Server, the fix is to read decimals as text for that driver (CAST in a custom
-   repository read, or a driver-level type mapping) — tracked as the first SQL Server follow-up.
+3. **Exact decimals are strings in the application.** PostgreSQL returns DECIMAL as text. CI proved
+   that SQL Server and Oracle did not: both returned `12345678901234567000` for
+   `12345678901234567890.12345678`. Fixed in `apps/api/src/database/exact-decimals.ts`:
+   - *Oracle* — a node-oracledb `fetchTypeHandler` returns NUMBER (and CLOB) as text. (TypeORM resets
+     `fetchAsString` when it connects, so that setting cannot be used.)
+   - *SQL Server* — the tedious driver divides the wire integer by 10^scale in floating point and
+     offers no option to avoid it. Creditum wraps the driver's exported `readValue` for DECIMAL/NUMERIC
+     only, reads the sign byte and 4–16-byte little-endian magnitude with BigInt, and formats it with the
+     column scale. Every other type is delegated untouched. Unit tests encode real wire-format values
+     (including 28-digit, negative, zero, NULL and split-packet cases); the integration round-trip runs
+     on all three engines. Because this relies on a driver internal, the tedious version is covered by
+     those tests on every upgrade — a layout change fails CI rather than corrupting values.
+   All values then pass a transformer that normalises trailing zeros.
 4. **No nullable columns in unique keys.** PostgreSQL treats NULLs as distinct in unique indexes,
    SQL Server and Oracle (partly) do not. Shared core-library rows use `owner_scope = 'core'` instead
    of `tenant_id IS NULL` (SDD 19.1 describes the concept as NULL; this is the portable form).
