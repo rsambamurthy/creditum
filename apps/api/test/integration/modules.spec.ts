@@ -328,6 +328,54 @@ describe('administration screens: value lists, formulas, layout', () => {
   });
 });
 
+describe('low-code editing: formula text and rule references', () => {
+  it('reads and writes formulas as spreadsheet-style text and previews them on a saved request', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const list = (await http().get('/api/formulas').set(admin).expect(200)).body as { fieldKey: string; text: string | null }[];
+    expect(list.find(f => f.fieldKey === `${FR}gross_profit_margin`)!.text).toBe('PERCENT([Gross Profit], [Revenue / Sales])');
+    const parsed = (await http().post(`/api/formulas/${FR}cogs_sales/parse`).set(admin).send({ text: '[cost of goods sold (cogs)] ÷ [Revenue / Sales] × 100' }).expect(200)).body;
+    expect(parsed.expression).toEqual({ mul: [{ div: [{ f: `${FR}cost_of_goods_sold_cogs` }, { f: `${FR}revenue_sales` }] }, { n: '100' }] });
+    expect(parsed.text).toBe('[Cost of Goods Sold (COGS)] / [Revenue / Sales] * 100');
+    const bad = await http().post(`/api/formulas/${FR}cogs_sales/parse`).set(admin).send({ text: '[Revenue / Sales] +' }).expect(422);
+    expect(bad.body.message).toMatch(/ends too early/);
+    const ambiguous = await http().post(`/api/formulas/a.deal_economics_relationship_profitability.total_relationship_income/parse`).set(admin)
+      .send({ text: '[External Rating Agency]' }).expect(422);
+    expect(ambiguous.body.message).toMatch(/ambiguous — write it as \[Risk Ratings/);
+
+    const r = await newRequest('abc-finance', 'ro.priya', 'INR', 'renewal');
+    await http().put(`/api/credit-requests/${r.id}/data`).set(await as('abc-finance', 'ro.priya')).send({ expectedVersion: r.rowVersion,
+      grids: { [PERIODS]: [{ values: { [`${IS}net_sales_revenues`]: '800', [`${IS}cost_of_sales_revenues`]: '200',
+        'e.financial_statement_header.fiscal_year_financial_statement_date': '2025-03-31' } }] } }).expect(200);
+    const preview = (await http().post(`/api/formulas/${FR}cogs_sales/preview`).set(admin)
+      .send({ text: 'PERCENT([Cost of Goods Sold (COGS)], [Revenue / Sales])', requestId: r.id }).expect(200)).body;
+    expect(preview.rows).toEqual([expect.objectContaining({ label: '2025-03-31', value: '25' })]);
+    const saved = (await http().get(`/api/credit-requests/${r.id}/data`).set(await as('abc-finance', 'ro.priya')).expect(200)).body;
+    expect(saved.grids[PERIODS][0].values[`${FR}cogs_sales`]).toBe('0.25'); // preview changed nothing
+
+    await http().put(`/api/formulas/${FR}cogs_sales`).set(admin).send({ description: 'COGS as % of sales', text: 'PERCENT([Cost of Goods Sold (COGS)], [Revenue / Sales])' }).expect(200);
+    const after = (await http().get('/api/formulas').set(admin).expect(200)).body as { fieldKey: string; text: string; scope: string }[];
+    expect(after.find(f => f.fieldKey === `${FR}cogs_sales`)).toMatchObject({ scope: 'tenant', text: 'PERCENT([Cost of Goods Sold (COGS)], [Revenue / Sales])' });
+    await http().delete(`/api/formulas/${FR}cogs_sales`).set(admin).expect(200);
+  });
+
+  it('gives the rule builder its fields and parameters and rejects rules that name unknown ones', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const cat = (await http().get('/api/rules/catalog').set(admin).expect(200)).body;
+    expect(cat.fields.find((f: { key: string }) => f.key === 'base_amount')).toMatchObject({ group: 'Request', valueKind: 'decimal' });
+    expect(cat.fields.find((f: { key: string }) => f.key === 'a.general_information.legal_entity')).toMatchObject({ list: 'legal_entity', group: 'Borrower Profile' });
+    expect(cat.fields.some((f: { key: string }) => f.key === `${IS}net_sales_revenues`)).toBe(false); // per-period values are not rule inputs
+    expect(cat.lists.request_type.length).toBeGreaterThan(0);
+    expect(cat.parameters.find((p: { key: string }) => p.key === 'credit_request.max_single_request').valueType).toBe('decimal');
+    const rule = (condition: object, actions: object[]) => ({ name: 'Test', triggerOn: 'on_save', condition, actions });
+    expect((await http().put('/api/rules/ABC-900').set(admin).send(rule({ '>': [{ var: 'a.nope' }, 1] }, [{ type: 'warn', message: 'x' }])).expect(422)).body.message)
+      .toMatch(/unknown field "a.nope"/);
+    expect((await http().put('/api/rules/ABC-900').set(admin).send(rule({ '>': [{ var: 'base_amount' }, { cfg: 'no.such' }] }, [{ type: 'warn', message: 'x' }])).expect(422)).body.message)
+      .toMatch(/parameter "no.such"/);
+    await http().put('/api/rules/ABC-900').set(admin).send(rule({ and: [{ '>': [{ var: 'base_amount' }, { cfg: 'credit_request.narrative_required_above' }] },
+      { in: [{ var: 'request_type' }, ['new', 'increase']] }] }, [{ type: 'require', field: 'a.general_information.purpose_code', message: 'Purpose code is required' }])).expect(200);
+  });
+});
+
 describe('release configuration for existing tenants', () => {
   it('adds new parameters to an existing tenant without overwriting its own values', async () => {
     const abc = await ds.getRepository(Tenant).findOneByOrFail({ code: 'abc-finance' });

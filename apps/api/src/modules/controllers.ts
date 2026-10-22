@@ -63,6 +63,7 @@ class ModuleDataDto {
 }
 class FormulaDto {
   @IsOptional() @IsIn(['active', 'pending']) status?: string; @IsOptional() @IsObject() expression?: object | null;
+  @IsOptional() @IsString() @MaxLength(4000) text?: string;
   @IsString() @IsNotEmpty() @MaxLength(1000) description: string; @IsOptional() @IsString() @MaxLength(1000) note?: string;
   @IsOptional() @IsInt() expectedVersion?: number;
 }
@@ -70,7 +71,10 @@ class ValueListDto {
   @IsArray() entries: { code: string; label: string; active?: boolean }[];
 }
 class LayoutDto { @IsOptional() @IsObject() document?: object; @IsOptional() @IsBoolean() reset?: boolean; }
-class FormulaCheckDto { @IsOptional() @IsIn(['active', 'pending']) status?: string; @IsOptional() @IsObject() expression?: object | null; }
+class FormulaCheckDto { @IsOptional() @IsIn(['active', 'pending']) status?: string; @IsOptional() @IsObject() expression?: object | null;
+  @IsOptional() @IsString() @MaxLength(4000) text?: string; }
+class FormulaTextDto { @IsString() @MaxLength(4000) text: string; }
+class FormulaPreviewDto { @IsOptional() @IsObject() expression?: object; @IsOptional() @IsString() @MaxLength(4000) text?: string; @IsString() @IsNotEmpty() requestId: string; }
 class TransitionDto { @IsString() @IsNotEmpty() action: string; @IsInt() expectedVersion: number; @IsOptional() @IsString() @MaxLength(2000) remarks?: string; }
 
 // ---------------------------------------------------------------- controllers
@@ -117,8 +121,9 @@ export class FieldsController {
 
 @Controller('rules')
 export class RulesController {
-  constructor(private readonly rules: RulesService, private readonly gov: GovernanceService) {}
+  constructor(private readonly rules: RulesService, private readonly gov: GovernanceService, private readonly forms: FormsService) {}
   @Get() list() { return this.rules.list(); }
+  @Get('catalog') @Roles(ROLE.configAdmin, ROLE.auditor) catalog() { return this.forms.rulesCatalog(); }
   @Put(':key') @Roles(ROLE.configAdmin) upsert(@Param('key') key: string, @Body() b: RuleDto) { return this.gov.submit('rule', key, { ...b }); }
   @Post('test') @Roles(ROLE.configAdmin) @HttpCode(200) test(@Body() b: RuleTestDto) { return this.rules.test(b.rule as never, b.record); }
 }
@@ -143,9 +148,20 @@ export class LayoutController {
 export class FormulasController {
   constructor(private readonly forms: FormsService, private readonly gov: GovernanceService) {}
   @Get() list() { return this.forms.listFormulas(); }
-  @Put(':key') @Roles(ROLE.configAdmin) put(@Param('key') key: string, @Body() b: FormulaDto) { return this.gov.submit('formula', key, { ...b }); }
+  @Get('functions') help() { return this.forms.functionHelp(); }
+  @Put(':key') @Roles(ROLE.configAdmin) async put(@Param('key') key: string, @Body() b: FormulaDto) {
+    const { text, ...rest } = b;
+    const expression = text !== undefined ? (await this.forms.parseFormulaText(key, text)).expression : rest.expression;
+    return this.gov.submit('formula', key, { ...rest, expression });
+  }
+  @Post(':key/parse') @Roles(ROLE.configAdmin) @HttpCode(200) parse(@Param('key') key: string, @Body() b: FormulaTextDto) { return this.forms.parseFormulaText(key, b.text); }
+  @Post(':key/preview') @Roles(ROLE.configAdmin) @HttpCode(200) preview(@Param('key') key: string, @Body() b: FormulaPreviewDto) { return this.forms.previewFormula(key, b); }
   @Delete(':key') @Roles(ROLE.configAdmin) revert(@Param('key') key: string) { return this.gov.submit('formula', key, { revert: true }); }
-  @Post(':key/check') @Roles(ROLE.configAdmin) @HttpCode(200) check(@Param('key') key: string, @Body() b: FormulaCheckDto) { return this.forms.checkFormula(key, { ...b }); }
+  @Post(':key/check') @Roles(ROLE.configAdmin) @HttpCode(200) async check(@Param('key') key: string, @Body() b: FormulaCheckDto) {
+    const { text, ...rest } = b;
+    const parsed = text !== undefined ? await this.forms.parseFormulaText(key, text) : null;
+    return { ...(await this.forms.checkFormula(key, { ...rest, ...(parsed ? { expression: parsed.expression } : {}) })), ...(parsed ?? {}) };
+  }
 }
 
 @Controller('credit-requests')

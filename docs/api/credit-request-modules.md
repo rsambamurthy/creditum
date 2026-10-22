@@ -106,3 +106,24 @@ fields can move between record sections; grid columns can be reordered within th
 sections with codes `<module letter>.t.<name>`. A field cannot change grid / record level, sections keep their kind,
 and every field must stay on the layout (hide a field through field settings instead). When the core layout gains
 fields later, they are added to the tenant's arrangement automatically.
+
+## Low-code editing
+
+**Formula text** — administrators write formulas like a spreadsheet; the stored expression is generated.
+
+| Write | Means |
+|---|---|
+| `[Gross Profit]` · `[Income Statement › Gross Profit]` | a field by its (tenant) label; qualify with the section when a label repeats |
+| `+ - * /` (also `× ÷ −`), parentheses, numbers | arithmetic |
+| `PERCENT(a, b)` · `GROWTH(cur, prev)` · `PREVIOUS([Field])` | a ÷ b × 100 · % change · previous period |
+| `SUM(x)` · `TO_BASE(amount, [Currency])` · `ROUND(x, 0)` · `PARAM("key")` · `ROW_NUMBER()` | table total · base currency · rounding · tenant setting · row number |
+
+- `GET /api/formulas` now includes `text` for every formula; `GET /api/formulas/functions` lists the functions.
+- `POST /api/formulas/:key/parse {text}` → `{expression, text}` (normalised) or 422 `invalid_formula` with the reason and character position.
+- `PUT /api/formulas/:key` and `POST …/check` accept `text` instead of `expression`.
+- `POST /api/formulas/:key/preview {text | expression, requestId}` → `{value}` or `{rows:[{rowKey, label, value}]}`: the formula calculated on a saved request, nothing stored.
+
+**Rule builder** — `GET /api/rules/catalog` → `{ fields:[{key,label,dataType,valueKind,group,section,hidden,list?}], parameters:[{key,valueType,value,description}], lists, currencies }`.
+Rules may use the request header fields and record-level form fields (not per-row values). Rules naming an unknown field or an
+unconfigured parameter are rejected (422 `invalid_rule`). The stored condition language is unchanged (`var`, `cfg`, `and`, `or`,
+`not`, `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, `empty`; actions `block`, `warn`, `require`, `hide`).

@@ -6,6 +6,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DataSource, EntityManager, In } from 'typeorm';
 import { FieldFormula, FormLayout, FormRow } from './forms.entities';
+import { formatFormula, FUNCTION_HELP, parseFormula } from './formula-text';
 import { CompiledFormula, compile, evaluate, FormData, FormulaContext, FormulaDef, GridRow, Value } from './formula-engine';
 import { COMPOSITE_PARTS, DISPLAY_ONLY_TYPES, LayoutDocument, LayoutField, mergeLayouts, PlacedField, placements, validateTenantLayout } from './layout';
 import { CreditRequest } from '../credit-request/credit-request.entities';
@@ -14,12 +15,14 @@ import { FieldValue, RECORD_ROW } from '../field-registry/field-registry.entitie
 import { EffectiveField, FieldRegistryService } from '../field-registry/field-registry.service';
 import { ConfigParameter, FxRate, TenantCurrency, ValueListEntry } from '../configuration/configuration.entities';
 import { ConfigurationService, GovernanceService } from '../configuration/configuration.service';
-import { RulesService } from '../rules/rules.service';
+import { ruleReferences, RulesService } from '../rules/rules.service';
+import { Rule } from '../rules/rule-evaluator';
 import { WorkflowService } from '../workflow/workflow.service';
 import { AuditService } from '../audit/audit.service';
 import { CORE_SCOPE, T } from '../../common/db-types';
 import { dec, isDecimalText, multiply, toText } from '../../common/decimal';
 import { ConflictError, DomainError, NotFoundError } from '../../common/errors';
+import { FormulaError } from './formula-engine';
 import { newId, tenantWhere, visibleScopes } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
 
@@ -72,6 +75,7 @@ export class FormsService implements OnModuleInit {
 
   onModuleInit() {
     this.requests.useMandatoryCheck((id, m) => this.mandatoryCheck(id, m));
+    this.rules.useReferenceCheck((m, rule) => this.checkRuleReferences(m, rule));
     this.governance.register('layout', (m, ref, p) => this.applyLayout(m, ref, p), (m, ref, p) => this.validateLayout(m, ref, p));
     this.governance.register('formula', (m, ref, p) => this.applyFormula(m, ref, p), (m, ref, p) => this.validateFormula(m, ref, p).then(() => undefined));
   }
@@ -525,9 +529,134 @@ export class FormsService implements OnModuleInit {
   }
 
   // ---------------------------------------------------------------- formulas (configuration, governed)
+  /** Resolves and names fields in formula text, preferring fields in the target's own scope when labels repeat. */
+  private textNames(model: Model, target: string) {
+    const scope = model.placed.get(target)?.grid ?? null;
+    const section = model.placed.get(target)?.sectionTitle;
+    const norm = (x: string) => x.toLowerCase().replace(/\s+/g, ' ').trim();
+    const entries = [...model.placed.values()].filter(p => model.fields.has(p.key) && valueKind(model.fields.get(p.key)!.dataType) !== 'none')
+      .map(p => ({ key: p.key, label: model.fields.get(p.key)!.label, section: p.sectionTitle, grid: p.grid }));
+    const candidates = (ref: string) => {
+      const [a, b] = ref.split(/\s*[›>]\s*/);
+      const hits = b === undefined ? entries.filter(e => norm(e.label) === norm(a) || e.key === a)
+        : entries.filter(e => norm(e.section) === norm(a) && norm(e.label) === norm(b));
+      // when a label repeats, prefer the target's own section, then its own table (or record level)
+      const sameSection = hits.filter(e => e.section === section);
+      if (sameSection.length === 1) return sameSection;
+      const own = hits.filter(e => e.grid === scope || e.grid === null);
+      return own.length ? own : hits;
+    };
+    return {
+      resolve: (ref: string) => {
+        const c = candidates(ref);
+        if (!c.length) throw new FormulaError(`No field called [${ref}]`);
+        if (c.length > 1) throw new FormulaError(`[${ref}] is ambiguous — write it as ${c.slice(0, 3).map(x => `[${x.section} › ${x.label}]`).join(' or ')}`);
+        return c[0].key;
+      },
+      name: (key: string) => {
+        const e = entries.find(x => x.key === key);
+        if (!e) return key;
+        const c = candidates(e.label);
+        return c.length === 1 && c[0].key === key ? e.label : `${e.section} › ${e.label}`;
+      },
+      grid: (key: string) => model.placed.get(key)?.grid ?? null,
+    };
+  }
+
+  /** Formula text (spreadsheet style) → stored expression, with the normalised text. */
+  parseText(model: Model, fieldKey: string, text: string) {
+    if (!model.placed.has(fieldKey)) throw new DomainError('invalid_formula', `"${fieldKey}" is not a field of the Credit Request form`);
+    const names = this.textNames(model, fieldKey);
+    try {
+      const expression = parseFormula(text, names, names.grid);
+      return { expression, text: formatFormula(expression, names) };
+    } catch (e) {
+      throw new DomainError('invalid_formula', (e as Error).message);
+    }
+  }
+
+  async parseFormulaText(fieldKey: string, text: string) {
+    return this.parseText(await this.model(this.ds.manager), fieldKey, text);
+  }
+
+  /** Calculate a candidate formula on a saved credit request without changing anything. */
+  async previewFormula(fieldKey: string, p: { expression?: unknown; text?: string; requestId: string }) {
+    const m = this.ds.manager;
+    const model = await this.model(m);
+    const expression = p.text !== undefined ? this.parseText(model, fieldKey, p.text).expression : p.expression;
+    if (!expression || typeof expression !== 'object') throw new DomainError('invalid_formula', 'An expression or formula text is needed');
+    await this.loadRequest(p.requestId, m);
+    const defs = this.activeDefs(model.formulas).filter(d => d.field !== fieldKey);
+    defs.push({ field: fieldKey, expression: expression as FormulaDef['expression'] });
+    let compiled: CompiledFormula[];
+    try { compiled = compile(defs, k => (model.placed.has(k) ? model.placed.get(k)!.grid : undefined)); }
+    catch (e) { throw new DomainError('invalid_formula', (e as Error).message); }
+    const { data } = await this.stored(p.requestId, m, model);
+    const out = evaluate(compiled, data, await this.formulaContext(m, { ...model, compiled }));
+    const grid = model.placed.get(fieldKey)!.grid;
+    if (grid === null) return { value: out.record[fieldKey] ?? null };
+    const labelField = model.doc.grids[grid]?.labelField;
+    return { rows: (out.grids[grid] ?? []).map((r, i) => ({ rowKey: r.rowKey, label: (labelField && r.values[labelField]) || `${model.doc.grids[grid].rowLabel} ${i + 1}`,
+      value: r.values[fieldKey] ?? null })) };
+  }
+
+  functionHelp() { return FUNCTION_HELP; }
+
+  // ---------------------------------------------------------------- rules: what a rule can refer to (rule builder)
+  private static readonly HEADER_FIELDS = [
+    { key: 'borrower_name', label: 'Borrower name', dataType: 'Text' },
+    { key: 'borrower_ref', label: 'Borrower reference', dataType: 'Text (identifier)' },
+    { key: 'request_type', label: 'Request type', dataType: 'Dropdown', list: 'request_type' },
+    { key: 'requested_amount', label: 'Requested amount', dataType: 'Currency Amount' },
+    { key: 'currency_code', label: 'Currency', dataType: 'Currency Code' },
+    { key: 'base_amount', label: 'Requested amount in base currency', dataType: 'Currency Amount' },
+    { key: 'required_level', label: 'Required authority level', dataType: 'Text' },
+  ];
+
+  /** Fields (request header and record-level form fields) and numeric/text parameters a rule may use. */
+  async rulesCatalog() {
+    const m = this.ds.manager;
+    const model = await this.model(m);
+    const lists = await this.lists(m);
+    const params = await m.getRepository(ConfigParameter).find({ where: tenantWhere<ConfigParameter>(), order: { paramKey: 'ASC' } });
+    const currencies = await m.getRepository(TenantCurrency).find({ where: tenantWhere<TenantCurrency>({ isActive: true }), order: { code: 'ASC' } });
+    const modTitle = new Map(model.doc.modules.map(x => [x.code, x.title]));
+    const header = FormsService.HEADER_FIELDS.map(h => ({ ...h, group: 'Request', section: 'Request header', valueKind: valueKind(h.dataType), hidden: false }));
+    const form = [...model.placed.values()].filter(p => p.grid === null && model.fields.has(p.key)).map(p => {
+      const f = model.fields.get(p.key)!;
+      return { key: p.key, label: f.label, dataType: f.dataType, valueKind: valueKind(f.dataType), group: modTitle.get(p.module) ?? p.module,
+        section: p.sectionTitle, hidden: f.hidden, ...(p.list ? { list: p.list } : {}) };
+    }).filter(f => f.valueKind !== 'none' && f.valueKind !== 'composite');
+    const used = new Set([...header, ...form].map(f => (f as { list?: string }).list).filter((x): x is string => !!x));
+    return {
+      fields: [...header, ...form],
+      parameters: params.map(p => ({ key: p.paramKey, valueType: p.valueType, value: p.paramValue, description: p.description })),
+      lists: Object.fromEntries([...used].filter(k => lists.has(k)).map(k => [k, lists.get(k)!.map(e => ({ code: e.code, label: e.label }))])),
+      currencies: currencies.map(c => ({ code: c.code, name: c.name })),
+    };
+  }
+
+  private async checkRuleReferences(m: EntityManager, rule: Pick<Rule, 'condition' | 'actions'>) {
+    const model = await this.model(m);
+    const { vars, cfgs, actionFields } = ruleReferences(rule);
+    const header = new Set(FormsService.HEADER_FIELDS.map(h => h.key));
+    const recordField = (k: string) => model.placed.get(k)?.grid === null;
+    for (const v of vars) if (!header.has(v) && !recordField(v)) throw new DomainError('invalid_rule', `The rule refers to an unknown field "${v}"`);
+    for (const f of actionFields) if (!recordField(f)) throw new DomainError('invalid_rule', `The rule's action refers to an unknown field "${f}"`);
+    if (cfgs.size) {
+      const params = new Set((await m.getRepository(ConfigParameter).find({ where: tenantWhere<ConfigParameter>({ paramKey: In([...cfgs]) }) })).map(p => p.paramKey));
+      for (const c of cfgs) if (!params.has(c)) throw new DomainError('invalid_rule', `The rule refers to a parameter "${c}" that is not configured`);
+    }
+  }
+
   async listFormulas() {
     const model = await this.model(this.ds.manager);
+    const text = (f: FieldFormula) => {
+      if (!f.expressionJson) return null;
+      try { return formatFormula(JSON.parse(f.expressionJson), this.textNames(model, f.fieldKey)); } catch { return null; }
+    };
     return [...model.formulas.values()].sort((a, b) => a.fieldKey.localeCompare(b.fieldKey)).map(f => ({
+      text: text(f),
       fieldKey: f.fieldKey, label: model.fields.get(f.fieldKey)?.label ?? f.fieldKey, scope: f.ownerScope === CORE_SCOPE ? 'core' : 'tenant',
       status: f.status, expression: f.expressionJson ? JSON.parse(f.expressionJson) : null, description: f.description, note: f.note, rowVersion: f.rowVersion,
       grid: model.placed.get(f.fieldKey)?.grid ?? null,

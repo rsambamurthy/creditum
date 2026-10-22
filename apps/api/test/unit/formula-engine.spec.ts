@@ -109,3 +109,45 @@ describe('shipped core layout and formulas', () => {
     expect(formulas.filter(f => f.status === 'pending').every(f => f.expression === null)).toBe(true);
   });
 });
+
+describe('formula text (low-code editing)', () => {
+  const { parseFormula, formatFormula } = require('../../src/modules/forms/formula-text') as typeof import('../../src/modules/forms/formula-text');
+  const labels: Record<string, string> = { a: 'Sales', b: 'Cost of Sales', total: 'Total', amt: 'Amount', lineCcy: 'Currency', rev: 'Revenue' };
+  const names = {
+    resolve: (ref: string) => { const k = Object.keys(labels).find(x => labels[x].toLowerCase() === ref.toLowerCase()); if (!k) throw new Error(`No field called [${ref}]`); return k; },
+    name: (k: string) => labels[k],
+  };
+  const parse = (t: string) => parseFormula(t, names, k => scopes[k] ?? null);
+
+  it('reads spreadsheet-style text, with ÷ × − and precedence', () => {
+    expect(parse('[Sales] - [Cost of Sales]')).toEqual({ sub: [{ f: 'a' }, { f: 'b' }] });
+    expect(parse('([Sales] − [Cost of Sales]) ÷ [Sales] × 100')).toEqual({ mul: [{ div: [{ sub: [{ f: 'a' }, { f: 'b' }] }, { f: 'a' }] }, { n: '100' }] });
+    expect(parse('PERCENT([sales], [Total])')).toEqual({ pct: [{ f: 'a' }, { f: 'total' }] });
+    expect(parse('ROUND([Sales] / [Total] * PARAM("calculation.days_in_year"), 0)'))
+      .toEqual({ round: [{ mul: [{ div: [{ f: 'a' }, { f: 'total' }] }, { cfg: 'calculation.days_in_year' }] }, 0] });
+    expect(parse('SUM(TO_BASE([Amount], [Currency]))')).toEqual({ sum: { grid: 'lines', of: { fx_base: [{ f: 'amt' }, { f: 'lineCcy' }] } } });
+    expect(parse('GROWTH([Revenue], PREVIOUS([Revenue]))')).toEqual({ growth: [{ f: 'rev' }, { prev: 'rev' }] });
+  });
+
+  it('explains mistakes in plain words with the position', () => {
+    expect(() => parse('[Sales] +')).toThrow(/ends too early/);
+    expect(() => parse('[Salez] + 1')).toThrow(/No field called \[Salez\]/);
+    expect(() => parse('AVERAGE([Sales])')).toThrow(/Unknown function AVERAGE/);
+    expect(() => parse('[Sales] [Total]')).toThrow(/Unexpected "Total" \(at character 9\)/);
+    expect(() => parse('ROUND([Sales], 1.5)')).toThrow(/whole number of places/);
+  });
+
+  it('writes every shipped core formula as text and reads it back unchanged', () => {
+    const lib = JSON.parse(readFileSync(join(__dirname, '..', '..', 'seed', 'creditum-core-field-library.v1.json'), 'utf8')) as { fields: { field_key: string; label: string; group: string }[] };
+    const layout = JSON.parse(readFileSync(join(__dirname, '..', '..', 'seed', 'core-layout.json'), 'utf8')) as LayoutDocument;
+    const placed = placements(layout);
+    const byKey = new Map(lib.fields.map(f => [f.field_key, f]));
+    const qualified = { resolve: (ref: string) => { const [g, l] = ref.split(' › '); return lib.fields.find(f => f.group === g && f.label === l)!.field_key; },
+      name: (k: string) => `${byKey.get(k)!.group} › ${byKey.get(k)!.label}` };
+    const { formulas } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'seed', 'core-formulas.json'), 'utf8')) as { formulas: { status: string; expression: unknown }[] };
+    for (const f of formulas.filter(x => x.status === 'active')) {
+      const text = formatFormula(f.expression, qualified);
+      expect(parseFormula(text, qualified, k => placed.get(k)?.grid ?? null)).toEqual(f.expression);
+    }
+  });
+});

@@ -12,14 +12,35 @@ export function toRule(d: RuleDefinition): Rule {
   return { ruleKey: d.ruleKey, name: d.name, condition: JSON.parse(d.conditionJson), actions: JSON.parse(d.actionsJson) as RuleAction[] };
 }
 
+/** Every field and parameter a rule refers to, for checking references before a rule is accepted. */
+export function ruleReferences(rule: Pick<Rule, 'condition' | 'actions'>) {
+  const vars = new Set<string>(); const cfgs = new Set<string>();
+  const walk = (c: unknown): void => {
+    if (!c || typeof c !== 'object') return;
+    if (Array.isArray(c)) { c.forEach(walk); return; }
+    const [[op, a]] = Object.entries(c as Record<string, unknown>);
+    if (op === 'var') vars.add(String(a)); else if (op === 'cfg') cfgs.add(String(a)); else walk(a);
+  };
+  walk(rule.condition);
+  const actionFields = new Set((rule.actions ?? []).map(a => a.field).filter((f): f is string => !!f));
+  return { vars, cfgs, actionFields };
+}
+
+type ReferenceCheck = (m: EntityManager, rule: Pick<Rule, 'condition' | 'actions'>) => Promise<void>;
+
 @Injectable()
 export class RulesService implements OnModuleInit {
+  private referenceCheck?: ReferenceCheck;
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly governance: GovernanceService) {}
+  /** Registered by the module-data service at start-up: rejects rules that name unknown fields or parameters. */
+  useReferenceCheck(check: ReferenceCheck) { this.referenceCheck = check; }
 
   onModuleInit() {
-    this.governance.register('rule', (m, ref, p) => this.applyRule(m, ref, p), async (_m, ref, p) => {
+    this.governance.register('rule', (m, ref, p) => this.applyRule(m, ref, p), async (m, ref, p) => {
       if (!p.name) throw new DomainError('invalid_rule', 'A rule needs a name');
-      validateRule({ ruleKey: ref, name: String(p.name), condition: p.condition, actions: p.actions as RuleAction[] });
+      const rule = { ruleKey: ref, name: String(p.name), condition: p.condition, actions: p.actions as RuleAction[] };
+      validateRule(rule);
+      if (this.referenceCheck) await this.referenceCheck(m, rule);
     });
   }
 
