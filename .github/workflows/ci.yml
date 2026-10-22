@@ -166,8 +166,9 @@ jobs:
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
       - name: Smoke test — migrate, seed, start and sign in using the built image
         run: |
+          SECRET=$(openssl rand -hex 32)
           ENVS="-e DB_TYPE=postgres -e DATABASE_URL=postgres://creditum:creditum@127.0.0.1:5432/creditum_smoke -e PORT=3000 -e AUTH_MODE=dev \
-            -e ALLOW_DEV_AUTH=true -e DEV_JWT_SECRET=ci-smoke-secret-0123456789abcdef0123456789 -e TOKEN_TTL_SECONDS=600 \
+            -e ALLOW_DEV_AUTH=true -e DEV_JWT_SECRET=$SECRET -e TOKEN_TTL_SECONDS=600 \
             -e RATE_LIMIT_WINDOW_SECONDS=60 -e RATE_LIMIT_MAX=1000"
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js migrate
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js seed
