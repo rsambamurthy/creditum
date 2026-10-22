@@ -1,0 +1,162 @@
+# Creditum CI — every push and pull request (SDD Sections 19.6, 25.4, 26.6).
+# A change that fails any job cannot be merged.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  guardrails:
+    name: Engineering guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - name: Guardrail self-test (every rule fires on known violations)
+        run: node tools/guardrails/check.mjs --self-test
+      - name: Guardrail check (no hardcoded currency/thresholds, no float money, no vendor SQL, tenant scoping)
+        run: node tools/guardrails/check.mjs
+
+  build:
+    name: Type-check, build and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npm run typecheck -w apps/api
+      - run: npm run build -w apps/api
+      - run: npm run test:unit -w apps/api
+      - name: Web type-check and build
+        run: npm run build -w apps/web --if-present
+
+  integration-postgres:
+    name: Integration — PostgreSQL
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: creditum, POSTGRES_PASSWORD: creditum, POSTGRES_DB: creditum_test }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U creditum" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DB_TYPE: postgres
+      DATABASE_URL: postgres://creditum:creditum@localhost:5432/creditum_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npm run test:integration -w apps/api
+
+  integration-mssql:
+    name: Integration — SQL Server
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env: { ACCEPT_EULA: 'Y', MSSQL_SA_PASSWORD: 'Creditum_CI_2026!' }
+        ports: ['1433:1433']
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Creditum_CI_2026!' -Q 'SELECT 1'"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+    env:
+      DB_TYPE: mssql
+      DB_HOST: localhost
+      DB_PORT: '1433'
+      DB_USER: sa
+      DB_PASSWORD: 'Creditum_CI_2026!'
+      DB_NAME: creditum_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - name: Create test database
+        run: docker exec ${{ job.services.mssql.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Creditum_CI_2026!' -Q "CREATE DATABASE creditum_test"
+      - run: npm ci
+      - run: npm run test:integration -w apps/api
+
+  integration-oracle:
+    name: Integration — Oracle
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23-slim-faststart
+        env: { ORACLE_PASSWORD: 'CreditumCI2026', APP_USER: creditum, APP_USER_PASSWORD: creditum }
+        ports: ['1521:1521']
+        options: >-
+          --health-cmd healthcheck.sh --health-interval 10s --health-timeout 5s --health-retries 30
+    env:
+      DB_TYPE: oracle
+      DB_HOST: localhost
+      DB_PORT: '1521'
+      DB_USER: creditum
+      DB_PASSWORD: creditum
+      DB_SERVICE_NAME: FREEPDB1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npm run test:integration -w apps/api
+
+  security:
+    name: Security scans (SAST, dependencies, secrets, SBOM)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - name: Dependency audit (production dependencies, high and critical)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+      - name: Static analysis (CodeQL) — initialise
+        uses: github/codeql-action/init@v3
+        with: { languages: javascript-typescript, queries: security-extended }
+      - name: Static analysis (CodeQL) — analyse
+        uses: github/codeql-action/analyze@v3
+      - name: Software bill of materials (CycloneDX)
+        run: npx --yes @cyclonedx/cyclonedx-npm --omit dev --output-file sbom.json
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom.json }
+
+  containers:
+    name: Container build and scan
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f apps/api/Dockerfile -t creditum-api:ci .
+      - name: Build web image
+        if: hashFiles('apps/web/Dockerfile') != ''
+        run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
+      - name: Scan API image (fail on critical)
+        uses: aquasecurity/trivy-action@0.28.0
+        with: { image-ref: 'creditum-api:ci', severity: CRITICAL, exit-code: '1', ignore-unfixed: true }
