@@ -817,3 +817,78 @@ input:disabled, select:disabled, textarea:disabled { background: #f8fafc; color:
 .module-panel { background: #f8fafc }
 .save-bar { border-top-color: var(--btn) }
 .alert { border-radius: 6px }
+
+/* ================================================================ Low-code editors: combobox, rule builder, formula bar */
+.combo { position: relative; min-width: 0 }
+.combo input { width: 100% }
+.combo-hint { display: block; font-size: 11.5px; color: #64748b; margin-top: 3px }
+.combo-list { position: absolute; z-index: 60; inset-inline: 0; top: calc(100% + 4px); max-height: 320px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none;
+  background: #fff; border: 1px solid var(--input-line); border-radius: 6px; box-shadow: 0 10px 28px #0f172a24; min-width: 280px }
+.combo-group { padding: 8px 12px 4px; font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .02em; position: sticky; top: -4px; background: #fff }
+.combo-opt { display: flex; flex-direction: column; gap: 1px; padding: 7px 12px; cursor: pointer }
+.combo-opt.active { background: #eff6ff }
+.combo-opt.selected .combo-label { font-weight: 600; color: var(--title-blue) }
+.combo-label { display: flex; align-items: center; gap: 6px; color: #0f172a; font-size: 14px }
+.combo-sub { font-size: 11.5px; color: #64748b }
+.combo-empty { padding: 8px 12px; font-size: 12.5px; color: #64748b }
+
+.rule-editor { display: grid; gap: 18px }
+.builder-head { font-size: 15px; font-weight: 600; color: #0f172a; margin: 22px 0 2px }
+.builder-help { margin: 0 0 10px }
+.rule-group { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 12px 14px }
+.rule-group.depth-1, .rule-group.depth-3 { background: #f8fafc }
+.rule-group.negated { border-color: #f3c9a8; box-shadow: inset 3px 0 0 #e0703a }
+[dir=rtl] .rule-group.negated { box-shadow: inset -3px 0 0 #e0703a }
+.rg-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px }
+.rg-head .seg-btn { padding: 5px 12px }
+.not-toggle { font-size: 13px }
+.rg-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px }
+.rg-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start }
+.rg-joiner { grid-column: 1 / -1; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--title-blue); letter-spacing: .04em; margin: 0 0 -2px 4px }
+.rg-body { min-width: 0 }
+.rg-tools { padding-top: 6px }
+.rg-add { display: flex; gap: 18px; margin-top: 4px }
+.rg-empty { margin: 4px 0 }
+.cond-row { display: grid; grid-template-columns: minmax(220px, 1.3fr) minmax(150px, .7fr) minmax(220px, 1.4fr); gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff }
+.cond-row.has-problem { border-color: #f4c8c4; background: #fffafa }
+@media (max-width: 1000px) { .cond-row { grid-template-columns: 1fr } }
+.cond-problem { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--err) }
+.value-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+.setting-toggle { font-size: 12.5px; color: #334155 }
+.multi-pick { border: 1px solid var(--input-line); border-radius: 5px; padding: 6px 8px; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; max-height: 150px; overflow-y: auto; min-width: 0 }
+.chip-check { font-size: 13px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px 2px 6px; background: #fff }
+.chip-check:has(input:checked) { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8 }
+.rule-actions { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: #fff }
+.ra-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px }
+.ra-row { display: grid; grid-template-columns: minmax(200px, .8fr) minmax(220px, 1fr) minmax(220px, 1.4fr) auto; gap: 10px; align-items: start }
+.ra-row.has-problem input, .ra-row.has-problem select { border-color: #f4c8c4 }
+@media (max-width: 1000px) { .ra-row { grid-template-columns: 1fr } }
+.rule-summary { margin-top: 18px; padding: 14px 16px; background: #f8fafc; border: 1px solid var(--line); border-radius: 6px }
+.rule-summary p { margin: 4px 0 0; font-size: 15px; line-height: 1.6; color: #0f172a }
+details.advanced { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px }
+details.advanced > summary { cursor: pointer; font-size: 13px; color: #64748b; font-weight: 600 }
+.test-result { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: #f8fafc }
+.test-result.fired { border-color: #bfdbfe; background: #eff6ff }
+.test-result p { margin: 0 0 6px }
+.test-result ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px }
+
+.formula-bar { position: relative; border: 1px solid var(--input-line); border-radius: 6px; background: #fff; margin-top: 6px }
+.formula-bar:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent) }
+.fb-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-bottom: 1px solid var(--line-2); background: #f8fafc; border-radius: 6px 6px 0 0 }
+.fb-fx { font-style: italic; font-weight: 700; color: #64748b; font-family: Georgia, serif; padding: 0 4px }
+.fb-input { border: 0 !important; box-shadow: none !important; border-radius: 0 0 6px 6px; font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.6; resize: vertical; min-height: 72px; direction: ltr; text-align: start }
+.fb-menu { position: relative }
+.fb-pop { position: absolute; z-index: 61; top: calc(100% + 4px); inset-inline-start: 0; width: 360px; max-height: 320px; overflow-y: auto; list-style: none; margin: 0; padding: 4px 0; background: #fff; border: 1px solid var(--input-line); border-radius: 6px; box-shadow: 0 10px 28px #0f172a24 }
+.fb-pop button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 12px; background: none; border: 0; font: inherit; text-align: start; cursor: pointer; color: #0f172a }
+.fb-pop button:hover, .fb-pop button:focus-visible { background: #eff6ff }
+.fb-list { top: auto; margin-top: 2px }
+.fb-error-line { padding: 4px 12px 8px; font-size: 14px; color: #64748b; white-space: pre-wrap; word-break: break-all; direction: ltr }
+.fb-error-line mark { background: #fecaca; color: #991b1b; border-bottom: 2px solid #dc2626; padding: 0 1px }
+.kbd { font-family: ui-monospace, monospace; font-size: 11.5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; color: #0f172a }
+.fx-status { margin-top: 8px; min-height: 24px }
+.fx-status .formula-reading { margin: 8px 0 0 }
+.try-it { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--line) }
+.preview-table { max-width: 520px; margin-top: 10px; border: 1px solid var(--line); border-radius: 6px }
+.preview-value { margin: 10px 0 0; font-size: 15px }
+.formula-text { color: #0f172a; margin-bottom: 2px; overflow-wrap: anywhere }
+.help-list { margin: 8px 0 0; padding-inline-start: 18px; display: grid; gap: 4px; color: #334155 }

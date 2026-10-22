@@ -179,8 +179,16 @@ export type FormulaExpr = { [op: string]: unknown };
 export interface FormulaRow {
   fieldKey: string; label: string; scope: 'core' | 'tenant'; status: 'active' | 'pending'; expression: FormulaExpr | null;
   description: string | null; note: string | null; grid: string | null; rowVersion: number;
+  /** Spreadsheet-style text of the expression (null when the formula has none). */
+  text?: string | null;
 }
-export interface FormulaInput { status?: 'active' | 'pending'; expression?: FormulaExpr | null; description: string; note?: string; expectedVersion?: number }
+export interface FormulaInput { status?: 'active' | 'pending'; expression?: FormulaExpr | null; text?: string; description: string; note?: string; expectedVersion?: number }
+export interface FormulaParse { expression: FormulaExpr; text: string }
+export type FormulaPreview = { value: string | null } | { rows: { rowKey: string; label: string; value: string | null }[] };
+// ---- rule builder catalog
+export interface CatalogField { key: string; label: string; dataType: string; valueKind: 'text' | 'decimal' | 'date' | 'bool'; group: string; section: string; hidden: boolean; list?: string }
+export interface CatalogParameter { key: string; valueType: string; value: string; description: string | null }
+export interface RuleCatalog { fields: CatalogField[]; parameters: CatalogParameter[]; lists: Record<string, ListEntry[]>; currencies: { code: string; name: string }[] }
 /** Layout document as stored. Unknown properties are preserved untouched when the document is sent back. */
 export interface LayoutDocField { key: string; [prop: string]: unknown }
 export interface LayoutDocSection { code: string; title: string; kind: 'record' | 'grid' | 'periods'; grid?: string; rowLabel?: string; fields: LayoutDocField[]; columns?: LayoutDocField[]; [prop: string]: unknown }
@@ -225,6 +233,9 @@ export const api = {
   saveValueList: (key: string, entries: ValueListInputEntry[]) => request<WriteResult>('PUT', `/config/value-lists/${enc(key)}`, { entries }),
 
   formulas: () => request<FormulaRow[]>('GET', '/formulas'),
+  formulaFunctions: () => request<string[]>('GET', '/formulas/functions'),
+  parseFormula: (key: string, text: string) => request<FormulaParse>('POST', `/formulas/${enc(key)}/parse`, { text }),
+  previewFormula: (key: string, text: string, requestId: string) => request<FormulaPreview>('POST', `/formulas/${enc(key)}/preview`, { text, requestId }),
   saveFormula: (key: string, body: FormulaInput) => request<WriteResult>('PUT', `/formulas/${enc(key)}`, body),
   revertFormula: (key: string) => request<WriteResult>('DELETE', `/formulas/${enc(key)}`),
   checkFormula: (key: string, expression: FormulaExpr | null, status?: 'active' | 'pending') =>
@@ -239,6 +250,7 @@ export const api = {
     request<{ status: string }>('POST', `/config/changes/${enc(id)}/decision`, { approve, ...(note ? { note } : {}) }),
 
   rules: () => request<RuleRow[]>('GET', '/rules'),
+  rulesCatalog: () => request<RuleCatalog>('GET', '/rules/catalog'),
   saveRule: (key: string, body: RuleInput) => request<WriteResult>('PUT', `/rules/${enc(key)}`, body),
   testRule: (rule: unknown, record: Record<string, unknown>) => request<Outcome>('POST', '/rules/test', { rule, record }),
 
