@@ -1,0 +1,864 @@
+{
+  "tenant": {
+    "code": "xyz-bank",
+    "name": "XYZ Bank"
+  },
+  "note": "Fictional reference tenant #1 (GCC-style commercial bank). Configuration data only.",
+  "users": [
+    [
+      "ro.ahmed",
+      "Ahmed Rahman",
+      "relationship_officer"
+    ],
+    [
+      "analyst.sara",
+      "Sara Haddad",
+      "credit_analyst"
+    ],
+    [
+      "risk.omar",
+      "Omar Saleh",
+      "credit_risk"
+    ],
+    [
+      "committee.layla",
+      "Layla Nasser",
+      "committee_member"
+    ],
+    [
+      "senior.khalid",
+      "Khalid Mansour",
+      "senior_committee_member"
+    ],
+    [
+      "exec.noura",
+      "Noura Aziz",
+      "executive_committee_member"
+    ],
+    [
+      "admin.fatima",
+      "Fatima Karim",
+      "config_admin"
+    ],
+    [
+      "admin.yusuf",
+      "Yusuf Hamdan",
+      "config_admin"
+    ],
+    [
+      "auditor.hana",
+      "Hana Qasim",
+      "auditor"
+    ]
+  ],
+  "currencies": [
+    [
+      "KWD",
+      "Kuwaiti Dinar",
+      3,
+      "half_even",
+      true
+    ],
+    [
+      "USD",
+      "US Dollar",
+      2,
+      "half_even",
+      false
+    ],
+    [
+      "EUR",
+      "Euro",
+      2,
+      "half_even",
+      false
+    ]
+  ],
+  "fxRates": [
+    [
+      "USD",
+      "KWD",
+      "0.307000"
+    ],
+    [
+      "EUR",
+      "KWD",
+      "0.333000"
+    ]
+  ],
+  "parameters": [
+    {
+      "key": "governance.config_maker_checker",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Configuration changes need a second administrator"
+    },
+    {
+      "key": "request_number.prefix",
+      "valueType": "text",
+      "value": "CR",
+      "description": "Credit Request number prefix"
+    },
+    {
+      "key": "request_number.separator",
+      "valueType": "text",
+      "value": "-",
+      "description": "Separator between number parts ('none' for no separator)"
+    },
+    {
+      "key": "request_number.padding",
+      "valueType": "integer",
+      "value": "6",
+      "description": "Zero-padding of the sequence"
+    },
+    {
+      "key": "request_number.include_year",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Include the year"
+    },
+    {
+      "key": "request_number.reset",
+      "valueType": "text",
+      "value": "yearly",
+      "description": "Sequence reset cadence"
+    },
+    {
+      "key": "credit_request.narrative_required_above",
+      "valueType": "decimal",
+      "value": "250000",
+      "description": "Base-currency amount above which client request details are mandatory"
+    },
+    {
+      "key": "credit_request.max_single_request",
+      "valueType": "decimal",
+      "value": "50000000",
+      "description": "Base-currency single-request ceiling"
+    }
+  ],
+  "valueLists": {
+    "request_type": [
+      [
+        "new",
+        "New Facility"
+      ],
+      [
+        "increase",
+        "Increase"
+      ],
+      [
+        "renewal",
+        "Renewal"
+      ],
+      [
+        "decrease",
+        "Decrease"
+      ],
+      [
+        "restructure",
+        "Restructure"
+      ]
+    ]
+  },
+  "authorityLevels": [
+    [
+      "L1",
+      "Branch Credit Committee",
+      1,
+      "250000",
+      "committee_member"
+    ],
+    [
+      "L2",
+      "Senior Credit Committee",
+      2,
+      "2000000",
+      "senior_committee_member"
+    ],
+    [
+      "L3",
+      "Executive Credit Committee",
+      3,
+      null,
+      "executive_committee_member"
+    ]
+  ],
+  "workflows": {
+    "new": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Review"
+        },
+        {
+          "code": "risk_review",
+          "label": "Independent Risk Review"
+        },
+        {
+          "code": "committee",
+          "label": "Committee Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Sent Back for Rework",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Approved",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Declined",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Credit Review",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend to Risk",
+          "from": "credit_review",
+          "to": "risk_review",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "endorse",
+          "label": "Endorse to Committee",
+          "from": "risk_review",
+          "to": "committee",
+          "roles": [
+            "credit_risk"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "risk_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_risk"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "approve",
+          "label": "Approve",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Decline",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "committee",
+          "to": "sent_back",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "increase": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Review"
+        },
+        {
+          "code": "risk_review",
+          "label": "Independent Risk Review"
+        },
+        {
+          "code": "committee",
+          "label": "Committee Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Sent Back for Rework",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Approved",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Declined",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Credit Review",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend to Risk",
+          "from": "credit_review",
+          "to": "risk_review",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "endorse",
+          "label": "Endorse to Committee",
+          "from": "risk_review",
+          "to": "committee",
+          "roles": [
+            "credit_risk"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "risk_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_risk"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "approve",
+          "label": "Approve",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Decline",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "committee",
+          "to": "sent_back",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "renewal": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Review"
+        },
+        {
+          "code": "risk_review",
+          "label": "Independent Risk Review"
+        },
+        {
+          "code": "committee",
+          "label": "Committee Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Sent Back for Rework",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Approved",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Declined",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Credit Review",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend to Risk",
+          "from": "credit_review",
+          "to": "risk_review",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "endorse",
+          "label": "Endorse to Committee",
+          "from": "risk_review",
+          "to": "committee",
+          "roles": [
+            "credit_risk"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "risk_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_risk"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "approve",
+          "label": "Approve",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Decline",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "committee",
+          "to": "sent_back",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "decrease": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Review"
+        },
+        {
+          "code": "risk_review",
+          "label": "Independent Risk Review"
+        },
+        {
+          "code": "committee",
+          "label": "Committee Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Sent Back for Rework",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Approved",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Declined",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Credit Review",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend to Risk",
+          "from": "credit_review",
+          "to": "risk_review",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "endorse",
+          "label": "Endorse to Committee",
+          "from": "risk_review",
+          "to": "committee",
+          "roles": [
+            "credit_risk"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "risk_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_risk"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "approve",
+          "label": "Approve",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Decline",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "committee",
+          "to": "sent_back",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "restructure": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Review"
+        },
+        {
+          "code": "risk_review",
+          "label": "Independent Risk Review"
+        },
+        {
+          "code": "committee",
+          "label": "Committee Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Sent Back for Rework",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Approved",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Declined",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Credit Review",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend to Risk",
+          "from": "credit_review",
+          "to": "risk_review",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "endorse",
+          "label": "Endorse to Committee",
+          "from": "risk_review",
+          "to": "committee",
+          "roles": [
+            "credit_risk"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "risk_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_risk"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "approve",
+          "label": "Approve",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Decline",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        },
+        {
+          "action": "send_back",
+          "label": "Send Back",
+          "from": "committee",
+          "to": "sent_back",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "remarksRequired": true
+        }
+      ]
+    }
+  },
+  "rules": []
+}

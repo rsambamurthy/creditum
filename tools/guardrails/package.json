@@ -1,0 +1,9 @@
+{
+  "name": "@creditum/guardrails",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static checks enforcing the Creditum engineering guardrails (SDD Section 25.4)",
+  "scripts": { "check": "node check.mjs", "self-test": "node check.mjs --self-test" },
+  "dependencies": { "typescript": "^5.9.3" }
+}

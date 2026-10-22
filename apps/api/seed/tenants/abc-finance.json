@@ -1,0 +1,483 @@
+{
+  "tenant": {
+    "code": "abc-finance",
+    "name": "ABC Finance"
+  },
+  "note": "Fictional reference tenant #2 (Indian NBFC). Configuration data only.",
+  "users": [
+    [
+      "ro.priya",
+      "Priya Nair",
+      "relationship_officer"
+    ],
+    [
+      "analyst.arjun",
+      "Arjun Mehta",
+      "credit_analyst"
+    ],
+    [
+      "mgr.meera",
+      "Meera Iyer",
+      "committee_member"
+    ],
+    [
+      "cc.rahul",
+      "Rahul Verma",
+      "senior_committee_member"
+    ],
+    [
+      "board.vikram",
+      "Vikram Rao",
+      "executive_committee_member"
+    ],
+    [
+      "admin.anita",
+      "Anita Desai",
+      "config_admin"
+    ],
+    [
+      "admin.kiran",
+      "Kiran Joshi",
+      "config_admin"
+    ],
+    [
+      "auditor.deepa",
+      "Deepa Kulkarni",
+      "auditor"
+    ]
+  ],
+  "currencies": [
+    [
+      "INR",
+      "Indian Rupee",
+      2,
+      "half_up",
+      true
+    ],
+    [
+      "USD",
+      "US Dollar",
+      2,
+      "half_up",
+      false
+    ]
+  ],
+  "fxRates": [
+    [
+      "USD",
+      "INR",
+      "84.000000"
+    ]
+  ],
+  "parameters": [
+    {
+      "key": "governance.config_maker_checker",
+      "valueType": "boolean",
+      "value": "false",
+      "description": "Configuration changes apply immediately (audited)"
+    },
+    {
+      "key": "request_number.prefix",
+      "valueType": "text",
+      "value": "LA",
+      "description": "Loan Application number prefix"
+    },
+    {
+      "key": "request_number.separator",
+      "valueType": "text",
+      "value": "/",
+      "description": "Separator between number parts ('none' for no separator)"
+    },
+    {
+      "key": "request_number.padding",
+      "valueType": "integer",
+      "value": "5",
+      "description": "Zero-padding of the sequence"
+    },
+    {
+      "key": "request_number.include_year",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Include the year"
+    },
+    {
+      "key": "request_number.reset",
+      "valueType": "text",
+      "value": "yearly",
+      "description": "Sequence reset cadence"
+    },
+    {
+      "key": "credit_request.narrative_required_above",
+      "valueType": "decimal",
+      "value": "50000000",
+      "description": "Base-currency amount above which client request details are mandatory"
+    },
+    {
+      "key": "credit_request.max_single_request",
+      "valueType": "decimal",
+      "value": "5000000000",
+      "description": "Base-currency single-request ceiling"
+    }
+  ],
+  "valueLists": {
+    "request_type": [
+      [
+        "new",
+        "New Loan"
+      ],
+      [
+        "increase",
+        "Enhancement"
+      ],
+      [
+        "renewal",
+        "Renewal"
+      ]
+    ]
+  },
+  "authorityLevels": [
+    [
+      "L1",
+      "Credit Manager",
+      1,
+      "10000000",
+      "committee_member"
+    ],
+    [
+      "L2",
+      "Credit Committee",
+      2,
+      "250000000",
+      "senior_committee_member"
+    ],
+    [
+      "L3",
+      "Board of Directors",
+      3,
+      null,
+      "executive_committee_member"
+    ]
+  ],
+  "workflows": {
+    "new": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Appraisal"
+        },
+        {
+          "code": "committee",
+          "label": "Sanction Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Returned",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Sanctioned",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Rejected",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Appraisal",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend for Sanction",
+          "from": "credit_review",
+          "to": "committee",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Return",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "approve",
+          "label": "Sanction",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Reject",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "increase": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Appraisal"
+        },
+        {
+          "code": "committee",
+          "label": "Sanction Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Returned",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Sanctioned",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Rejected",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Appraisal",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend for Sanction",
+          "from": "credit_review",
+          "to": "committee",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Return",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "approve",
+          "label": "Sanction",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Reject",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        }
+      ]
+    },
+    "renewal": {
+      "initial": "draft",
+      "states": [
+        {
+          "code": "draft",
+          "label": "Draft",
+          "editable": true
+        },
+        {
+          "code": "credit_review",
+          "label": "Credit Appraisal"
+        },
+        {
+          "code": "committee",
+          "label": "Sanction Decision"
+        },
+        {
+          "code": "sent_back",
+          "label": "Returned",
+          "editable": true
+        },
+        {
+          "code": "approved",
+          "label": "Sanctioned",
+          "final": true
+        },
+        {
+          "code": "declined",
+          "label": "Rejected",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "action": "submit",
+          "label": "Submit for Appraisal",
+          "from": "draft",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "recommend",
+          "label": "Recommend for Sanction",
+          "from": "credit_review",
+          "to": "committee",
+          "roles": [
+            "credit_analyst"
+          ]
+        },
+        {
+          "action": "send_back",
+          "label": "Return",
+          "from": "credit_review",
+          "to": "sent_back",
+          "roles": [
+            "credit_analyst"
+          ],
+          "remarksRequired": true
+        },
+        {
+          "action": "resubmit",
+          "label": "Resubmit",
+          "from": "sent_back",
+          "to": "credit_review",
+          "roles": [
+            "relationship_officer"
+          ]
+        },
+        {
+          "action": "approve",
+          "label": "Sanction",
+          "from": "committee",
+          "to": "approved",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true
+        },
+        {
+          "action": "decline",
+          "label": "Reject",
+          "from": "committee",
+          "to": "declined",
+          "roles": [
+            "committee_member",
+            "senior_committee_member",
+            "executive_committee_member"
+          ],
+          "checker": true,
+          "authority": true,
+          "remarksRequired": true
+        }
+      ]
+    }
+  },
+  "rules": [
+    {
+      "ruleKey": "ABC-001",
+      "name": "Enhancements need client request details at submission",
+      "entityType": "credit_request",
+      "triggerOn": "on_submit",
+      "condition": {
+        "==": [
+          {
+            "var": "request_type"
+          },
+          "increase"
+        ]
+      },
+      "actions": [
+        {
+          "type": "require",
+          "field": "a.client_request.client_request_details",
+          "message": "Client request details are required to submit an enhancement"
+        }
+      ]
+    }
+  ]
+}

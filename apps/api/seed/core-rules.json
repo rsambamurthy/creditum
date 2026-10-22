@@ -1,0 +1,49 @@
+{
+  "rules": [
+    {
+      "ruleKey": "CR-001",
+      "name": "Client request details required above the configured amount",
+      "entityType": "credit_request",
+      "triggerOn": "on_save",
+      "condition": {
+        ">": [
+          {
+            "var": "base_amount"
+          },
+          {
+            "cfg": "credit_request.narrative_required_above"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "require",
+          "field": "a.client_request.client_request_details",
+          "message": "Client request details are required for requests above the configured amount"
+        }
+      ]
+    },
+    {
+      "ruleKey": "CR-002",
+      "name": "Single-request ceiling",
+      "entityType": "credit_request",
+      "triggerOn": "on_save",
+      "condition": {
+        ">": [
+          {
+            "var": "base_amount"
+          },
+          {
+            "cfg": "credit_request.max_single_request"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "block",
+          "message": "The requested amount exceeds the configured single-request ceiling"
+        }
+      ]
+    }
+  ]
+}
