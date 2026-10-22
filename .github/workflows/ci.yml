@@ -166,6 +166,8 @@ jobs:
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
       - name: Smoke test — migrate, seed, start and sign in using the built image
         run: |
+          report() { for c in api web web-early; do docker logs "$c" 2>&1 | tail -6 | tr '\n' ' ' | sed "s/^/::error title=$c logs::/"; echo; done; }
+          trap report ERR
           SECRET=$(openssl rand -hex 32)
           ENVS="-e DB_TYPE=postgres -e DATABASE_URL=postgres://creditum:creditum@127.0.0.1:5432/creditum_smoke -e PORT=3000 -e AUTH_MODE=dev \
             -e ALLOW_DEV_AUTH=true -e DEV_JWT_SECRET=$SECRET -e TOKEN_TTL_SECONDS=600 \
