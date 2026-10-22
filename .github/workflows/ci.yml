@@ -176,6 +176,10 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && break; sleep 2; done
           curl -fsS -X POST http://127.0.0.1:3000/api/auth/dev-login -H 'content-type: application/json' \
             -d '{"tenantCode":"xyz-bank","loginName":"ro.ahmed"}' | jq -e '.token' > /dev/null
+          # start the web tier before checking it, and prove it starts even if the upstream name is unknown
+          docker run -d --name web-early --network host -e API_UPSTREAM=http://not-yet-deployed.invalid:3000 creditum-web:ci
+          sleep 3; docker ps --filter name=web-early --format '{{.Status}}' | grep -q Up
+          docker rm -f web-early
           docker run -d --name web --network host -e API_UPSTREAM=http://127.0.0.1:3000 creditum-web:ci
           for i in $(seq 1 15); do curl -fsS http://127.0.0.1:8080/api/health && break; sleep 2; done
           curl -fsS -o /dev/null http://127.0.0.1:8080/

@@ -16,5 +16,5 @@ RUN apk upgrade --no-cache
 USER 101
 COPY apps/web/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
-ENV NGINX_ENVSUBST_FILTER=API_UPSTREAM
+ENV NGINX_ENVSUBST_FILTER=API_UPSTREAM|NGINX_LOCAL_RESOLVERS
 EXPOSE 8080
