@@ -64,7 +64,7 @@ jobs:
       - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
-      - run: npm run test:integration -w apps/api
+      - run: npm run test:integration -w apps/api -- --reporters=default --reporters=github-actions
 
   integration-mssql:
     name: Integration — SQL Server
@@ -92,7 +92,7 @@ jobs:
       - name: Create test database
         run: docker exec ${{ job.services.mssql.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Creditum_CI_2026!' -Q "CREATE DATABASE creditum_test"
       - run: npm ci
-      - run: npm run test:integration -w apps/api
+      - run: npm run test:integration -w apps/api -- --reporters=default --reporters=github-actions
 
   integration-oracle:
     name: Integration — Oracle
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
-      - run: npm run test:integration -w apps/api
+      - run: npm run test:integration -w apps/api -- --reporters=default --reporters=github-actions
 
   security:
     name: Security scans (SAST, dependencies, secrets, SBOM)
@@ -157,6 +157,8 @@ jobs:
       - name: Build web image
         if: hashFiles('apps/web/Dockerfile') != ''
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
-      - name: Scan API image (fail on critical)
-        uses: aquasecurity/trivy-action@0.28.0
-        with: { image-ref: 'creditum-api:ci', severity: CRITICAL, exit-code: '1', ignore-unfixed: true }
+      - name: Scan images (fail on critical, fixable vulnerabilities)
+        run: |
+          for img in creditum-api:ci creditum-web:ci; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress "$img"
+          done
