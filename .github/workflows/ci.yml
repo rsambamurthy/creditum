@@ -22,8 +22,8 @@ jobs:
     name: Engineering guardrails
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
       - name: Guardrail self-test (every rule fires on known violations)
@@ -35,8 +35,8 @@ jobs:
     name: Type-check, build and unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
       - run: npm run typecheck -w apps/api
@@ -60,8 +60,8 @@ jobs:
       DB_TYPE: postgres
       DATABASE_URL: postgres://creditum:creditum@localhost:5432/creditum_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
       - run: npm run test:integration -w apps/api
@@ -86,8 +86,8 @@ jobs:
       DB_PASSWORD: 'Creditum_CI_2026!'
       DB_NAME: creditum_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - name: Create test database
         run: docker exec ${{ job.services.mssql.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Creditum_CI_2026!' -Q "CREATE DATABASE creditum_test"
@@ -113,8 +113,8 @@ jobs:
       DB_PASSWORD: creditum
       DB_SERVICE_NAME: FREEPDB1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
       - run: npm run test:integration -w apps/api
@@ -126,9 +126,9 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
       - run: npm ci
       - name: Dependency audit (production dependencies, high and critical)
@@ -137,10 +137,10 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
       - name: Static analysis (CodeQL) — initialise
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with: { languages: javascript-typescript, queries: security-extended }
       - name: Static analysis (CodeQL) — analyse
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
       - name: Software bill of materials (CycloneDX)
         run: npx --yes @cyclonedx/cyclonedx-npm --omit dev --output-file sbom.json
       - uses: actions/upload-artifact@v4
@@ -151,7 +151,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build API image
         run: docker build -f apps/api/Dockerfile -t creditum-api:ci .
       - name: Build web image
