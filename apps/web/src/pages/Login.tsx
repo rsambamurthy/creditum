@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { api, errorMessage, type DevUser } from '../api';
 import { useAuth } from '../auth';
 import { useDebounced } from '../hooks';
 import { initials, rolesLabel } from '../format';
-import { Alert, Spinner } from '../components/Feedback';
+import { Spinner } from '../components/Feedback';
+import { Wordmark } from '../components/Wordmark';
 
 const DEFAULT_WORKSPACE = 'xyz-bank';
 
+/** Development sign-in in the house style: one narrow card, wordmark on top, a compact user list, one primary button. */
 export function LoginPage() {
   const { status, signIn } = useAuth();
   const navigate = useNavigate();
@@ -16,86 +18,64 @@ export function LoginPage() {
   const [workspace, setWorkspace] = useState(DEFAULT_WORKSPACE);
   const ws = useDebounced(workspace.trim().toLowerCase(), 300);
   const [users, setUsers] = useState<DevUser[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [signInError, setSignInError] = useState<string | null>(null);
+  const [user, setUser] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => { document.title = 'Sign in · Creditum'; }, []);
-
   useEffect(() => {
     if (!ws) { setUsers(null); return; }
     let live = true;
-    setUsers(null); setLoadError(null);
-    api.devUsers(ws).then(u => { if (live) setUsers(u); }).catch(e => { if (live) { setLoadError(errorMessage(e)); setUsers([]); } });
+    setUsers(null); setUser(''); setError(null);
+    api.devUsers(ws).then(u => { if (live) setUsers(u); }).catch(e => { if (live) { setError(errorMessage(e)); setUsers([]); } });
     return () => { live = false; };
   }, [ws]);
 
   if (status === 'signed-in') return <Navigate to={from} replace />;
 
-  const pick = async (u: DevUser) => {
-    setBusy(u.loginName); setSignInError(null);
-    try {
-      await signIn(ws, u.loginName);
-      navigate(from, { replace: true });
-    } catch (e) {
-      setSignInError(errorMessage(e));
-    } finally {
-      setBusy(null);
-    }
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!user) { setError('Choose who you are signing in as'); return; }
+    setBusy(true); setError(null);
+    try { await signIn(ws, user); navigate(from, { replace: true }); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
   };
 
   return (
-    <div className="center-page login-bg">
-      <div className="card login-card split">
-        <div className="login-side">
-          <div className="brand brand-lg light">
-            <span className="af-logo"><span className="af-mono">CR</span></span>
-            <span>Creditum</span>
-          </div>
-          <h2>Corporate credit origination, configured — not coded.</h2>
-          <p>One platform for relationship officers, analysts, risk and committees.</p>
-          <ul>
-            <li>Tenant-configured workflows and delegated authority</li>
-            <li>Rules and field library maintained by your administrators</li>
-            <li>Tamper-evident, hash-chained audit trail</li>
-          </ul>
-          <p className="small" style={{ marginTop: 'auto', paddingTop: 18, opacity: .7 }}>Integratatech.ai Pvt Ltd</p>
-        </div>
-        <div className="login-main">
-          <h1>Sign in</h1>
-          <p className="muted" style={{ marginTop: 0 }}>Choose your workspace, then your user.</p>
-          <div className="alert alert-warning small" role="note">Development sign-in — bank deployments use the bank’s identity provider.</div>
+    <div className="signin-page">
+      <main className="signin-card">
+        <div className="signin-brand"><Wordmark size={30} /></div>
+        <h1 className="signin-title">Sign in to your workspace</h1>
+        <form onSubmit={submit} noValidate>
           <div className="field">
             <label htmlFor="ws">Workspace ID</label>
-            <input id="ws" value={workspace} onChange={e => setWorkspace(e.target.value)} autoComplete="organization" spellCheck={false}
-              aria-describedby="ws-help" className="ltr" />
-            <span className="field-help" id="ws-help">Reference workspaces: <code>xyz-bank</code> and <code>abc-finance</code>.</span>
+            <input id="ws" value={workspace} onChange={e => setWorkspace(e.target.value)} autoComplete="organization" spellCheck={false} className="ltr" aria-describedby="ws-help" />
+            <span className="field-help" id="ws-help">Reference workspaces: xyz-bank, abc-finance</span>
           </div>
-          {signInError && <div style={{ marginTop: 12 }}><Alert tone="error">{signInError}</Alert></div>}
-          {loadError && <div style={{ marginTop: 12 }}><Alert tone="error">{loadError}</Alert></div>}
-          {ws && users === null && <Spinner label="Loading users…" />}
-          {users && users.length === 0 && !loadError && ws && <p className="muted" style={{ marginTop: 16 }}>No users found for workspace “{ws}”.</p>}
-          {users && users.length > 0 && (
-            <>
-              <p className="sub-head" id="pick-head" style={{ marginTop: 18 }}>Sign in as</p>
-              <div className="user-pick" role="list" aria-labelledby="pick-head">
+          <fieldset className="signin-users">
+            <legend className="field-label">Sign in as</legend>
+            {ws && users === null && <Spinner label="Loading users…" />}
+            {users && users.length === 0 && !error && <p className="muted small" style={{ margin: '4px 0' }}>No users in workspace “{ws}”.</p>}
+            {users && users.length > 0 && (
+              <div className="user-list" role="radiogroup" aria-label="Users">
                 {users.map(u => (
-                  <div role="listitem" key={u.loginName} style={{ display: 'contents' }}>
-                    <button type="button" className="user-card" onClick={() => pick(u)} disabled={busy !== null}
-                      aria-label={`Sign in as ${u.displayName}, ${rolesLabel(u.roles)}`}>
-                      <span className="avatar" aria-hidden="true">{initials(u.displayName)}</span>
-                      <span className="user-card-text">
-                        <span className="me-name">{u.displayName}</span>
-                        <span className="me-role">{busy === u.loginName ? 'Signing in…' : rolesLabel(u.roles)}</span>
-                      </span>
-                    </button>
-                  </div>
+                  <label key={u.loginName} className={`user-row${user === u.loginName ? ' selected' : ''}`}>
+                    <input type="radio" name="user" value={u.loginName} checked={user === u.loginName} onChange={() => { setUser(u.loginName); setError(null); }}
+ />
+                    <span className="avatar sm" aria-hidden="true">{initials(u.displayName)}</span>
+                    <span className="user-row-text"><span className="me-name">{u.displayName}</span><span className="me-role">{rolesLabel(u.roles)}</span></span>
+                  </label>
                 ))}
               </div>
-            </>
-          )}
-        </div>
-      </div>
+            )}
+          </fieldset>
+          {error && <p className="field-error" role="alert" style={{ margin: '0 0 10px' }}>{error}</p>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy || !user}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <p className="signin-dev" role="note">Development sign-in — bank deployments use the bank’s identity provider.</p>
+        </form>
+      </main>
+      <footer className="signin-foot">Powered by <Wordmark size={14} /> · Integratatech.ai Pvt Ltd</footer>
     </div>
   );
 }

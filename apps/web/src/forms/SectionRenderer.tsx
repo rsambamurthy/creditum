@@ -129,7 +129,7 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
             </tbody>
           </table>
         </div>
-        {!ctx.disabled && <div className="grid-foot"><button type="button" className="btn btn-secondary btn-sm" onClick={add}>+ Add {label.toLowerCase()}</button></div>}
+        {!ctx.disabled && <div className="grid-foot"><button type="button" className="add-line" onClick={add}>+ Add {label.toLowerCase()}</button></div>}
       </div>
       {editing !== null && rows[editing] && (
         <RowEditor section={section} row={rows[editing]} index={editing} ctx={ctx} onClose={() => setEditing(null)}
@@ -222,7 +222,7 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
         </div>
         {!ctx.disabled && (
           <div className="grid-foot">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRows([...periods, { id: newRowId(), values: {} }])}>+ Add {label.toLowerCase()}</button>
+            <button type="button" className="add-line" onClick={() => setRows([...periods, { id: newRowId(), values: {} }])}>+ Add {label.toLowerCase()}</button>
             <span className="muted small">{ctx.layout.grids[grid]?.ordered ? `Oldest ${label.toLowerCase()} first. ` : ''}{label}s are shared by all financial statements of this request.</span>
           </div>
         )}

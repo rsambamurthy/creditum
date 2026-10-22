@@ -171,6 +171,24 @@ export interface RequestDataInput {
   expectedVersion: number; record?: Record<string, FormValue>; grids?: Record<string, GridRowData[]>;
 }
 
+
+// ---------------------------------------------------------------- Administration (value lists, formulas, screen layout)
+export interface ValueListAdminEntry { id: string; code: string; label: string; sortOrder: number; isActive: boolean }
+export interface ValueListInputEntry { code: string; label: string; active?: boolean }
+export type FormulaExpr = { [op: string]: unknown };
+export interface FormulaRow {
+  fieldKey: string; label: string; scope: 'core' | 'tenant'; status: 'active' | 'pending'; expression: FormulaExpr | null;
+  description: string | null; note: string | null; grid: string | null; rowVersion: number;
+}
+export interface FormulaInput { status?: 'active' | 'pending'; expression?: FormulaExpr | null; description: string; note?: string; expectedVersion?: number }
+/** Layout document as stored. Unknown properties are preserved untouched when the document is sent back. */
+export interface LayoutDocField { key: string; [prop: string]: unknown }
+export interface LayoutDocSection { code: string; title: string; kind: 'record' | 'grid' | 'periods'; grid?: string; rowLabel?: string; fields: LayoutDocField[]; columns?: LayoutDocField[]; [prop: string]: unknown }
+export interface LayoutDocModule { code: string; letter: string; title: string; sections: LayoutDocSection[]; [prop: string]: unknown }
+export interface LayoutDocument { modules: LayoutDocModule[]; [prop: string]: unknown }
+export interface LayoutAdminField { label: string; dataType: string; requirement: string; hidden: boolean; scope: 'core' | 'tenant'; calculated: boolean }
+export interface LayoutAdmin { scope: 'core' | 'tenant'; coreVersion: number; updatedAt: string; document: LayoutDocument; fields: Record<string, LayoutAdminField> }
+
 // ---------------------------------------------------------------- endpoints
 const enc = encodeURIComponent;
 
@@ -203,6 +221,18 @@ export const api = {
   currencies: () => request<Currency[]>('GET', '/config/currencies'),
   valueListKeys: () => request<string[]>('GET', '/config/value-lists'),
   valueList: (key: string) => request<ValueListEntry[]>('GET', `/config/value-lists/${enc(key)}`),
+  valueListEntries: (key: string) => request<ValueListAdminEntry[]>('GET', `/config/value-lists/${enc(key)}/entries`),
+  saveValueList: (key: string, entries: ValueListInputEntry[]) => request<WriteResult>('PUT', `/config/value-lists/${enc(key)}`, { entries }),
+
+  formulas: () => request<FormulaRow[]>('GET', '/formulas'),
+  saveFormula: (key: string, body: FormulaInput) => request<WriteResult>('PUT', `/formulas/${enc(key)}`, body),
+  revertFormula: (key: string) => request<WriteResult>('DELETE', `/formulas/${enc(key)}`),
+  checkFormula: (key: string, expression: FormulaExpr | null, status?: 'active' | 'pending') =>
+    request<{ valid: true }>('POST', `/formulas/${enc(key)}/check`, { expression, ...(status ? { status } : {}) }),
+
+  layoutAdmin: () => request<LayoutAdmin>('GET', '/layout/admin'),
+  saveLayout: (document: LayoutDocument) => request<WriteResult>('PUT', '/layout', { document }),
+  resetLayout: () => request<WriteResult>('PUT', '/layout', { reset: true }),
   authorityLevels: () => request<AuthorityLevel[]>('GET', '/config/authority-levels'),
   pendingChanges: () => request<ConfigChange[]>('GET', '/config/changes'),
   decideChange: (id: string, approve: boolean, note?: string) =>

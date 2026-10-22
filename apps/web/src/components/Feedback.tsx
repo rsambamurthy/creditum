@@ -46,3 +46,11 @@ export function PageHead({ title, subtitle, actions, badge }: { title: ReactNode
 export function NoAccess() {
   return <Alert tone="warning">Your role does not give access to this page. Ask a configuration administrator if you need it.</Alert>;
 }
+
+/** Outcome of a governed configuration write (maker-checker aware). */
+export function ChangeStatus({ result, what }: { result: { status: 'applied' } | { status: 'pending'; changeId: string } | null; what?: string }) {
+  if (!result) return null;
+  return result.status === 'pending'
+    ? <div className="alert alert-info" role="status"><strong>Pending approval by a second administrator.</strong> {what ? `${what} takes effect` : 'The change takes effect'} when another configuration administrator approves it under Configuration → Pending changes.</div>
+    : <div className="alert alert-success" role="status"><strong>Applied.</strong> {what ? `${what} is` : 'The change is'} in effect now.</div>;
+}

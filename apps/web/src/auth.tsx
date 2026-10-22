@@ -19,7 +19,10 @@ interface AuthState {
   me: Me | null;
   status: 'loading' | 'signed-in' | 'signed-out';
   signIn: (tenantCode: string, loginName: string) => Promise<void>;
-  signOut: () => void;
+  /** Sign out. `expired` = the session ended on its own (the user returns to the same page after signing in again). */
+  signOut: (reason?: 'user' | 'expired') => void;
+  /** Why the last sign-out happened (null while signed in). */
+  signedOutBy: 'user' | 'expired' | null;
   hasRole: (...roles: string[]) => boolean;
 }
 
@@ -29,18 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<AuthState['status']>(() => (readToken() ? 'loading' : 'signed-out'));
 
-  const signOut = useCallback(() => {
-    setToken(null); writeToken(null); setMe(null); setStatus('signed-out');
+  const [signedOutBy, setSignedOutBy] = useState<'user' | 'expired' | null>(null);
+  const signOut = useCallback((reason: 'user' | 'expired' = 'user') => {
+    setToken(null); writeToken(null); setMe(null); setStatus('signed-out'); setSignedOutBy(reason);
   }, []);
+  const expire = useCallback(() => signOut('expired'), [signOut]);
 
   useEffect(() => {
-    setUnauthenticatedHandler(signOut);
+    setUnauthenticatedHandler(expire);
     const t = readToken();
     if (!t) return;
     setToken(t);
-    api.me().then(m => { setMe(m); setStatus('signed-in'); }).catch(() => signOut());
+    api.me().then(m => { setMe(m); setStatus('signed-in'); }).catch(() => expire());
     return () => setUnauthenticatedHandler(null);
-  }, [signOut]);
+  }, [expire]);
 
   const signIn = useCallback(async (tenantCode: string, loginName: string) => {
     const { token } = await api.devLogin(tenantCode, loginName);
@@ -49,11 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeToken(token);
     setMe(m);
     setStatus('signed-in');
+    setSignedOutBy(null);
   }, []);
 
   const hasRole = useCallback((...roles: string[]) => !!me && roles.some(r => me.roles.includes(r)), [me]);
 
-  const value = useMemo(() => ({ me, status, signIn, signOut, hasRole }), [me, status, signIn, signOut, hasRole]);
+  const value = useMemo(() => ({ me, status, signIn, signOut, signedOutBy, hasRole }), [me, status, signIn, signOut, signedOutBy, hasRole]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
