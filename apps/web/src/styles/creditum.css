@@ -572,3 +572,76 @@ input:disabled, select:disabled, textarea:disabled { background: #f8fafc; color:
 .table.compact td .mono.break { font-size: 11.5px }
 .outcome { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 .outcome li { overflow-wrap: anywhere }
+
+/* ================================================================ Phase 2: Credit Request modules (generic, layout-driven) */
+.modules-card { overflow: visible }
+.modules-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px 12px; flex-wrap: wrap }
+.modules-title { font-family: var(--font-head); font-size: 17px; font-weight: 600; margin: 0 0 2px }
+.module-tabs { border-top: 1px solid var(--line); border-radius: 0; position: sticky; top: 48px; z-index: 6 }
+.module-tabs button { gap: 8px }
+.tab-letter { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--line-2); color: var(--muted); font-size: 10.5px; font-weight: 700 }
+.module-tabs button.active .tab-letter { background: var(--af-active); color: var(--af-accent) }
+.completeness { font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 99px; padding: 1px 7px; background: var(--warn-bg); color: var(--warn) }
+.completeness.done { background: var(--ok-bg); color: var(--ok) }
+.dirty-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--btn); flex: none }
+.module-panel { padding: 18px 20px 24px; background: #f8fafc; border-radius: 0 0 12px 12px }
+.module-panel:focus { outline: none }
+.form-section { scroll-margin-top: 110px }
+.form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px }
+@media (max-width: 760px) { .form-2col { grid-template-columns: 1fr } }
+.form-2col .field { scroll-margin-top: 120px }
+.form-heading { grid-column: 1 / -1; margin: 6px 0 -4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--af-accent); border-bottom: 1px solid var(--line); padding-bottom: 6px }
+.placeholder-card { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc }
+.calc-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; min-height: 40px; border: 1px solid #edf1f6; border-radius: 8px; background: #f8fafc; font-weight: 500; color: #0f172a; cursor: help }
+.calc-value.cell { min-height: 0; padding: 4px 6px; border: 0; background: transparent; justify-content: flex-end; font-weight: 600 }
+.calc-value.pending { color: var(--muted) }
+.calc-badge { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #5a3fa6; background: #efeafb; border-radius: 4px; padding: 1px 6px; white-space: nowrap; margin-inline-start: 8px }
+.ro-value .calc-badge { float: inline-end; color: var(--info); background: var(--info-bg) }
+.calc-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: #5a3fa6; background: #efeafb; border-radius: 4px; padding: 0 5px; margin-inline-start: 6px; vertical-align: 1px; cursor: help }
+.calc-tag.pending { color: var(--muted); background: var(--line-2) }
+.suffix-input { display: flex; align-items: center; gap: 6px }
+.suffix-input input { flex: 1 }
+.suffix-input > span { color: var(--muted); font-weight: 600 }
+.composite { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.composite-part { display: flex; flex-direction: column; gap: 4px }
+.composite-part.has-error input { border-color: var(--err) }
+.seg.yesno { gap: 4px }
+.seg.yesno .seg-btn { min-width: 52px; text-align: center }
+.seg.yesno .seg-btn:disabled { cursor: not-allowed; opacity: .7 }
+.field.is-missing > label, .field.is-missing > .field-label { color: var(--err) }
+.is-missing .ro-value, .is-missing .rte, .is-missing .seg { box-shadow: 0 0 0 2px var(--err-bg) }
+.grid-box { border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; margin-top: 12px }
+.grid-box:first-child { margin-top: 0 }
+.form-2col + .grid-box { margin-top: 16px }
+.grid-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-top: 1px solid var(--line-2); background: #fcfdfe }
+.grid-table td { vertical-align: middle }
+.grid-table td input, .grid-table td select, .matrix td input, .matrix td select { min-height: 34px !important; padding: 5px 8px; font-size: 13px; min-width: 120px }
+.cell-input.has-error input, .cell-input.has-error select { border-color: var(--err); background: #fffafa }
+.row-tools { display: inline-flex; align-items: center; gap: 2px }
+.icon-btn.danger { color: var(--err) }
+tr.has-issue td { background: #fffaf2 }
+.matrix th.matrix-item, .matrix td.matrix-item { position: sticky; inset-inline-start: 0; z-index: 1; background: #fff; min-width: 240px; max-width: 320px; white-space: normal; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); font-weight: 500; border-inline-end: 1px solid var(--line) }
+.matrix thead th.matrix-item { background: #fcfbfd; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600 }
+.matrix th.matrix-period { min-width: 170px; text-transform: none; letter-spacing: 0 }
+.period-head { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; color: var(--ink); font-weight: 600; font-size: 12.5px }
+.period-head .icon-btn { font-size: 13px; padding: 1px 5px }
+.matrix tr.matrix-heading th { background: var(--af-soft); color: var(--af-accent); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; text-align: start }
+.matrix td { padding: 6px 8px }
+.missing-list { background: var(--warn-bg); border: 1px solid #f3dfae; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; color: #6b4600 }
+.missing-list summary { cursor: pointer; font-weight: 600; display: flex; gap: 8px; align-items: center }
+.missing-list ul { margin: 8px 0 2px; padding-inline-start: 18px; columns: 2; column-gap: 24px }
+@media (max-width: 760px) { .missing-list ul { columns: 1 } }
+.missing-groups { display: grid; gap: 6px }
+.save-bar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 20px; background: #fff; border-top: 2px solid var(--btn); box-shadow: 0 -6px 20px #0f172a14; border-radius: 0 0 12px 12px }
+.field-missing { font-size: 11.5px; color: var(--warn); font-weight: 500 }
+.field.is-missing > label, .field.is-missing > .field-label { color: var(--warn) }
+.field.is-missing input, .field.is-missing select, .field.is-missing textarea, .cell-input.is-missing input, .cell-input.is-missing select { border-color: #e6c46f; background: #fffdf6 }
+.is-missing .ro-value, .is-missing .rte, .is-missing .seg { box-shadow: 0 0 0 2px var(--warn-bg) }
+.matrix-wrap { max-height: 72vh; overflow: auto }
+.matrix thead th { position: sticky; top: 0; z-index: 2; background: #fcfbfd }
+.matrix thead th.matrix-item { z-index: 3 }
+.save-bar { padding-inline-end: 76px }
+.missing-links { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px }
+.missing-links li { padding: 4px 0; border-bottom: 1px solid var(--line-2); min-width: 0 }
+.missing-links .link-btn { color: var(--btn); font-weight: 500; text-align: start }
+@media (max-width: 760px) { .missing-links { grid-template-columns: 1fr } }

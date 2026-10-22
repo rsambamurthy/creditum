@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, errorMessage, type CreditRequestDetail, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
+import { api, ApiError, errorMessage, type CreditRequestDetail, type Layout, type MissingEntry, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
 import { useAuth } from '../auth';
 import { useReference } from '../reference';
 import { formatDateTime, humanize, initials, trimDecimal } from '../format';
@@ -13,6 +13,38 @@ import { Modal } from '../components/Modal';
 import { Timeline } from '../components/Timeline';
 import { useToast } from '../components/Toast';
 import { CLIENT_DETAILS_KEY, RequestForm } from '../components/RequestForm';
+import { CreditRequestModules, type ModulesHandle } from '../forms/CreditRequestModules';
+
+/** Missing mandatory fields reported when a step was refused, grouped by module, each linking to its field. */
+function MissingFieldsModal({ missing, layout, onGo, onClose }: {
+  missing: MissingEntry[]; layout: Layout | null; onGo: (m: MissingEntry) => void; onClose: () => void;
+}) {
+  const modules = layout?.modules ?? [];
+  const sectionTitle = (code: string) => modules.flatMap(m => m.sections).find(s => s.code === code)?.title ?? code;
+  const groups = [...new Set(missing.map(m => m.module))].map(code => ({
+    code, title: modules.find(m => m.code === code)?.title ?? code, items: missing.filter(m => m.module === code),
+  }));
+  return (
+    <Modal wide title="Mandatory fields missing" onClose={onClose} footer={<button type="button" className="btn btn-primary" onClick={onClose}>Close</button>}>
+      <p style={{ marginTop: 0 }}>This step needs every mandatory field to be filled. {missing.length} field{missing.length === 1 ? ' is' : 's are'} still empty:</p>
+      <div className="missing-groups">
+        {groups.map(g => (
+          <section key={g.code} aria-label={g.title}>
+            <h3 className="sub-head">{g.title} <span className="badge badge-warn sm">{g.items.length}</span></h3>
+            <ul className="missing-links">
+              {g.items.map(m => (
+                <li key={`${m.key}@${m.rowKey ?? ''}`}>
+                  <button type="button" className="link-btn" onClick={() => onGo(m)}>{m.label}</button>
+                  <span className="muted small"> · {m.sectionTitle ?? sectionTitle(m.section)}{m.rowKey ? ' (table row)' : ''}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </Modal>
+  );
+}
 
 function TransitionModal({ action, onCancel, onConfirm }: {
   action: TransitionAction; onCancel: () => void; onConfirm: (remarks: string) => Promise<void>;
@@ -52,6 +84,12 @@ export function RequestDetailPage() {
   const [actionError, setActionError] = useState<unknown>(null);
   const [pending, setPending] = useState<TransitionAction | null>(null);
   const [editing, setEditing] = useState(false);
+  const [dataDirty, setDataDirty] = useState(false);
+  const [mandatory, setMandatory] = useState<MissingEntry[] | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const modulesRef = useRef<ModulesHandle>(null);
+  const onVersion = useCallback((v: number) => setReq(r => (r && r.rowVersion !== v ? { ...r, rowVersion: v } : r)), []);
+  useEffect(() => { ref.loadLayout().then(setLayout).catch(() => setLayout(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [warnings, setWarnings] = useState<RuleMessage[]>(() => (location.state as { warnings?: RuleMessage[] } | null)?.warnings ?? []);
 
   useCrumbs([{ label: 'Credit' }, { label: 'Credit Requests', to: '/requests' }, { label: req?.requestNumber ?? '…' }]);
@@ -86,9 +124,12 @@ export function RequestDetailPage() {
       setHistory(await api.history(req.id));
       setWarnings([]);
       toast.show(`${next.requestNumber}: ${a.label} — now ${next.statusLabel}`, 'ok');
+      for (const w of next.warnings ?? []) toast.show(w, 'info');
+      void modulesRef.current?.reload();
     } catch (e) {
       setPending(null);
-      setActionError(e);
+      if (e instanceof ApiError && e.code === 'mandatory_fields' && e.missingMandatory.length) setMandatory(e.missingMandatory);
+      else setActionError(e);
     }
   };
 
@@ -163,8 +204,9 @@ export function RequestDetailPage() {
                 <div className="stack">
                   {req.actions.map((a, i) => (
                     <button key={a.action} type="button" className={`btn ${i === 0 && !/back|declin|reject/.test(a.action) ? 'btn-primary' : /declin|reject/.test(a.action) ? 'btn-danger-ghost' : 'btn-secondary'}`}
-                      onClick={() => setPending(a)} disabled={editing}>{a.label}</button>
+                      onClick={() => setPending(a)} disabled={editing || dataDirty}>{a.label}</button>
                   ))}
+                  {dataDirty && <p className="warn-text small" style={{ margin: 0 }}>Save or discard your changes below before taking an action.</p>}
                 </div>
               )}
               <p className="muted small" style={{ margin: '12px 0 0' }}>Version {req.rowVersion}. Actions are recorded against this version.</p>
@@ -183,6 +225,13 @@ export function RequestDetailPage() {
         </aside>
       </div>
 
+      <div style={{ marginTop: 18 }}>
+        <CreditRequestModules handle={modulesRef} requestId={req.id} header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }}
+          headerVersion={req.rowVersion} canEdit={hasRole('relationship_officer', 'credit_analyst')} onVersion={onVersion} onDirtyChange={setDataDirty} />
+      </div>
+
+      {mandatory && <MissingFieldsModal missing={mandatory} layout={layout} onClose={() => setMandatory(null)}
+        onGo={m => { setMandatory(null); modulesRef.current?.focusField(m); }} />}
       {pending && <TransitionModal action={pending} onCancel={() => setPending(null)} onConfirm={r => doTransition(pending, r)} />}
     </div>
   );

@@ -2,8 +2,8 @@
  * Tenant reference data used across screens (currencies, request types, authority levels, field labels).
  * Loaded once per session and cached; nothing here is hardcoded — it all comes from tenant configuration.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, type AuthorityLevel, type Currency, type EffectiveField, type ValueListEntry } from './api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { api, type AuthorityLevel, type Currency, type EffectiveField, type Layout, type ValueListEntry } from './api';
 
 interface Reference {
   currencies: Currency[];
@@ -19,6 +19,8 @@ interface Reference {
   field: (key: string) => EffectiveField | undefined;
   /** Load (or reload) the field registry — large, so only on demand. */
   loadFields: (force?: boolean) => Promise<EffectiveField[]>;
+  /** Credit Request screen layout (modules → sections → fields), loaded once per session. */
+  loadLayout: (force?: boolean) => Promise<Layout>;
   reload: () => void;
 }
 
@@ -41,6 +43,15 @@ export function ReferenceProvider({ children }: { children: ReactNode }) {
     return () => { live = false; };
   }, [tick]);
 
+  const layoutRef = useRef<Promise<Layout> | null>(null);
+  const loadLayout = useCallback((force = false) => {
+    if (!layoutRef.current || force) {
+      layoutRef.current = api.layout();
+      layoutRef.current.catch(() => { layoutRef.current = null; });
+    }
+    return layoutRef.current;
+  }, []);
+
   const loadFields = useCallback(async (force = false) => {
     if (fields && !force) return fields;
     const f = await api.fields();
@@ -57,10 +68,10 @@ export function ReferenceProvider({ children }: { children: ReactNode }) {
       requestTypeLabel: code => requestTypes.find(t => t.code === code)?.label ?? code,
       levelName: code => authorityLevels.find(l => l.levelCode === code)?.name ?? code,
       field: key => byKey.get(key),
-      loadFields,
-      reload: () => { setTick(t => t + 1); setFields(undefined); },
+      loadFields, loadLayout,
+      reload: () => { setTick(t => t + 1); setFields(undefined); layoutRef.current = null; },
     };
-  }, [currencies, requestTypes, authorityLevels, fields, loaded, error, loadFields]);
+  }, [currencies, requestTypes, authorityLevels, fields, loaded, error, loadFields, loadLayout]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

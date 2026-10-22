@@ -50,6 +50,31 @@ export function formatDecimal(value: string | null | undefined, scale?: number):
   return `${negative ? '-' : ''}${groupThousands(intPart)}${frac ? `.${frac}` : ''}`;
 }
 
+/**
+ * Round decimal text half-up (away from zero) to `places` decimal places, on the text itself — no Number().
+ * For display only: stored values are never rounded by the UI.
+ */
+export function roundDecimalText(value: string, places: number): string {
+  const s = value.trim();
+  if (!DECIMAL_TEXT.test(s) || !Number.isInteger(places) || places < 0) return s;
+  const negative = s.startsWith('-');
+  const [intPart, frac = ''] = (negative ? s.slice(1) : s).split('.');
+  if (frac.length <= places) return s;
+  const kept = intPart + frac.slice(0, places);
+  const digits = kept.split('');
+  if (frac.charCodeAt(places) >= '5'.charCodeAt(0)) {
+    let i = digits.length - 1;
+    while (i >= 0) {
+      if (digits[i] === '9') { digits[i] = '0'; i--; } else { digits[i] = String.fromCharCode(digits[i].charCodeAt(0) + 1); break; }
+    }
+    if (i < 0) digits.unshift('1');
+  }
+  const all = digits.join('');
+  const cut = all.length - places;
+  const out = places > 0 ? `${all.slice(0, cut)}.${all.slice(cut)}` : all;
+  return negative && /[1-9]/.test(out) ? `-${out}` : out;
+}
+
 /** Remove trailing fractional zeros ("0.307000000000" -> "0.307"). */
 export function trimDecimal(value: string | null | undefined): string {
   return formatDecimal(value).replace(/,/g, '');

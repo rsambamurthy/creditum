@@ -14,6 +14,12 @@ export class ApiError extends Error {
   get isConflict() { return this.status === 409; }
   get isForbidden() { return this.status === 403; }
   /** Fields reported missing by a `required_fields` domain error. */
+  /** Mandatory form fields reported by a `mandatory_fields` submission error. */
+  get missingMandatory(): MissingEntry[] {
+    if (this.code !== 'mandatory_fields') return [];
+    const d = this.details as { missing?: MissingEntry[] } | undefined;
+    return Array.isArray(d?.missing) ? d!.missing : [];
+  }
   get missingFields(): MissingField[] {
     if (this.code !== 'required_fields') return [];
     const d = this.details as { missing?: MissingField[] } | undefined;
@@ -122,6 +128,49 @@ export interface AuditEvent {
 }
 export interface VerifyResult { valid: boolean; checked: number; brokenAtSeq?: number | string; reason?: string }
 
+
+// ---------------------------------------------------------------- Credit Request modules (Phase 2 contract: docs/api/credit-request-modules.md)
+export type FormValue = string | boolean | null;
+export type ValueKind = 'text' | 'decimal' | 'date' | 'bool' | 'composite' | 'none';
+export interface CalcMeta { status: 'active' | 'pending'; description?: string; note?: string }
+export interface FieldMeta {
+  key: string; label: string; helpText?: string | null; dataType: string; valueKind: ValueKind; parts?: string[];
+  source?: string; adapter?: string | null; requirement: string; list?: string; bind?: 'borrowerName' | 'borrowerRef';
+  display?: 'chart' | 'table' | 'heading'; calc?: CalcMeta; readOnly?: boolean;
+}
+export interface SectionMeta {
+  code: string; title: string; kind: 'record' | 'grid' | 'periods'; grid: string | null; rowLabel: string | null;
+  fields: FieldMeta[]; columns?: FieldMeta[];
+}
+export interface ModuleMeta { code: string; letter: string; title: string; sections: SectionMeta[] }
+export interface ListEntry { code: string; label: string }
+export interface Layout {
+  version: number; baseCurrency: string; currencies: { code: string; minorUnits: number }[];
+  grids: Record<string, GridMeta>; lists: Record<string, ListEntry[]>; modules: ModuleMeta[];
+  /** Tenant display rounding of calculated values (number of decimal places — display only, never stored). */
+  display?: DisplayPlaces;
+}
+export interface GridMeta { rowLabel: string; ordered: boolean; /** Field whose value names a row (e.g. the period's statement date). */ labelField?: string }
+export interface DisplayPlaces {
+  percentagePlaces: number;
+  // guardrail-allow: a count of decimal places for display, not a ratio value
+  ratioPlaces: number;
+}
+export interface GridRowData { rowKey?: string; values: Record<string, FormValue> }
+export interface MissingEntry { key: string; label: string; module: string; section: string; sectionTitle?: string; rowKey: string | null }
+export interface Completeness {
+  mode: 'off' | 'warn' | 'block';
+  modules: Record<string, { mandatory: number; filled: number }>;
+  missing: MissingEntry[];
+}
+export interface RequestData {
+  requestId: string; rowVersion: number; editable: boolean;
+  record: Record<string, FormValue>; grids: Record<string, GridRowData[]>; completeness: Completeness; warnings?: string[];
+}
+export interface RequestDataInput {
+  expectedVersion: number; record?: Record<string, FormValue>; grids?: Record<string, GridRowData[]>;
+}
+
 // ---------------------------------------------------------------- endpoints
 const enc = encodeURIComponent;
 
@@ -138,7 +187,11 @@ export const api = {
   updateRequest: (id: string, expectedVersion: number, input: Partial<CreditRequestInput>) =>
     request<SaveResult>('PUT', `/credit-requests/${enc(id)}`, { expectedVersion, ...input }),
   transition: (id: string, action: string, expectedVersion: number, remarks?: string) =>
-    request<CreditRequestDetail>('POST', `/credit-requests/${enc(id)}/transitions`, { action, expectedVersion, ...(remarks ? { remarks } : {}) }),
+    request<CreditRequestDetail & { warnings?: string[] }>('POST', `/credit-requests/${enc(id)}/transitions`, { action, expectedVersion, ...(remarks ? { remarks } : {}) }),
+
+  layout: () => request<Layout>('GET', '/layout'),
+  requestData: (id: string) => request<RequestData>('GET', `/credit-requests/${enc(id)}/data`),
+  saveRequestData: (id: string, body: RequestDataInput) => request<RequestData>('PUT', `/credit-requests/${enc(id)}/data`, body),
 
   fields: () => request<EffectiveField[]>('GET', '/fields'),
   overrideField: (key: string, body: FieldOverrideInput) => request<WriteResult>('PUT', `/fields/${enc(key)}/override`, body),

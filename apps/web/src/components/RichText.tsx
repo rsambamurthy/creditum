@@ -4,7 +4,7 @@ import { useRef, type TextareaHTMLAttributes } from 'react';
  * Rich-text area for narrative fields. Phase 0 stores text with lightweight markup (bullets, numbering, **bold**)
  * in the field's typed text value; the toolbar inserts that markup at the cursor.
  */
-export function RichText({ value, onChange, maxLength, ...rest }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> & {
+export function RichText({ value, onChange, maxLength, disabled, ...rest }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> & {
   value: string; onChange: (v: string) => void; maxLength?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -27,11 +27,11 @@ export function RichText({ value, onChange, maxLength, ...rest }: Omit<TextareaH
   return (
     <div className="rte">
       <div className="rte-bar" role="toolbar" aria-label="Formatting">
-        <button type="button" onClick={() => apply('bold')} aria-label="Bold"><strong>B</strong></button>
-        <button type="button" onClick={() => apply('bullet')} aria-label="Bulleted line">•</button>
-        <button type="button" onClick={() => apply('number')} aria-label="Numbered line">1.</button>
+        <button type="button" disabled={disabled} onClick={() => apply('bold')} aria-label="Bold"><strong>B</strong></button>
+        <button type="button" disabled={disabled} onClick={() => apply('bullet')} aria-label="Bulleted line">•</button>
+        <button type="button" disabled={disabled} onClick={() => apply('number')} aria-label="Numbered line">1.</button>
       </div>
-      <textarea ref={ref} value={value} onChange={ev => onChange(ev.target.value)} maxLength={maxLength} rows={7} {...rest} />
+      <textarea ref={ref} value={value} onChange={ev => onChange(ev.target.value)} maxLength={maxLength} rows={7} disabled={disabled} {...rest} />
       <div className="rte-foot" aria-hidden="true"><span>Markup: **bold**, • bullets</span><span>{value.length}{maxLength ? ` / ${maxLength}` : ''}</span></div>
     </div>
   );
