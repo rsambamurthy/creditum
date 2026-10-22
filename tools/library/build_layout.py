@@ -410,3 +410,86 @@ if __name__ == '__main__':
     print(f'formulas: {active} active, {len(FORMULAS) - active} pending; calculated without formula: {formulas["calculatedWithoutFormula"]}', file=sys.stderr)
     lists = sorted({e['list'] for m in layout['modules'] for s in m['sections'] for e in s['fields'] + s.get('columns', []) if 'list' in e})
     print(f'value lists referenced ({len(lists)}): {lists}', file=sys.stderr)
+
+
+# ------------------------------------------------------------------ Formula Specification (for review and approval)
+CURRENT_GROUP = [None]
+
+
+def label(key):
+    fd = BY_KEY[key]
+    return fd['label'] if fd['group'] == CURRENT_GROUP[0] else f'{fd["label"]} [{fd["group"]}]'
+
+
+def render(e):
+    (op, a), = e.items()
+    if op == 'f':
+        return label(a)
+    if op == 'prev':
+        return f'previous period {label(a)}'
+    if op == 'cfg':
+        return f'parameter `{a}`'
+    if op == 'n':
+        return a
+    if op == 'row_no':
+        return 'row number'
+    if op == 'add':
+        return '(' + ' + '.join(render(x) for x in a) + ')'
+    if op == 'mul':
+        return ' × '.join(render(x) for x in a)
+    if op == 'sub':
+        return f'({render(a[0])} − {render(a[1])})'
+    if op == 'div':
+        return f'{render(a[0])} ÷ {render(a[1])}'
+    if op == 'pct':
+        return f'{render(a[0])} ÷ {render(a[1])} × 100'
+    if op == 'growth':
+        return f'({render(a[0])} − {render(a[1])}) ÷ |{render(a[1])}| × 100'
+    if op == 'round':
+        return f'round({render(a[0])}, {a[1]} places)'
+    if op == 'sum':
+        return f'Σ over {a["grid"]} rows of [{render(a["of"])}]'
+    if op == 'fx_base':
+        return f'{render(a[0])} in base currency (rate for {render(a[1])})'
+    raise ValueError(op)
+
+
+def build_spec(layout, formulas):
+    placed = {e['key']: (m['title'], s.get('grid')) for m in layout['modules'] for s in m['sections'] for e in s['fields'] + s.get('columns', [])}
+    lines = ['# Creditum — Formula Specification', '',
+             f'Formula set version {FORMULA_VERSION} · generated from `apps/api/seed/core-formulas.json` by `tools/library/build_layout.py` — do not edit by hand.', '',
+             '## How calculated fields work', '',
+             '- Every calculated field is recomputed by the server each time the Credit Request is saved; results are stored and audited.',
+             '- Arithmetic is exact decimal (never floating point). Results are stored with 8 decimal places, or whole numbers for day counts, '
+             'rounded with the tenant parameter `calculation.rounding_mode`.',
+             '- Empty inputs are never treated as zero, except inside a sum ("+"), where an empty item counts as zero unless every item is empty. '
+             'Division by zero gives an empty result.',
+             '- Financial-period formulas are evaluated per period; growth rates compare with the previous period (periods are kept oldest first).',
+             '- Foreign-currency amounts are converted to the tenant base currency at the latest configured rate; a line with no configured rate is left out.',
+             '- A bank may replace any formula for itself through maker-checker configuration; the core formula stays unchanged for other tenants.',
+             '- **Pending** formulas wait for the bank\'s methodology and are not calculated; the field shows "Formula pending approval".', '']
+    active = [x for x in formulas['formulas'] if x['status'] == 'active']
+    pend = [x for x in formulas['formulas'] if x['status'] == 'pending']
+    lines += [f'**{len(active)} active · {len(pend)} pending.** Parameters used: ' + ', '.join(f'`{p}`' for p in formulas['parameters']) + '.', '']
+    for title, items in [('Active formulas', active), ('Pending — decision needed', pend)]:
+        lines += [f'## {title}', '']
+        module = None
+        for x in sorted(items, key=lambda x: ([m[2] for m in MODULES].index(placed[x['field']][0]), BY_KEY[x['field']]['field_id'])):
+            mod, grid = placed[x['field']]
+            if mod != module:
+                if module is not None:
+                    lines.append('')
+                module = mod
+                lines += [f'### {mod}', '', '| # | Field | Calculation | Formula | Notes |', '|---|---|---|---|---|']
+            fd = BY_KEY[x['field']]
+            CURRENT_GROUP[0] = fd['group']
+            formula_txt = render(x['expression']) if x['expression'] else '—'
+            scope = ' (per period)' if grid == PERIOD_GRID else (' (per row)' if grid else '')
+            lines.append(f'| {fd["field_id"]} | **{fd["label"]}**{scope}<br>`{x["field"]}` | {x["description"]} | {formula_txt} | {x.get("note", "")} |')
+        lines.append('')
+    return '\n'.join(lines) + '\n'
+
+
+if __name__ == '__main__':
+    spec = build_spec(build_layout(), build_formulas())
+    (ROOT / 'docs' / 'specs' / 'formula-specification.md').write_text(spec)
