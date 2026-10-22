@@ -7,7 +7,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DataSource, EntityManager, In } from 'typeorm';
 import { FieldFormula, FormLayout, FormRow } from './forms.entities';
 import { CompiledFormula, compile, evaluate, FormData, FormulaContext, FormulaDef, GridRow, Value } from './formula-engine';
-import { COMPOSITE_PARTS, DISPLAY_ONLY_TYPES, LayoutDocument, LayoutField, PlacedField, placements } from './layout';
+import { COMPOSITE_PARTS, DISPLAY_ONLY_TYPES, LayoutDocument, LayoutField, mergeLayouts, PlacedField, placements, validateTenantLayout } from './layout';
 import { CreditRequest } from '../credit-request/credit-request.entities';
 import { CreditRequestService, ENTITY, enforce, recordView } from '../credit-request/credit-request.service';
 import { FieldValue, RECORD_ROW } from '../field-registry/field-registry.entities';
@@ -72,16 +72,17 @@ export class FormsService implements OnModuleInit {
 
   onModuleInit() {
     this.requests.useMandatoryCheck((id, m) => this.mandatoryCheck(id, m));
+    this.governance.register('layout', (m, ref, p) => this.applyLayout(m, ref, p), (m, ref, p) => this.validateLayout(m, ref, p));
     this.governance.register('formula', (m, ref, p) => this.applyFormula(m, ref, p), (m, ref, p) => this.validateFormula(m, ref, p).then(() => undefined));
   }
 
   // ---------------------------------------------------------------- model: layout + effective fields + formulas
   private async model(m: EntityManager): Promise<Model> {
-    const rows = await m.getRepository(FormLayout).find({ where: { ownerScope: In(visibleScopes()), layoutKey: LAYOUT_KEY } });
-    const row = rows.find(r => r.ownerScope !== CORE_SCOPE) ?? rows.find(r => r.ownerScope === CORE_SCOPE);
-    if (!row) throw new DomainError('config_missing', 'The Credit Request layout is not installed — run the seed step');
-    const doc = JSON.parse(row.definitionJson) as LayoutDocument;
+    const { core, tenant } = await this.layoutRows(m);
     const fields = new Map((await this.registry.effective(m)).map(f => [f.fieldKey, f]));
+    const custom = new Set([...fields.values()].filter(f => f.scope === 'tenant').map(f => f.fieldKey));
+    const coreDoc = JSON.parse(core.definitionJson) as LayoutDocument;
+    const doc = tenant ? mergeLayouts(JSON.parse(tenant.definitionJson) as LayoutDocument, coreDoc, custom) : coreDoc;
     this.placeCustomFields(doc, fields);
     const placed = placements(doc);
     const formulas = await this.effectiveFormulas(m);
@@ -89,10 +90,18 @@ export class FormsService implements OnModuleInit {
     return { doc, placed, fields, formulas, compiled };
   }
 
-  /** Tenant custom fields join the section of their module and group (a new section if the group is new). */
+  private async layoutRows(m: EntityManager) {
+    const rows = await m.getRepository(FormLayout).find({ where: { ownerScope: In(visibleScopes()), layoutKey: LAYOUT_KEY } });
+    const core = rows.find(r => r.ownerScope === CORE_SCOPE);
+    if (!core) throw new DomainError('config_missing', 'The Credit Request layout is not installed — run the seed step');
+    return { core, tenant: rows.find(r => r.ownerScope !== CORE_SCOPE) ?? null };
+  }
+
+  /** Tenant custom fields not yet arranged by the tenant join the section of their module and group (a new section if the group is new). */
   private placeCustomFields(doc: LayoutDocument, fields: Map<string, EffectiveField>) {
+    const placed = new Set(doc.modules.flatMap(m => m.sections.flatMap(s => s.fields.map(f => f.key))));
     for (const f of fields.values()) {
-      if (f.scope !== 'tenant') continue;
+      if (f.scope !== 'tenant' || placed.has(f.fieldKey)) continue;
       const mod = doc.modules.find(x => x.title === f.module) ?? doc.modules[0];
       let section = mod.sections.find(s => s.title === f.group);
       if (!section) {
@@ -454,6 +463,67 @@ export class FormsService implements OnModuleInit {
     return cols;
   }
 
+  /** Check a formula without submitting it (formula editor). */
+  async checkFormula(fieldKey: string, p: Record<string, unknown>) {
+    return this.ds.transaction(async m => {
+      await this.validateFormula(m, fieldKey, { description: 'check', ...p });
+      return { valid: true };
+    });
+  }
+
+  // ---------------------------------------------------------------- layout administration (configuration, governed)
+  /** The effective layout with every field (hidden ones too), for the layout editor. */
+  async layoutAdmin() {
+    const m = this.ds.manager;
+    const model = await this.model(m);
+    const { core, tenant } = await this.layoutRows(m);
+    const fields = Object.fromEntries([...model.placed.keys()].map(k => {
+      const f = model.fields.get(k);
+      return [k, { label: f?.label ?? k, dataType: f?.dataType ?? '', requirement: f?.requirement ?? '', hidden: f?.hidden ?? false,
+        scope: f?.scope ?? 'core', calculated: model.formulas.has(k) }];
+    }));
+    return { scope: tenant ? 'tenant' : 'core', coreVersion: core.layoutVersion, updatedAt: (tenant ?? core).updatedAt, document: model.doc, fields };
+  }
+
+  async validateLayout(m: EntityManager, _ref: string, p: Record<string, unknown>) {
+    const { core, tenant } = await this.layoutRows(m);
+    if (p.reset === true) {
+      if (!tenant) throw new DomainError('invalid_layout', 'This tenant already uses the core layout');
+      return;
+    }
+    const fields = await this.registry.effective(m);
+    const custom = new Set(fields.filter(f => f.scope === 'tenant').map(f => f.fieldKey));
+    const coreDoc = JSON.parse(core.definitionJson) as LayoutDocument;
+    try {
+      validateTenantLayout(p.document as LayoutDocument, coreDoc, custom);
+    } catch (e) {
+      throw new DomainError('invalid_layout', (e as Error).message);
+    }
+  }
+
+  async applyLayout(m: EntityManager, ref: string, p: Record<string, unknown>) {
+    await this.validateLayout(m, ref, p);
+    const tenantId = requireTenant();
+    const { core, tenant } = await this.layoutRows(m);
+    const repo = m.getRepository(FormLayout);
+    if (p.reset === true) {
+      await repo.delete({ id: tenant!.id, ownerScope: tenantId });
+      return { before: { scope: 'tenant' }, after: { scope: 'core', version: core.layoutVersion } };
+    }
+    const d = p.document as LayoutDocument;
+    // store only the arrangement; grids and field properties always come from the core layout
+    const definitionJson = JSON.stringify({ layout: LAYOUT_KEY, version: core.layoutVersion, grids: {}, modules: d.modules.map(mod => ({
+      code: mod.code, letter: mod.letter, title: mod.title.trim(), sections: mod.sections.map(s => ({ code: s.code, title: s.title.trim(), kind: s.kind,
+        ...(s.grid ? { grid: s.grid, rowLabel: s.rowLabel } : {}), fields: s.fields.map(f => ({ ...f })), ...(s.columns ? { columns: s.columns.map(f => ({ ...f })) } : {}) })) })) });
+    const summary = (doc: LayoutDocument) => doc.modules.map(mod => `${mod.title}: ${mod.sections.map(s => s.title).join(', ')}`);
+    if (tenant) {
+      await repo.update({ id: tenant.id, ownerScope: tenantId }, { layoutVersion: core.layoutVersion, definitionJson, updatedAt: new Date() });
+      return { before: summary(JSON.parse(tenant.definitionJson)), after: summary(d) };
+    }
+    await repo.insert({ id: newId(), ownerScope: tenantId, layoutKey: LAYOUT_KEY, layoutVersion: core.layoutVersion, definitionJson, updatedAt: new Date() });
+    return { before: summary(JSON.parse(core.definitionJson)), after: summary(d) };
+  }
+
   // ---------------------------------------------------------------- formulas (configuration, governed)
   async listFormulas() {
     const model = await this.model(this.ds.manager);
@@ -466,6 +536,10 @@ export class FormsService implements OnModuleInit {
 
   async validateFormula(m: EntityManager, fieldKey: string, p: Record<string, unknown>) {
     const model = await this.model(m);
+    if (p.revert === true) {
+      if (model.formulas.get(fieldKey)?.ownerScope !== requireTenant()) throw new DomainError('invalid_formula', `"${fieldKey}" has no tenant formula to remove`);
+      return model;
+    }
     const def = model.fields.get(fieldKey);
     if (!def || !model.placed.has(fieldKey)) throw new DomainError('invalid_formula', `"${fieldKey}" is not a field of the Credit Request form`);
     if (valueKind(def.dataType) === 'none') throw new DomainError('invalid_formula', `"${def.label}" is display-only`);
@@ -493,6 +567,10 @@ export class FormsService implements OnModuleInit {
     const tenantId = requireTenant();
     const repo = m.getRepository(FieldFormula);
     const existing = await repo.findOne({ where: { ownerScope: tenantId, fieldKey } });
+    if (p.revert === true && existing) {
+      await repo.delete({ id: existing.id, ownerScope: tenantId });
+      return { before: { status: existing.status, expression: existing.expressionJson, description: existing.description }, after: { revertedTo: 'core' } };
+    }
     const values = { status: (p.status ?? 'active') as FieldFormula['status'], expressionJson: p.expression ? JSON.stringify(p.expression) : null,
       description: String(p.description), note: (p.note as string) || null, updatedBy: requireActor().userId, updatedAt: new Date() };
     if (existing) {

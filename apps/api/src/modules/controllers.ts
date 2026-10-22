@@ -2,7 +2,7 @@
  * HTTP surface for Phase 0. Every route requires sign-in (global AuthGuard) unless marked @Public;
  * configuration writes require the config_admin role and go through change governance.
  */
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
 import { IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { DataSource } from 'typeorm';
 import { AuthService, Public, Roles, ROLE } from './auth/auth';
@@ -66,6 +66,11 @@ class FormulaDto {
   @IsString() @IsNotEmpty() @MaxLength(1000) description: string; @IsOptional() @IsString() @MaxLength(1000) note?: string;
   @IsOptional() @IsInt() expectedVersion?: number;
 }
+class ValueListDto {
+  @IsArray() entries: { code: string; label: string; active?: boolean }[];
+}
+class LayoutDto { @IsOptional() @IsObject() document?: object; @IsOptional() @IsBoolean() reset?: boolean; }
+class FormulaCheckDto { @IsOptional() @IsIn(['active', 'pending']) status?: string; @IsOptional() @IsObject() expression?: object | null; }
 class TransitionDto { @IsString() @IsNotEmpty() action: string; @IsInt() expectedVersion: number; @IsOptional() @IsString() @MaxLength(2000) remarks?: string; }
 
 // ---------------------------------------------------------------- controllers
@@ -95,6 +100,8 @@ export class ConfigController {
   @Get('currencies') currencies() { return this.config.listCurrencies(); }
   @Get('value-lists') listKeys() { return this.config.listKeys(); }
   @Get('value-lists/:key') valueList(@Param('key') key: string) { return this.config.valueList(key); }
+  @Get('value-lists/:key/entries') @Roles(ROLE.configAdmin, ROLE.auditor) entries(@Param('key') key: string) { return this.config.allEntries(key); }
+  @Put('value-lists/:key') @Roles(ROLE.configAdmin) setList(@Param('key') key: string, @Body() b: ValueListDto) { return this.gov.submit('value_list', key, { ...b }); }
   @Get('authority-levels') authority() { return this.config.authorityLevels(); }
   @Get('changes') @Roles(ROLE.configAdmin, ROLE.auditor) pending() { return this.gov.pending(); }
   @Post('changes/:id/decision') @Roles(ROLE.configAdmin) @HttpCode(200) decide(@Param('id') id: string, @Body() b: DecisionDto) { return this.gov.decide(id, b.approve, b.note); }
@@ -126,8 +133,10 @@ export class WorkflowController {
 
 @Controller('layout')
 export class LayoutController {
-  constructor(private readonly forms: FormsService) {}
+  constructor(private readonly forms: FormsService, private readonly gov: GovernanceService) {}
   @Get() @Roles(...CREDIT_ROLES, ROLE.configAdmin) layout() { return this.forms.layout(); }
+  @Get('admin') @Roles(ROLE.configAdmin, ROLE.auditor) admin() { return this.forms.layoutAdmin(); }
+  @Put() @Roles(ROLE.configAdmin) put(@Body() b: LayoutDto) { return this.gov.submit('layout', 'credit_request', { ...b }); }
 }
 
 @Controller('formulas')
@@ -135,6 +144,8 @@ export class FormulasController {
   constructor(private readonly forms: FormsService, private readonly gov: GovernanceService) {}
   @Get() list() { return this.forms.listFormulas(); }
   @Put(':key') @Roles(ROLE.configAdmin) put(@Param('key') key: string, @Body() b: FormulaDto) { return this.gov.submit('formula', key, { ...b }); }
+  @Delete(':key') @Roles(ROLE.configAdmin) revert(@Param('key') key: string) { return this.gov.submit('formula', key, { revert: true }); }
+  @Post(':key/check') @Roles(ROLE.configAdmin) @HttpCode(200) check(@Param('key') key: string, @Body() b: FormulaCheckDto) { return this.forms.checkFormula(key, { ...b }); }
 }
 
 @Controller('credit-requests')

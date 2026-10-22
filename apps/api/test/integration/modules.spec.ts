@@ -257,6 +257,77 @@ describe('formulas are governed configuration', () => {
   });
 });
 
+describe('administration screens: value lists, formulas, layout', () => {
+  it('changes a value list through maker-checker; retired codes are no longer accepted', async () => {
+    const maker = await as('xyz-bank', 'admin.fatima');
+    const current = (await http().get('/api/config/value-lists/legal_entity/entries').set(maker).expect(200)).body as { code: string; label: string }[];
+    await http().put('/api/config/value-lists/legal_entity').set(maker).send({ entries: [{ code: 'x', label: 'A' }, { code: 'x', label: 'B' }] }).expect(422);
+    const sub = await http().put('/api/config/value-lists/legal_entity').set(maker).send({ entries: [
+      { code: 'xyz_bank_dubai', label: 'XYZ Bank — Dubai Branch' }, ...current.map(e => ({ code: e.code, label: e.label, active: e.code !== 'xyz_bank' })) ] });
+    if (sub.status !== 200) throw new Error(JSON.stringify(sub.body));
+    expect(sub.body.status).toBe('pending');
+    await http().post(`/api/config/changes/${sub.body.changeId}/decision`).set(await as('xyz-bank', 'admin.yusuf')).send({ approve: true }).expect(200);
+    const layout = (await http().get('/api/layout').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body as Layout;
+    expect(layout.lists.legal_entity.map(e => e.code)).toEqual(['xyz_bank_dubai', ...current.filter(e => e.code !== 'xyz_bank').map(e => e.code)]);
+    const entries = (await http().get('/api/config/value-lists/legal_entity/entries').set(maker).expect(200)).body as { code: string; isActive: boolean }[];
+    expect(entries.find(e => e.code === 'xyz_bank')!.isActive).toBe(false); // retired, never deleted
+    const r = await newRequest('xyz-bank', 'ro.ahmed', 'KWD');
+    const ro = await as('xyz-bank', 'ro.ahmed');
+    expect((await http().put(`/api/credit-requests/${r.id}/data`).set(ro).send({ expectedVersion: r.rowVersion,
+      record: { 'a.general_information.legal_entity': 'xyz_bank' } }).expect(422)).body.error).toBe('invalid_value');
+    await http().put(`/api/credit-requests/${r.id}/data`).set(ro).send({ expectedVersion: r.rowVersion,
+      record: { 'a.general_information.legal_entity': 'xyz_bank_dubai' } }).expect(200);
+  });
+
+  it('checks a formula without saving it and reverts a tenant formula to the core one', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const key = `${FR}cogs_sales`;
+    expect((await http().post(`/api/formulas/${key}/check`).set(admin).send({ expression: { div: [{ f: key }, { n: '1' }] } }).expect(422)).body.message)
+      .toMatch(/Circular/);
+    expect((await http().post(`/api/formulas/${key}/check`).set(admin).send({ expression: { f: `${FR}gross_profit` } }).expect(200)).body.valid).toBe(true);
+    await http().delete(`/api/formulas/${key}`).set(admin).expect(200);
+    const list = (await http().get('/api/formulas').set(admin).expect(200)).body as { fieldKey: string; scope: string }[];
+    expect(list.find(f => f.fieldKey === key)!.scope).toBe('core');
+    await http().delete(`/api/formulas/${key}`).set(admin).expect(422); // nothing left to revert
+  });
+
+  it('lets a tenant rearrange its screens without changing where data lives', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const view = (await http().get('/api/layout/admin').set(admin).expect(200)).body;
+    expect(view.scope).toBe('core');
+    expect(view.fields['a.general_information.company_website'].hidden).toBe(true); // hidden fields are still arranged
+    const doc = view.document as { modules: { code: string; title: string; sections: { code: string; title: string; kind: string; fields: { key: string }[]; columns?: { key: string }[] }[] }[] };
+    const bp = doc.modules[0];
+    const general = bp.sections.find(s => s.code === 'a.general_information')!;
+    const moved = general.fields.splice(general.fields.findIndex(f => f.key === 'a.general_information.customer_id_number'), 1)[0];
+    bp.sections.unshift({ code: 'a.t.kyc', title: 'KYC', kind: 'record', fields: [moved] });
+    bp.sections.find(s => s.code === 'a.client_request')!.title = 'Purpose of the loan';
+    // a grid column cannot become a record field
+    const bad = JSON.parse(JSON.stringify(doc));
+    const partners = bad.modules[0].sections.find((s: { code: string }) => s.code === 'a.partners');
+    bad.modules[0].sections[0].fields.push(partners.columns.shift());
+    expect((await http().put('/api/layout').set(admin).send({ document: bad }).expect(422)).body.error).toBe('invalid_layout');
+    const dropped = JSON.parse(JSON.stringify(doc));
+    dropped.modules[0].sections[1].fields.shift();
+    expect((await http().put('/api/layout').set(admin).send({ document: dropped }).expect(422)).body.message).toMatch(/leaves out/);
+    expect((await http().put('/api/layout').set(admin).send({ document: doc }).expect(200)).body.status).toBe('applied');
+
+    const abc = (await http().get('/api/layout').set(await as('abc-finance', 'ro.priya')).expect(200)).body as Layout;
+    expect(abc.modules[0].sections[0].code).toBe('a.t.kyc');
+    expect(abc.modules[0].sections.find(s => s.code === 'a.client_request')).toMatchObject({ code: 'a.client_request' });
+    expect((abc.modules[0].sections.find(s => s.code === 'a.client_request') as unknown as { title: string }).title).toBe('Purpose of the loan');
+    const xyz = (await http().get('/api/layout').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body as Layout;
+    expect(xyz.modules[0].sections[0].code).toBe('a.general_information');
+    // values are stored exactly as before
+    const r = await newRequest('abc-finance', 'ro.priya', 'INR');
+    const saved = await http().put(`/api/credit-requests/${r.id}/data`).set(await as('abc-finance', 'ro.priya')).send({ expectedVersion: r.rowVersion,
+      record: { 'a.general_information.customer_id_number': 'AAACA1234A' } }).expect(200);
+    expect(saved.body.record['a.general_information.customer_id_number']).toBe('AAACA1234A');
+    await http().put('/api/layout').set(admin).send({ reset: true }).expect(200);
+    expect((await http().get('/api/layout/admin').set(admin).expect(200)).body.scope).toBe('core');
+  });
+});
+
 describe('release configuration for existing tenants', () => {
   it('adds new parameters to an existing tenant without overwriting its own values', async () => {
     const abc = await ds.getRepository(Tenant).findOneByOrFail({ code: 'abc-finance' });

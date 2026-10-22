@@ -92,3 +92,17 @@ excluded until their adapters are connected). For grid columns each existing row
 When a transition leaves an editable state, missing mandatory fields are checked according to
 `credit_request.mandatory_fields_on_submit`: `block` → 422 `mandatory_fields` with `details.missing`;
 `warn` → the transition succeeds and its response carries `"warnings": ["…"]`; `off` → no check.
+
+## Administration (config_admin; every change goes through maker-checker when the tenant has it on)
+
+| Screen | Read | Change |
+|---|---|---|
+| Value lists | `GET /api/config/value-lists` (keys) · `GET /api/config/value-lists/:key/entries` (all entries, incl. retired: `code`, `label`, `sortOrder`, `isActive`) | `PUT /api/config/value-lists/:key` `{ "entries": [{ "code", "label", "active"? }] }` — the whole list in display order. Codes are permanent: an entry left out or sent with `active:false` is retired, never deleted. New codes: letters, digits, `_ - .` |
+| Formulas | `GET /api/formulas` (`fieldKey, label, scope core\|tenant, status, expression, description, note, grid, rowVersion`) | `PUT /api/formulas/:key` `{ status?, expression?, description, note?, expectedVersion? }` · `DELETE /api/formulas/:key` (back to the core formula) · `POST /api/formulas/:key/check` `{ expression, status? }` → `{ valid: true }` or 422 `invalid_formula` with the reason (unknown field, wrong scope, circular, parameter not numeric) |
+| Screen layout | `GET /api/layout/admin` → `{ scope: core\|tenant, coreVersion, updatedAt, document, fields: { key: { label, dataType, requirement, hidden, scope, calculated } } }` (hidden fields included) | `PUT /api/layout` `{ document }` or `{ reset: true }` |
+
+Layout rules (422 `invalid_layout` otherwise): modules and sections can be reordered and renamed; record-level
+fields can move between record sections; grid columns can be reordered within their grid; a tenant may add record
+sections with codes `<module letter>.t.<name>`. A field cannot change grid / record level, sections keep their kind,
+and every field must stay on the layout (hide a field through field settings instead). When the core layout gains
+fields later, they are added to the tenant's arrangement automatically.

@@ -131,6 +131,57 @@ export class ConfigurationService {
     const rows = await this.repo(ValueListEntry).find({ where: tenantWhere<ValueListEntry>(), select: { listKey: true } });
     return [...new Set(rows.map(r => r.listKey))].sort();
   }
+  /** Every entry of a list, including retired ones (administration). */
+  allEntries(listKey: string) {
+    return this.repo(ValueListEntry).find({ where: tenantWhere<ValueListEntry>({ listKey }), order: { sortOrder: 'ASC' } });
+  }
+
+  /**
+   * A value list is changed as a whole: the entries sent, in order. Codes are permanent (stored on credit
+   * requests), so an entry is never deleted — leaving it out or sending active=false retires it.
+   */
+  async validateValueList(m: EntityManager, listKey: string, p: Record<string, unknown>) {
+    const labelMax = Number(m.connection.getMetadata(ValueListEntry).findColumnWithPropertyName('label')!.length);
+    if (!/^[a-z][a-z0-9_]{0,79}$/.test(listKey)) throw new DomainError('invalid_value', 'List keys use lower-case letters, digits and "_"');
+    const entries = p.entries;
+    if (!Array.isArray(entries) || entries.length === 0) throw new DomainError('invalid_value', 'A value list needs at least one entry');
+    const codes = new Set<string>();
+    // codes already stored stay valid as they are; new codes use a plain identifier form
+    const known = new Set((await this.repo(ValueListEntry, m).find({ where: tenantWhere<ValueListEntry>({ listKey }) })).map(e => e.code));
+    for (const e of entries as Record<string, unknown>[]) {
+      const code = String(e?.code ?? '');
+      if (!known.has(code) && !/^[A-Za-z0-9][A-Za-z0-9_.\-]{0,79}$/.test(code)) throw new DomainError('invalid_value', `"${code}" is not a valid code (letters, digits, "_", "-", ".")`);
+      if (codes.has(code)) throw new DomainError('invalid_value', `Code "${code}" appears twice`);
+      codes.add(code);
+      const label = typeof e.label === 'string' ? e.label.trim() : '';
+      if (!label || label.length > labelMax) throw new DomainError('invalid_value', `Entry "${code}" needs a label of up to ${labelMax} characters`);
+    }
+    if (!(entries as { active?: unknown }[]).some(e => e.active !== false)) throw new DomainError('invalid_value', 'At least one entry must stay active');
+  }
+
+  async applyValueList(m: EntityManager, listKey: string, p: Record<string, unknown>) {
+    await this.validateValueList(m, listKey, p);
+    const repo = this.repo(ValueListEntry, m);
+    const existing = await repo.find({ where: tenantWhere<ValueListEntry>({ listKey }), order: { sortOrder: 'ASC' } });
+    const byCode = new Map(existing.map(e => [e.code, e]));
+    const sent = (p.entries as { code: string; label: string; active?: boolean }[]).map(e => ({ code: String(e.code), label: e.label.trim(), active: e.active !== false }));
+    const sentCodes = new Set(sent.map(e => e.code));
+    let order = 0;
+    for (const e of sent) {
+      order += 1;
+      const cur = byCode.get(e.code);
+      if (cur) await repo.update(tenantWhere<ValueListEntry>({ id: cur.id }), { label: e.label, isActive: e.active, sortOrder: order });
+      else await repo.insert({ id: newId(), tenantId: requireTenant(), listKey, code: e.code, label: e.label, sortOrder: order, isActive: e.active });
+    }
+    for (const cur of existing.filter(x => !sentCodes.has(x.code))) {
+      order += 1;
+      await repo.update(tenantWhere<ValueListEntry>({ id: cur.id }), { isActive: false, sortOrder: order });
+    }
+    const view = (list: { code: string; label: string; isActive?: boolean; active?: boolean }[]) =>
+      list.map(e => ({ code: e.code, label: e.label, active: e.isActive ?? e.active }));
+    return { before: view(existing), after: view(sent) };
+  }
+
   async requireValue(listKey: string, code: string, m?: EntityManager): Promise<ValueListEntry> {
     const v = await this.repo(ValueListEntry, m).findOne({ where: tenantWhere<ValueListEntry>({ listKey, code, isActive: true }) });
     if (!v) throw new DomainError('invalid_code', `"${code}" is not a valid value in list "${listKey}"`);
@@ -177,6 +228,7 @@ export class GovernanceService {
   private validators = new Map<string, ChangeValidator>();
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly audit: AuditService) {
     this.register('parameter', (m, ref, p) => this.config.applyParam(m, ref, p), (m, ref, p) => this.config.validateParam(m, ref, p));
+    this.register('value_list', (m, ref, p) => this.config.applyValueList(m, ref, p), (m, ref, p) => this.config.validateValueList(m, ref, p));
   }
   register(targetType: string, handler: ChangeHandler, validator: ChangeValidator) {
     this.handlers.set(targetType, handler); this.validators.set(targetType, validator);
