@@ -39,7 +39,8 @@ export const decimalTransformer: ValueTransformer = {
 };
 
 /** Remove insignificant trailing zeros so values compare equally across engines ("10.5000" -> "10.5"). */
-export function normaliseDecimalString(s: string): string {
+export function normaliseDecimalString(input: string): string {
+  const s = input.replace(/^(-?)\./, (_m: string, sign: string) => `${sign}0.`); // some engines omit the leading zero (".307")
   if (!s.includes('.')) return s;
   const out = s.replace(/0+$/, '').replace(/\.$/, '');
   return out === '-0' ? '0' : out;

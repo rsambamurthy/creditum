@@ -20,6 +20,9 @@ RUN npm ci --workspace apps/api --include-workspace-root=false --omit=dev && npm
 
 FROM node:22-alpine
 ENV NODE_ENV=production
+# The runtime needs only node: remove npm/npx and their bundled dependencies (smaller attack surface).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+ && apk upgrade --no-cache
 WORKDIR /app
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=build /repo/apps/api/dist ./dist

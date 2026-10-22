@@ -159,6 +159,14 @@ jobs:
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
       - name: Scan images (fail on critical, fixable vulnerabilities)
         run: |
+          status=0
           for img in creditum-api:ci creditum-web:ci; do
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress "$img"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":/out aquasec/trivy:0.57.1 image \
+              --severity CRITICAL --ignore-unfixed --no-progress --format json --output "/out/trivy-${img%%:*}.json" "$img"
+            count=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "trivy-${img%%:*}.json")
+            jq -r --arg img "$img" '.Results[]? | .Target as $t | .Vulnerabilities[]? |
+              "::error title=\($img) \(.VulnerabilityID)::\(.PkgName) \(.InstalledVersion) -> \(.FixedVersion) in \($t): \(.Title // "")"' "trivy-${img%%:*}.json"
+            echo "$img: $count critical fixable vulnerabilities"
+            [ "$count" -gt 0 ] && status=1
           done
+          exit $status

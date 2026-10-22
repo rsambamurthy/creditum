@@ -41,3 +41,42 @@ describe('exact DECIMAL reads for SQL Server (tedious)', () => {
     expect(scaledText(5n, 0, true)).toBe('-5');
   });
 });
+
+describe('exact DECIMAL writes for SQL Server (tedious)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { patchTediousDecimalWrites, toScaledMagnitude } = require('../../src/database/exact-decimals');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { decimalLength } = require('tedious/lib/data-types/decimal-common');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const WritableTrackingBuffer = require('tedious/lib/tracking-buffer/writable-tracking-buffer');
+  // Fresh copy of the driver's Decimal type so this test does not depend on global patching order.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Decimal = { ...require('tedious/lib/data-types/decimal') };
+
+  it('the stock driver loses precision on write (the defect being fixed)', () => {
+    expect(Decimal.validate('12345678901234567890.12345678')).toBe(12345678901234567000);
+  });
+
+  it('writes 28-digit values exactly, and the reader returns them unchanged', () => {
+    patchTediousDecimalWrites(Decimal, decimalLength, 'Decimal');
+    for (const v of ['12345678901234567890.12345678', '-0.00000001', '307000.125', '0']) {
+      const buf = new WritableTrackingBuffer(32);
+      Decimal.writeValue(buf, { value: Decimal.validate(v), precision: 28, scale: 8 });
+      const parser = { readValue: (() => 'x') as unknown };
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('../../src/database/exact-decimals').patchTediousDecimals(parser, helpers);
+      const out = (parser.readValue as (...a: unknown[]) => { value: string })(buf.data, 0, { type: { name: 'DecimalN' }, scale: 8 }, {});
+      expect(out.value.replace(/\.?0+$/, '') || '0').toBe(v === '0' ? '0' : v.replace(/\.?0+$/, ''));
+    }
+  });
+
+  it('rejects values that do not fit the column', () => {
+    const buf = new WritableTrackingBuffer(32);
+    expect(() => Decimal.writeValue(buf, { value: '1' + '0'.repeat(30), precision: 28, scale: 8 })).toThrow(RangeError);
+  });
+
+  it('rounds extra fractional digits half-up, as SQL Server does', () => {
+    expect(toScaledMagnitude('1.235', 2).magnitude).toBe(124n);
+    expect(toScaledMagnitude('1.234', 2).magnitude).toBe(123n);
+  });
+});

@@ -11,6 +11,9 @@ COPY apps/web apps/web
 RUN npm run build -w apps/web
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY apps/web/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 ENV NGINX_ENVSUBST_FILTER=API_UPSTREAM
