@@ -4,24 +4,9 @@
  * as the entities, so this one migration runs unchanged on PostgreSQL, SQL Server and Oracle.
  * A drift test (test/integration) fails if this migration and the entities ever disagree.
  */
-import { ColumnOptions, MigrationInterface, QueryRunner, Table, TableColumnOptions, TableIndex } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 import { T } from '../../common/db-types';
-
-function c(name: string, o: ColumnOptions, extra: Partial<TableColumnOptions> = {}): TableColumnOptions {
-  return {
-    name,
-    type: String(o.type),
-    length: o.length !== undefined ? String(o.length) : undefined,
-    precision: o.precision ?? undefined,
-    scale: o.scale ?? undefined,
-    isNullable: o.nullable === true,
-    ...extra,
-  };
-}
-const pk = (name = 'id') => c(name, T.id(), { isPrimary: true });
-const tenant = () => c('tenant_id', T.id());
-const uq = (table: string, name: string, cols: string[]) => new TableIndex({ name, columnNames: cols, isUnique: true });
-const ix = (name: string, cols: string[]) => new TableIndex({ name, columnNames: cols });
+import { c, ix, pk, tenant, uq } from './schema-helpers';
 
 const TABLES: { table: Table; indices: TableIndex[] }[] = [
   { table: new Table({ name: 'tenants', columns: [pk(), c('code', T.str(40)), c('name', T.str(200)), c('status', T.str(20)), c('created_at', T.ts())] }),

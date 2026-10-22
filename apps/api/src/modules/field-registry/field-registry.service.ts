@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DataSource, EntityManager, In } from 'typeorm';
-import { FieldDefinition, FieldValue, TenantFieldOverride } from './field-registry.entities';
+import { FieldDefinition, FieldValue, RECORD_ROW, TenantFieldOverride } from './field-registry.entities';
 import { GovernanceService } from '../configuration/configuration.service';
 import { newId, tenantWhere, visibleScopes } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
@@ -104,7 +104,7 @@ export class FieldRegistryService implements OnModuleInit {
 
   // ---------------------------------------------------------------- extension values
   async values(entityType: string, entityId: string, m?: EntityManager): Promise<Record<string, unknown>> {
-    const rows = await (m ?? this.ds.manager).getRepository(FieldValue).find({ where: tenantWhere<FieldValue>({ entityType, entityId }) });
+    const rows = await (m ?? this.ds.manager).getRepository(FieldValue).find({ where: tenantWhere<FieldValue>({ entityType, entityId, rowKey: RECORD_ROW }) });
     return Object.fromEntries(rows.map(r => [r.fieldKey, r.valueText ?? r.valueDecimal ?? (r.valueDate ? r.valueDate.toISOString() : null) ?? r.valueBool]));
   }
 
@@ -130,9 +130,9 @@ export class FieldRegistryService implements OnModuleInit {
           row.valueBool = raw;
         }
       }
-      const existing = await repo.findOne({ where: tenantWhere<FieldValue>({ entityType, entityId, fieldKey }) });
+      const existing = await repo.findOne({ where: tenantWhere<FieldValue>({ entityType, entityId, fieldKey, rowKey: RECORD_ROW }) });
       if (existing) await repo.update(tenantWhere<FieldValue>({ id: existing.id }), row);
-      else await repo.insert({ id: newId(), tenantId: requireTenant(), entityType, entityId, fieldKey, ...row });
+      else await repo.insert({ id: newId(), tenantId: requireTenant(), entityType, entityId, fieldKey, rowKey: RECORD_ROW, ...row });
     }
   }
 }

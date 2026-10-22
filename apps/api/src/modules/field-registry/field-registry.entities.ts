@@ -43,15 +43,22 @@ export class TenantFieldOverride {
   @Column({ ...T.ts(), name: 'updated_at' }) updatedAt: Date;
 }
 
-/** Typed attribute-value extension storage — no JSON columns (SDD Section 19.6). */
+/** row_key of values that belong to the record itself rather than to a grid row (portable: never NULL in the unique key). */
+export const RECORD_ROW = 'record';
+
+/**
+ * Typed attribute-value storage for Credit Request module data and tenant custom fields — no JSON columns
+ * (SDD Section 19.6, ADR 0002). row_key is RECORD_ROW for record-level values, or the form_rows id of a grid row.
+ */
 @Entity({ name: 'field_values' })
-@Index('uq_field_values', ['tenantId', 'entityType', 'entityId', 'fieldKey'], { unique: true })
+@Index('uq_field_values_row', ['tenantId', 'entityType', 'entityId', 'fieldKey', 'rowKey'], { unique: true })
 export class FieldValue {
   @PrimaryColumn(T.pk()) id: string;
   @Column({ ...T.id(), name: 'tenant_id' }) tenantId: string;
   @Column({ ...T.str(60), name: 'entity_type' }) entityType: string;
   @Column({ ...T.id(), name: 'entity_id' }) entityId: string;
   @Column({ ...T.str(160), name: 'field_key' }) fieldKey: string;
+  @Column({ ...T.id(), name: 'row_key' }) rowKey: string;
   @Column({ ...T.text({ nullable: true }), name: 'value_text' }) valueText: string | null;
   @Column({ ...T.dec(28, 8, { nullable: true }), name: 'value_decimal' }) valueDecimal: string | null;
   @Column({ ...T.ts({ nullable: true }), name: 'value_date' }) valueDate: Date | null;

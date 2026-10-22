@@ -53,7 +53,7 @@ describe('schema and storage', () => {
   it('round-trips 28-digit decimals exactly — never through floating point', async () => {
     const tenant = await ds.getRepository(Tenant).findOneByOrFail({ code: 'xyz-bank' });
     const id = newId();
-    await ds.getRepository(FieldValue).insert({ id, tenantId: tenant.id, entityType: 'probe', entityId: newId(), fieldKey: 'probe',
+    await ds.getRepository(FieldValue).insert({ id, tenantId: tenant.id, entityType: 'probe', entityId: newId(), fieldKey: 'probe', rowKey: 'record',
       valueText: null, valueDecimal: '12345678901234567890.12345678', valueDate: null, valueBool: true });
     const back = await ds.getRepository(FieldValue).findOneByOrFail({ id, tenantId: tenant.id });
     expect(back.valueDecimal).toBe('12345678901234567890.12345678');

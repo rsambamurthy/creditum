@@ -17,6 +17,7 @@ import { WorkflowDefinition } from '../modules/workflow/workflow.entities';
 import { validateDefinition, WfDefinition } from '../modules/workflow/workflow-engine';
 import { validateRule } from '../modules/rules/rule-evaluator';
 import { AuditService } from '../modules/audit/audit.service';
+import { FieldFormula, FormLayout } from '../modules/forms/forms.entities';
 
 export const SEED_DIR = join(__dirname, '..', '..', 'seed');
 export const SYSTEM_ACTOR = { userId: '00000000-0000-0000-0000-000000000000', displayName: 'System (provisioning)', roles: ['system'] };
@@ -34,6 +35,43 @@ export async function seedCoreLibrary(ds: DataSource): Promise<number> {
     configurable: f.configurable, origin: f.origin, reviewNotes: f.review_notes, storageLocation: 'core_column', rowVersion: 1 }));
   for (let i = 0; i < rows.length; i += 100) await repo.insert(rows.slice(i, i + 100));
   return rows.length;
+}
+
+/** Core screen layout: inserted, or replaced when the shipped version is newer (product configuration, owner scope core). */
+export async function seedCoreLayout(ds: DataSource): Promise<'inserted' | 'updated' | 'current'> {
+  const doc = JSON.parse(readFileSync(join(SEED_DIR, 'core-layout.json'), 'utf8')) as { layout: string; version: number };
+  const repo = ds.getRepository(FormLayout);
+  const existing = await repo.findOne({ where: { ownerScope: CORE_SCOPE, layoutKey: doc.layout } });
+  const definitionJson = JSON.stringify(doc);
+  if (!existing) {
+    await repo.insert({ id: newId(), ownerScope: CORE_SCOPE, layoutKey: doc.layout, layoutVersion: doc.version, definitionJson, updatedAt: new Date() });
+    return 'inserted';
+  }
+  if (existing.layoutVersion >= doc.version) return 'current';
+  await repo.update({ id: existing.id, ownerScope: CORE_SCOPE }, { layoutVersion: doc.version, definitionJson, updatedAt: new Date() });
+  return 'updated';
+}
+
+interface FormulaSeed { field: string; status: 'active' | 'pending'; expression: unknown; description: string; note?: string }
+
+/** Core formulas: missing ones are inserted and shipped changes replace the core rows (tenant overrides are separate rows). */
+export async function seedCoreFormulas(ds: DataSource): Promise<number> {
+  const { formulas } = JSON.parse(readFileSync(join(SEED_DIR, 'core-formulas.json'), 'utf8')) as { formulas: FormulaSeed[] };
+  const repo = ds.getRepository(FieldFormula);
+  const existing = new Map((await repo.find({ where: { ownerScope: CORE_SCOPE } })).map(f => [f.fieldKey, f]));
+  let changed = 0;
+  for (const f of formulas) {
+    const row = { status: f.status, expressionJson: f.expression === null ? null : JSON.stringify(f.expression), description: f.description, note: f.note ?? null };
+    const cur = existing.get(f.field);
+    if (!cur) {
+      await repo.insert({ id: newId(), ownerScope: CORE_SCOPE, fieldKey: f.field, ...row, rowVersion: 1, updatedBy: SYSTEM_ACTOR.userId, updatedAt: new Date() });
+      changed += 1;
+    } else if (cur.status !== row.status || cur.expressionJson !== row.expressionJson || cur.description !== row.description || cur.note !== row.note) {
+      await repo.update({ id: cur.id, ownerScope: CORE_SCOPE }, { ...row, rowVersion: cur.rowVersion + 1, updatedBy: SYSTEM_ACTOR.userId, updatedAt: new Date() });
+      changed += 1;
+    }
+  }
+  return changed;
 }
 
 interface RuleSeed { ruleKey: string; name: string; entityType: string; triggerOn: 'on_save' | 'on_submit'; condition: unknown; actions: [] }
@@ -109,6 +147,41 @@ export async function provisionTenant(ds: DataSource, seed: TenantSeed): Promise
   return 'created';
 }
 
+/**
+ * Configuration introduced by a product release for tenants that already exist: parameters and value-list
+ * entries the tenant does not have yet are added (never overwritten — the tenant may have changed them through
+ * governance). Recorded in the tenant's audit trail.
+ */
+export async function syncTenantConfig(ds: DataSource, seed: TenantSeed): Promise<string[]> {
+  const t = await ds.getRepository(Tenant).findOne({ where: { code: seed.tenant.code } });
+  if (!t) return [];
+  const tenantId = t.id;
+  return runWithContext({ tenantId, tenantCode: seed.tenant.code, actor: SYSTEM_ACTOR }, () => ds.transaction(async m => {
+    const added: string[] = [];
+    const params = new Set((await m.getRepository(ConfigParameter).find({ where: { tenantId } })).map(p => p.paramKey));
+    for (const p of seed.parameters.filter(x => !params.has(x.key))) {
+      await m.getRepository(ConfigParameter).insert({ id: newId(), tenantId, paramKey: p.key, valueType: p.valueType, paramValue: p.value,
+        description: p.description, rowVersion: 1, updatedBy: SYSTEM_ACTOR.userId, updatedAt: new Date() });
+      added.push(`parameter ${p.key}`);
+    }
+    const entries = await m.getRepository(ValueListEntry).find({ where: { tenantId } });
+    const have = new Set(entries.map(e => `${e.listKey}|${e.code}`));
+    for (const [listKey, list] of Object.entries(seed.valueLists)) {
+      let order = Math.max(0, ...entries.filter(e => e.listKey === listKey).map(e => e.sortOrder));
+      const missing = list.filter(([code]) => !have.has(`${listKey}|${code}`));
+      for (const [code, label] of missing) {
+        order += 1;
+        await m.getRepository(ValueListEntry).insert({ id: newId(), tenantId, listKey, code, label, sortOrder: order, isActive: true });
+      }
+      if (missing.length) added.push(`value list ${listKey} (+${missing.length})`);
+    }
+    if (added.length) {
+      await new AuditService(ds).append(m, { action: 'tenant_config_synced', entityType: 'tenant', entityRef: seed.tenant.code, after: { added } });
+    }
+    return added;
+  }));
+}
+
 export function referenceTenantSeeds(): TenantSeed[] {
   const dir = join(SEED_DIR, 'tenants');
   return readdirSync(dir).filter(f => f.endsWith('.json')).sort().map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')) as TenantSeed);
@@ -117,7 +190,13 @@ export function referenceTenantSeeds(): TenantSeed[] {
 export async function seedAll(ds: DataSource) {
   const fields = await seedCoreLibrary(ds);
   await seedCoreRules(ds);
+  const layout = await seedCoreLayout(ds);
+  const formulasChanged = await seedCoreFormulas(ds);
   const tenants: Record<string, string> = {};
-  for (const t of referenceTenantSeeds()) tenants[t.tenant.code] = await provisionTenant(ds, t);
-  return { coreFieldsInserted: fields, tenants };
+  for (const t of referenceTenantSeeds()) {
+    const status = await provisionTenant(ds, t);
+    const synced = status === 'exists' ? await syncTenantConfig(ds, t) : [];
+    tenants[t.tenant.code] = synced.length ? `${status}; added ${synced.length} configuration item(s)` : status;
+  }
+  return { coreFieldsInserted: fields, layout, formulasChanged, tenants };
 }

@@ -134,6 +134,24 @@
       "valueType": "decimal",
       "value": "50000000",
       "description": "Base-currency single-request ceiling"
+    },
+    {
+      "key": "calculation.days_in_year",
+      "valueType": "integer",
+      "value": "365",
+      "description": "Days in the year used for receivable / inventory / payable days"
+    },
+    {
+      "key": "calculation.rounding_mode",
+      "valueType": "text",
+      "value": "half_up",
+      "description": "Rounding of calculated values (half_up, half_even, down, up)"
+    },
+    {
+      "key": "credit_request.mandatory_fields_on_submit",
+      "valueType": "text",
+      "value": "warn",
+      "description": "Mandatory fields at submission: off, warn or block"
     }
   ],
   "valueLists": {
@@ -157,6 +175,962 @@
       [
         "restructure",
         "Restructure"
+      ]
+    ],
+    "applicability": [
+      [
+        "applicable",
+        "Applicable"
+      ],
+      [
+        "not_applicable",
+        "Not applicable"
+      ]
+    ],
+    "collateral_action": [
+      [
+        "no_change",
+        "No change"
+      ],
+      [
+        "add",
+        "Add"
+      ],
+      [
+        "release",
+        "Release"
+      ],
+      [
+        "substitute",
+        "Substitute"
+      ],
+      [
+        "revalue",
+        "Revalue"
+      ]
+    ],
+    "line_action": [
+      [
+        "no_change",
+        "No change"
+      ],
+      [
+        "new",
+        "New"
+      ],
+      [
+        "increase",
+        "Increase"
+      ],
+      [
+        "decrease",
+        "Decrease"
+      ],
+      [
+        "renew",
+        "Renew"
+      ],
+      [
+        "extend",
+        "Extend"
+      ],
+      [
+        "cancel",
+        "Cancel"
+      ]
+    ],
+    "collateral_status": [
+      [
+        "active",
+        "Active"
+      ],
+      [
+        "pending_perfection",
+        "Pending perfection"
+      ],
+      [
+        "released",
+        "Released"
+      ],
+      [
+        "expired",
+        "Expired"
+      ]
+    ],
+    "coverage_calculation_method": [
+      [
+        "facility_limit",
+        "Facility limit"
+      ],
+      [
+        "facility_outstanding",
+        "Facility outstanding"
+      ],
+      [
+        "higher_of_limit_and_outstanding",
+        "Higher of limit and outstanding"
+      ]
+    ],
+    "covenant_outcome": [
+      [
+        "no_action",
+        "No action"
+      ],
+      [
+        "waiver",
+        "Waiver"
+      ],
+      [
+        "amend_covenant",
+        "Amend covenant"
+      ],
+      [
+        "reprice",
+        "Reprice"
+      ],
+      [
+        "escalate",
+        "Escalate"
+      ]
+    ],
+    "covenant_result": [
+      [
+        "met",
+        "Met"
+      ],
+      [
+        "breached",
+        "Breached"
+      ],
+      [
+        "not_tested",
+        "Not tested"
+      ]
+    ],
+    "covenant_type": [
+      [
+        "financial",
+        "Financial"
+      ],
+      [
+        "information",
+        "Information"
+      ],
+      [
+        "negative_pledge",
+        "Negative pledge"
+      ],
+      [
+        "affirmative",
+        "Affirmative"
+      ],
+      [
+        "restrictive",
+        "Restrictive"
+      ]
+    ],
+    "customer_type": [
+      [
+        "corporate",
+        "Corporate"
+      ],
+      [
+        "sme",
+        "SME"
+      ],
+      [
+        "government_related",
+        "Government related"
+      ],
+      [
+        "financial_institution",
+        "Financial institution"
+      ],
+      [
+        "individual",
+        "Individual"
+      ]
+    ],
+    "disbursement_type": [
+      [
+        "single",
+        "Single"
+      ],
+      [
+        "multiple_tranches",
+        "Multiple tranches"
+      ]
+    ],
+    "esg_rating": [
+      [
+        "esg_1_low",
+        "ESG-1 Low"
+      ],
+      [
+        "esg_2_moderate",
+        "ESG-2 Moderate"
+      ],
+      [
+        "esg_3_elevated",
+        "ESG-3 Elevated"
+      ],
+      [
+        "esg_4_high",
+        "ESG-4 High"
+      ]
+    ],
+    "external_esg_rating": [
+      [
+        "leader",
+        "Leader"
+      ],
+      [
+        "average",
+        "Average"
+      ],
+      [
+        "laggard",
+        "Laggard"
+      ],
+      [
+        "not_rated",
+        "Not rated"
+      ]
+    ],
+    "esg_rating_provider": [
+      [
+        "esg_provider_a",
+        "ESG Provider A"
+      ],
+      [
+        "esg_provider_b",
+        "ESG Provider B"
+      ],
+      [
+        "not_rated",
+        "Not rated"
+      ]
+    ],
+    "fee_decision": [
+      [
+        "charge",
+        "Charge"
+      ],
+      [
+        "waive",
+        "Waive"
+      ],
+      [
+        "discount",
+        "Discount"
+      ]
+    ],
+    "fixed_or_revolving": [
+      [
+        "fixed",
+        "Fixed"
+      ],
+      [
+        "revolving",
+        "Revolving"
+      ]
+    ],
+    "frequency": [
+      [
+        "monthly",
+        "Monthly"
+      ],
+      [
+        "quarterly",
+        "Quarterly"
+      ],
+      [
+        "semi_annual",
+        "Semi-annual"
+      ],
+      [
+        "annual",
+        "Annual"
+      ],
+      [
+        "at_maturity",
+        "At maturity"
+      ]
+    ],
+    "green_certification": [
+      [
+        "certified_—_highest_level",
+        "Certified — highest level"
+      ],
+      [
+        "certified_—_standard_level",
+        "Certified — standard level"
+      ],
+      [
+        "not_certified",
+        "Not certified"
+      ],
+      [
+        "not_applicable",
+        "Not applicable"
+      ]
+    ],
+    "green_project_category": [
+      [
+        "renewable_energy",
+        "Renewable energy"
+      ],
+      [
+        "energy_efficiency",
+        "Energy efficiency"
+      ],
+      [
+        "clean_transport",
+        "Clean transport"
+      ],
+      [
+        "green_buildings",
+        "Green buildings"
+      ],
+      [
+        "water_management",
+        "Water management"
+      ],
+      [
+        "pollution_prevention",
+        "Pollution prevention"
+      ],
+      [
+        "not_applicable",
+        "Not applicable"
+      ]
+    ],
+    "guarantor_type": [
+      [
+        "personal",
+        "Personal"
+      ],
+      [
+        "corporate",
+        "Corporate"
+      ],
+      [
+        "bank",
+        "Bank"
+      ],
+      [
+        "government",
+        "Government"
+      ]
+    ],
+    "individual_entity": [
+      [
+        "individual",
+        "Individual"
+      ],
+      [
+        "entity",
+        "Entity"
+      ]
+    ],
+    "legal_status": [
+      [
+        "active",
+        "Active"
+      ],
+      [
+        "under_liquidation",
+        "Under liquidation"
+      ],
+      [
+        "dormant",
+        "Dormant"
+      ]
+    ],
+    "nature_of_charge": [
+      [
+        "first_charge",
+        "First charge"
+      ],
+      [
+        "second_charge",
+        "Second charge"
+      ],
+      [
+        "pari_passu",
+        "Pari passu"
+      ],
+      [
+        "lien",
+        "Lien"
+      ],
+      [
+        "assignment",
+        "Assignment"
+      ],
+      [
+        "pledge",
+        "Pledge"
+      ]
+    ],
+    "new_existing": [
+      [
+        "new",
+        "New"
+      ],
+      [
+        "existing",
+        "Existing"
+      ]
+    ],
+    "own_or_other": [
+      [
+        "own",
+        "Own"
+      ],
+      [
+        "third_party",
+        "Third party"
+      ]
+    ],
+    "rating_agency": [
+      [
+        "rating_agency_a",
+        "Rating Agency A"
+      ],
+      [
+        "rating_agency_b",
+        "Rating Agency B"
+      ],
+      [
+        "rating_agency_c",
+        "Rating Agency C"
+      ],
+      [
+        "not_rated",
+        "Not rated"
+      ]
+    ],
+    "external_rating": [
+      [
+        "aaa",
+        "AAA"
+      ],
+      [
+        "aa",
+        "AA"
+      ],
+      [
+        "a",
+        "A"
+      ],
+      [
+        "bbb",
+        "BBB"
+      ],
+      [
+        "bb",
+        "BB"
+      ],
+      [
+        "b",
+        "B"
+      ],
+      [
+        "ccc",
+        "CCC"
+      ],
+      [
+        "cc",
+        "CC"
+      ],
+      [
+        "c",
+        "C"
+      ],
+      [
+        "d",
+        "D"
+      ],
+      [
+        "not_rated",
+        "Not rated"
+      ]
+    ],
+    "relationship_strategy": [
+      [
+        "grow",
+        "Grow"
+      ],
+      [
+        "maintain",
+        "Maintain"
+      ],
+      [
+        "reduce",
+        "Reduce"
+      ],
+      [
+        "exit",
+        "Exit"
+      ]
+    ],
+    "repayment_type": [
+      [
+        "amortizing",
+        "Amortizing"
+      ],
+      [
+        "bullet",
+        "Bullet"
+      ],
+      [
+        "balloon",
+        "Balloon"
+      ]
+    ],
+    "risk_level": [
+      [
+        "low",
+        "Low"
+      ],
+      [
+        "medium",
+        "Medium"
+      ],
+      [
+        "high",
+        "High"
+      ]
+    ],
+    "seniority_level": [
+      [
+        "board",
+        "Board"
+      ],
+      [
+        "executive_management",
+        "Executive management"
+      ],
+      [
+        "senior_management",
+        "Senior management"
+      ],
+      [
+        "middle_management",
+        "Middle management"
+      ],
+      [
+        "none",
+        "None"
+      ]
+    ],
+    "shareholder_type": [
+      [
+        "individual",
+        "Individual"
+      ],
+      [
+        "corporate",
+        "Corporate"
+      ],
+      [
+        "government",
+        "Government"
+      ],
+      [
+        "public_float",
+        "Public float"
+      ]
+    ],
+    "statement_basis": [
+      [
+        "standalone",
+        "Standalone"
+      ],
+      [
+        "consolidated",
+        "Consolidated"
+      ]
+    ],
+    "tiering_scope": [
+      [
+        "borrower",
+        "Borrower"
+      ],
+      [
+        "group",
+        "Group"
+      ]
+    ],
+    "tiering_type": [
+      [
+        "balance_based",
+        "Balance-based"
+      ],
+      [
+        "utilisation_based",
+        "Utilisation-based"
+      ]
+    ],
+    "account_conduct": [
+      [
+        "satisfactory",
+        "Satisfactory"
+      ],
+      [
+        "watch",
+        "Watch"
+      ],
+      [
+        "unsatisfactory",
+        "Unsatisfactory"
+      ]
+    ],
+    "contract_type": [
+      [
+        "conventional",
+        "Conventional"
+      ],
+      [
+        "islamic",
+        "Islamic"
+      ]
+    ],
+    "booking_branch": [
+      [
+        "head_office",
+        "Head Office"
+      ],
+      [
+        "city_branch",
+        "City Branch"
+      ],
+      [
+        "industrial_area_branch",
+        "Industrial Area Branch"
+      ]
+    ],
+    "collateral_type": [
+      [
+        "cash_margin",
+        "Cash margin"
+      ],
+      [
+        "real_estate",
+        "Real estate"
+      ],
+      [
+        "listed_shares",
+        "Listed shares"
+      ],
+      [
+        "assignment_of_receivables",
+        "Assignment of receivables"
+      ],
+      [
+        "corporate_guarantee",
+        "Corporate guarantee"
+      ],
+      [
+        "personal_guarantee",
+        "Personal guarantee"
+      ],
+      [
+        "vehicles_and_equipment",
+        "Vehicles and equipment"
+      ]
+    ],
+    "committee_level": [
+      [
+        "L1",
+        "Credit Committee (L1)"
+      ],
+      [
+        "L2",
+        "Senior Credit Committee (L2)"
+      ],
+      [
+        "L3",
+        "Executive Committee (L3)"
+      ]
+    ],
+    "commodity_code": [
+      [
+        "not_applicable",
+        "Not applicable"
+      ],
+      [
+        "construction_materials",
+        "Construction materials"
+      ],
+      [
+        "foodstuffs",
+        "Foodstuffs"
+      ],
+      [
+        "petrochemicals",
+        "Petrochemicals"
+      ],
+      [
+        "vehicles",
+        "Vehicles"
+      ]
+    ],
+    "country": [
+      [
+        "KW",
+        "Kuwait"
+      ],
+      [
+        "SA",
+        "Saudi Arabia"
+      ],
+      [
+        "AE",
+        "United Arab Emirates"
+      ],
+      [
+        "QA",
+        "Qatar"
+      ],
+      [
+        "BH",
+        "Bahrain"
+      ],
+      [
+        "OM",
+        "Oman"
+      ],
+      [
+        "GB",
+        "United Kingdom"
+      ],
+      [
+        "US",
+        "United States"
+      ],
+      [
+        "IN",
+        "India"
+      ],
+      [
+        "EG",
+        "Egypt"
+      ]
+    ],
+    "customer_segment": [
+      [
+        "large_corporate",
+        "Large corporate"
+      ],
+      [
+        "mid_corporate",
+        "Mid-corporate"
+      ],
+      [
+        "sme",
+        "SME"
+      ],
+      [
+        "contracting",
+        "Contracting"
+      ]
+    ],
+    "economic_sector": [
+      [
+        "trade",
+        "Trade"
+      ],
+      [
+        "construction_and_contracting",
+        "Construction and contracting"
+      ],
+      [
+        "real_estate",
+        "Real estate"
+      ],
+      [
+        "manufacturing",
+        "Manufacturing"
+      ],
+      [
+        "oil_and_gas",
+        "Oil and gas"
+      ],
+      [
+        "services",
+        "Services"
+      ],
+      [
+        "transport_and_logistics",
+        "Transport and logistics"
+      ]
+    ],
+    "facility_type": [
+      [
+        "overdraft",
+        "Overdraft"
+      ],
+      [
+        "short_term_loan",
+        "Short-term loan"
+      ],
+      [
+        "term_loan",
+        "Term loan"
+      ],
+      [
+        "letter_of_guarantee",
+        "Letter of guarantee"
+      ],
+      [
+        "letter_of_credit",
+        "Letter of credit"
+      ],
+      [
+        "fx_line",
+        "FX line"
+      ],
+      [
+        "murabaha",
+        "Murabaha"
+      ]
+    ],
+    "fee_type": [
+      [
+        "arrangement_fee",
+        "Arrangement fee"
+      ],
+      [
+        "commitment_fee",
+        "Commitment fee"
+      ],
+      [
+        "front_end_fee",
+        "Front-end fee"
+      ],
+      [
+        "lg_commission",
+        "LG commission"
+      ],
+      [
+        "lc_commission",
+        "LC commission"
+      ]
+    ],
+    "id_document_type": [
+      [
+        "commercial_registration",
+        "Commercial registration"
+      ],
+      [
+        "civil_id",
+        "Civil ID"
+      ],
+      [
+        "passport",
+        "Passport"
+      ],
+      [
+        "other",
+        "Other"
+      ]
+    ],
+    "internal_rating": [
+      [
+        "1",
+        "Grade 1"
+      ],
+      [
+        "2",
+        "Grade 2"
+      ],
+      [
+        "3",
+        "Grade 3"
+      ],
+      [
+        "4",
+        "Grade 4"
+      ],
+      [
+        "5",
+        "Grade 5"
+      ],
+      [
+        "6",
+        "Grade 6"
+      ],
+      [
+        "7",
+        "Grade 7"
+      ],
+      [
+        "8",
+        "Grade 8"
+      ],
+      [
+        "9",
+        "Grade 9"
+      ],
+      [
+        "10",
+        "Grade 10"
+      ]
+    ],
+    "legal_entity": [
+      [
+        "xyz_bank",
+        "XYZ Bank"
+      ],
+      [
+        "xyz_bank_—_overseas_branch",
+        "XYZ Bank — Overseas Branch"
+      ]
+    ],
+    "purpose_code": [
+      [
+        "working_capital",
+        "Working capital"
+      ],
+      [
+        "project_finance",
+        "Project finance"
+      ],
+      [
+        "trade_finance",
+        "Trade finance"
+      ],
+      [
+        "capital_expenditure",
+        "Capital expenditure"
+      ],
+      [
+        "refinancing",
+        "Refinancing"
+      ]
+    ],
+    "risk_grade": [
+      [
+        "performing",
+        "Performing"
+      ],
+      [
+        "watch_list",
+        "Watch list"
+      ],
+      [
+        "substandard",
+        "Substandard"
+      ],
+      [
+        "doubtful",
+        "Doubtful"
+      ],
+      [
+        "loss",
+        "Loss"
       ]
     ]
   },

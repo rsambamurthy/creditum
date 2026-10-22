@@ -13,16 +13,38 @@ import { ConflictError, DomainError, NotFoundError } from '../../common/errors';
 import { newId, tenantWhere } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
 import { Outcome } from '../rules/rule-evaluator';
+import type { FormsService } from '../forms/forms.service';
 
 export interface CreditRequestInput {
   borrowerName: string; borrowerRef: string; requestType: string; requestedAmount: string; currencyCode: string;
   fields?: Record<string, unknown>;
 }
 
-const ENTITY = 'credit_request';
+export const ENTITY = 'credit_request';
+
+/** The record the rules engine sees: header columns under snake_case names plus record-level field values. */
+export function recordView(r: Pick<CreditRequest, 'borrowerName' | 'borrowerRef' | 'requestType' | 'requestedAmount' | 'currencyCode' | 'baseAmount' | 'requiredLevel'>,
+                           fields: Record<string, unknown>): Record<string, unknown> {
+  return { borrower_name: r.borrowerName, borrower_ref: r.borrowerRef, request_type: r.requestType, requested_amount: r.requestedAmount,
+    currency_code: r.currencyCode, base_amount: r.baseAmount, required_level: r.requiredLevel, ...fields };
+}
+
+/** Block on rule blocks and on fields a rule requires that are empty. */
+export function enforce(outcome: Outcome, record: Record<string, unknown>) {
+  if (outcome.blocks.length) throw new DomainError('rule_blocked', outcome.blocks.map(b => b.message).join('; '), undefined, outcome);
+  const missing = outcome.required.filter(r => record[r.field] === undefined || record[r.field] === null || record[r.field] === '');
+  if (missing.length) throw new DomainError('required_fields', missing.map(r => r.message).join('; '), undefined, { missing, outcome });
+}
+
+/** Missing-mandatory check used at submission (implemented by the module-data service, registered at start-up). */
+type MandatoryCheck = FormsService['mandatoryCheck'];
 
 @Injectable()
 export class CreditRequestService {
+  private mandatoryCheck?: MandatoryCheck;
+  /** Called by FormsService at start-up so submission can check the module data without a circular dependency. */
+  useMandatoryCheck(check: MandatoryCheck) { this.mandatoryCheck = check; }
+
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly rules: RulesService,
               private readonly workflow: WorkflowService, private readonly registry: FieldRegistryService, private readonly audit: AuditService) {}
 
@@ -49,18 +71,6 @@ export class CreditRequestService {
     return { requestedAmount: toText(dec(amount)), baseAmount, fxRateUsed: rate, requiredLevel: level.levelCode };
   }
 
-  private recordView(r: Pick<CreditRequest, 'borrowerName' | 'borrowerRef' | 'requestType' | 'requestedAmount' | 'currencyCode' | 'baseAmount' | 'requiredLevel'>,
-                     fields: Record<string, unknown>): Record<string, unknown> {
-    return { borrower_name: r.borrowerName, borrower_ref: r.borrowerRef, request_type: r.requestType, requested_amount: r.requestedAmount,
-      currency_code: r.currencyCode, base_amount: r.baseAmount, required_level: r.requiredLevel, ...fields };
-  }
-
-  private enforce(outcome: Outcome, record: Record<string, unknown>) {
-    if (outcome.blocks.length) throw new DomainError('rule_blocked', outcome.blocks.map(b => b.message).join('; '), undefined, outcome);
-    const missing = outcome.required.filter(r => record[r.field] === undefined || record[r.field] === null || record[r.field] === '');
-    if (missing.length) throw new DomainError('required_fields', missing.map(r => r.message).join('; '), undefined, { missing, outcome });
-  }
-
   async create(input: CreditRequestInput) {
     return this.ds.transaction(async m => {
       await this.config.requireValue('request_type', input.requestType, m);
@@ -70,9 +80,9 @@ export class CreditRequestService {
       const draft = { borrowerName: input.borrowerName.trim(), borrowerRef: input.borrowerRef.trim(), requestType: input.requestType,
         currencyCode: input.currencyCode, ...money };
       const fields = input.fields ?? {};
-      const record = this.recordView(draft, fields);
+      const record = recordView(draft, fields);
       const outcome = await this.rules.evaluate(ENTITY, 'on_save', record, m);
-      this.enforce(outcome, record);
+      enforce(outcome, record);
       const scheme = await this.scheme(m);
       const year = new Date().getUTCFullYear();
       const seq = await this.config.nextSequence(m, sequenceScope(scheme, year));
@@ -82,7 +92,7 @@ export class CreditRequestService {
         status: def.initial, makerId: actor.userId, createdAt: now, updatedAt: now, rowVersion: 1, ...draft });
       await m.getRepository(CreditRequest).insert(row);
       if (Object.keys(fields).length) await this.registry.saveValues(m, ENTITY, row.id, fields);
-      await this.audit.append(m, { action: 'credit_request_created', entityType: ENTITY, entityRef: row.requestNumber, after: { ...this.recordView(row, fields), status: row.status } });
+      await this.audit.append(m, { action: 'credit_request_created', entityType: ENTITY, entityRef: row.requestNumber, after: { ...recordView(row, fields), status: row.status } });
       return { request: await this.get(row.id, m), warnings: outcome.warnings };
     });
   }
@@ -102,15 +112,15 @@ export class CreditRequestService {
         requestType, currencyCode: input.currencyCode ?? current.currencyCode, ...money };
       const existingFields = await this.registry.values(ENTITY, id, m);
       const fields = { ...existingFields, ...(input.fields ?? {}) };
-      const record = this.recordView(next, fields);
+      const record = recordView(next, fields);
       const outcome = await this.rules.evaluate(ENTITY, 'on_save', record, m);
-      this.enforce(outcome, record);
+      enforce(outcome, record);
       const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: expectedVersion }),
         { ...next, rowVersion: expectedVersion + 1, updatedAt: new Date() });
       if (res.affected === 0) throw new ConflictError('This credit request was changed by someone else — reload to see the latest version');
       if (input.fields) await this.registry.saveValues(m, ENTITY, id, input.fields);
       await this.audit.append(m, { action: 'credit_request_updated', entityType: ENTITY, entityRef: current.requestNumber,
-        before: this.recordView(current, existingFields), after: record });
+        before: recordView(current, existingFields), after: record });
       return { request: await this.get(id, m), warnings: outcome.warnings };
     });
   }
@@ -134,10 +144,18 @@ export class CreditRequestService {
       const { def } = await this.workflow.definition(r.requestType, m);
       const t = resolveTransition(def, r.status, action, await this.transitionContext(m, r), remarks);
       const leavingEditable = def.states.find(s => s.code === r.status)?.editable;
+      const warnings: string[] = [];
       if (leavingEditable) {
         const fields = await this.registry.values(ENTITY, id, m);
-        const record = this.recordView(r, fields);
-        this.enforce(await this.rules.evaluate(ENTITY, 'on_submit', record, m), record);
+        const record = recordView(r, fields);
+        enforce(await this.rules.evaluate(ENTITY, 'on_submit', record, m), record);
+        if (this.mandatoryCheck) {
+          const { mode, missing } = await this.mandatoryCheck(id, m);
+          if (missing.length && mode === 'block') {
+            throw new DomainError('mandatory_fields', `${missing.length} mandatory field(s) are not filled in`, undefined, { missing });
+          }
+          if (missing.length && mode === 'warn') warnings.push(`${missing.length} mandatory field(s) are not filled in`);
+        }
       }
       const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: expectedVersion }),
         { status: t.to, rowVersion: expectedVersion + 1, updatedAt: new Date() });
@@ -147,7 +165,7 @@ export class CreditRequestService {
         actorName: actor.displayName, remarks: remarks ?? null });
       await this.audit.append(m, { action: `credit_request_${t.action}`, entityType: ENTITY, entityRef: r.requestNumber,
         before: { status: r.status }, after: { status: t.to, remarks: remarks ?? null } });
-      return this.get(id, m);
+      return warnings.length ? { ...(await this.get(id, m)), warnings } : this.get(id, m);
     });
   }
 

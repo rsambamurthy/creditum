@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { AuthorityLevel, ConfigChange, ConfigParameter, FxRate, TenantCurrency, ValueListEntry, SequenceCounter } from './configuration.entities';
 import { ConflictError, DomainError, ForbiddenError, NotFoundError } from '../../common/errors';
-import { compare, isDecimalText, multiply, toText } from '../../common/decimal';
+import { compare, isDecimalText, multiply, ROUNDING_MODES, toText } from '../../common/decimal';
 import { newId, tenantWhere } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
 import { AuditService } from '../audit/audit.service';
@@ -12,6 +12,12 @@ export type ChangeHandler = (m: EntityManager, targetRef: string, payload: Recor
 export type ChangeValidator = (m: EntityManager, targetRef: string, payload: Record<string, unknown>) => Promise<void>;
 
 /** Configuration access. Every business value is read from the tenant's configuration; nothing has a default in code. */
+/** Parameters whose value must be one of a fixed set of options (the options are behaviour, not business values). */
+const ENUMERATED_PARAMS: Record<string, string[]> = {
+  'credit_request.mandatory_fields_on_submit': ['off', 'warn', 'block'],
+  'calculation.rounding_mode': Object.keys(ROUNDING_MODES),
+};
+
 @Injectable()
 export class ConfigurationService {
   constructor(private readonly ds: DataSource) {}
@@ -50,7 +56,9 @@ export class ConfigurationService {
   }
   listParams() { return this.repo(ConfigParameter).find({ where: tenantWhere<ConfigParameter>(), order: { paramKey: 'ASC' } }); }
 
-  validateParamValue(valueType: string, value: string) {
+  validateParamValue(valueType: string, value: string, key?: string) {
+    const allowed = key ? ENUMERATED_PARAMS[key] : undefined;
+    if (allowed && !allowed.includes(value)) throw new DomainError('invalid_value', `"${key}" must be one of ${allowed.join(', ')}`);
     const ok = valueType === 'decimal' ? isDecimalText(value)
       : valueType === 'integer' ? /^-?\d+$/.test(value)
         : valueType === 'boolean' ? value === 'true' || value === 'false'
@@ -63,7 +71,7 @@ export class ConfigurationService {
     const existing = await this.repo(ConfigParameter, m).findOne({ where: tenantWhere<ConfigParameter>({ paramKey: key }) });
     const valueType = existing?.valueType ?? (payload.valueType as string | undefined);
     if (!valueType) throw new DomainError('invalid_value', 'valueType is required for a new parameter');
-    this.validateParamValue(valueType, String(payload.value));
+    this.validateParamValue(valueType, String(payload.value), key);
     if (valueType === 'currency') await this.currency(String(payload.value), m);
   }
 
@@ -74,7 +82,7 @@ export class ConfigurationService {
     const existing = await repo.findOne({ where: tenantWhere<ConfigParameter>({ paramKey: key }) });
     const valueType = (existing?.valueType ?? payload.valueType) as ConfigParameter['valueType'];
     if (!valueType) throw new DomainError('invalid_value', 'valueType is required for a new parameter');
-    this.validateParamValue(valueType, value);
+    this.validateParamValue(valueType, value, key);
     if (valueType === 'currency') await this.currency(value, m);
     const actor = requireActor();
     if (existing) {

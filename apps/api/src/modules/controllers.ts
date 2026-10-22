@@ -12,6 +12,7 @@ import { RulesService } from './rules/rules.service';
 import { WorkflowService } from './workflow/workflow.service';
 import { CreditRequestService } from './credit-request/credit-request.service';
 import { AuditService } from './audit/audit.service';
+import { FormsService } from './forms/forms.service';
 import { requireActor, context } from '../common/request-context';
 import { Tenant } from './tenancy/tenancy.entities';
 
@@ -54,6 +55,16 @@ class UpdateRequestDto {
   @IsOptional() @IsString() @MaxLength(250) borrowerName?: string; @IsOptional() @IsString() @MaxLength(80) borrowerRef?: string;
   @IsOptional() @IsString() requestType?: string; @IsOptional() @Matches(DECIMAL) requestedAmount?: string;
   @IsOptional() @Matches(/^[A-Z]{3}$/) currencyCode?: string; @IsOptional() @IsObject() fields?: Record<string, unknown>;
+}
+class ModuleDataDto {
+  @IsInt() expectedVersion: number;
+  @IsOptional() @IsObject() record?: Record<string, unknown>;
+  @IsOptional() @IsObject() grids?: Record<string, { rowKey?: string; values: Record<string, unknown> }[]>;
+}
+class FormulaDto {
+  @IsOptional() @IsIn(['active', 'pending']) status?: string; @IsOptional() @IsObject() expression?: object | null;
+  @IsString() @IsNotEmpty() @MaxLength(1000) description: string; @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @IsOptional() @IsInt() expectedVersion?: number;
 }
 class TransitionDto { @IsString() @IsNotEmpty() action: string; @IsInt() expectedVersion: number; @IsOptional() @IsString() @MaxLength(2000) remarks?: string; }
 
@@ -113,9 +124,24 @@ export class WorkflowController {
   @Put(':requestType') @Roles(ROLE.configAdmin) put(@Param('requestType') t: string, @Body() b: WorkflowDto) { return this.gov.submit('workflow', t, { ...b }); }
 }
 
+@Controller('layout')
+export class LayoutController {
+  constructor(private readonly forms: FormsService) {}
+  @Get() @Roles(...CREDIT_ROLES, ROLE.configAdmin) layout() { return this.forms.layout(); }
+}
+
+@Controller('formulas')
+export class FormulasController {
+  constructor(private readonly forms: FormsService, private readonly gov: GovernanceService) {}
+  @Get() list() { return this.forms.listFormulas(); }
+  @Put(':key') @Roles(ROLE.configAdmin) put(@Param('key') key: string, @Body() b: FormulaDto) { return this.gov.submit('formula', key, { ...b }); }
+}
+
 @Controller('credit-requests')
 export class CreditRequestController {
-  constructor(private readonly svc: CreditRequestService, private readonly wf: WorkflowService) {}
+  constructor(private readonly svc: CreditRequestService, private readonly wf: WorkflowService, private readonly forms: FormsService) {}
+  @Get(':id/data') @Roles(...CREDIT_ROLES) data(@Param('id') id: string) { return this.forms.data(id); }
+  @Put(':id/data') @Roles(ROLE.relationshipOfficer, ROLE.creditAnalyst) saveData(@Param('id') id: string, @Body() b: ModuleDataDto) { return this.forms.save(id, b); }
   @Get() @Roles(...CREDIT_ROLES) list() { return this.svc.list(); }
   @Get(':id') @Roles(...CREDIT_ROLES) get(@Param('id') id: string) { return this.svc.get(id); }
   @Get(':id/history') @Roles(...CREDIT_ROLES) history(@Param('id') id: string) { return this.wf.history(id); }
