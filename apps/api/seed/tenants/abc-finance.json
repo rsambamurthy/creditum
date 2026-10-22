@@ -135,6 +135,18 @@
       "valueType": "text",
       "value": "warn",
       "description": "Mandatory fields at submission: off, warn or block"
+    },
+    {
+      "key": "display.percentage_places",
+      "valueType": "integer",
+      "value": "2",
+      "description": "Decimal places shown for calculated percentages (stored values keep full precision)"
+    },
+    {
+      "key": "display.ratio_places",
+      "valueType": "integer",
+      "value": "2",
+      "description": "Decimal places shown for calculated ratios (stored values keep full precision)"
     }
   ],
   "valueLists": {

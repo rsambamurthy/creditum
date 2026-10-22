@@ -13,11 +13,11 @@ export interface LayoutSection {
 export interface LayoutModule { code: string; letter: string; title: string; sections: LayoutSection[] }
 export interface LayoutDocument {
   layout: string; version: number;
-  grids: Record<string, { rowLabel: string; ordered: boolean }>;
+  grids: Record<string, { rowLabel: string; ordered: boolean; labelField?: string }>;
   modules: LayoutModule[];
 }
 
-export interface PlacedField extends LayoutField { module: string; section: string; grid: string | null }
+export interface PlacedField extends LayoutField { module: string; section: string; sectionTitle: string; grid: string | null }
 
 /** Every field on the form with where it lives (grid code, or null for record level). */
 export function placements(doc: LayoutDocument): Map<string, PlacedField> {
@@ -26,7 +26,7 @@ export function placements(doc: LayoutDocument): Map<string, PlacedField> {
     for (const s of m.sections) {
       const put = (f: LayoutField, grid: string | null) => {
         if (out.has(f.key)) throw new FormulaError(`Field "${f.key}" is placed twice in the layout`);
-        out.set(f.key, { ...f, module: m.code, section: s.code, grid });
+        out.set(f.key, { ...f, module: m.code, section: s.code, sectionTitle: s.title, grid });
       };
       s.fields.forEach(f => put(f, null));
       if (s.kind !== 'record') {

@@ -25,7 +25,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   const env = configureApp(app);
   app.enableShutdownHooks();
-  await app.listen(env.port, '::'); // dual-stack: IPv4 and IPv6 (private networks)
+  try {
+    await app.listen(env.port, '::'); // dual-stack: IPv4 and IPv6 (private networks)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'EAFNOSUPPORT') throw e;
+    await app.listen(env.port, '0.0.0.0'); // host without IPv6
+  }
   new Logger('Creditum').log(`API listening on port ${env.port} (database: ${env.dbType}, auth: ${env.authMode})`);
 }
 

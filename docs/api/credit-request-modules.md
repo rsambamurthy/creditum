@@ -12,9 +12,10 @@ All amounts, rates and ratios are **decimal strings** in both directions. Dates 
 ```jsonc
 {
   "version": 1,
+  "display": { "percentagePlaces": 2, "ratioPlaces": 2 },   // tenant display rounding of calculated values
   "baseCurrency": "KWD",
   "currencies": [{ "code": "KWD", "minorUnits": 3 }, { "code": "USD", "minorUnits": 2 }],
-  "grids": { "a.partners": { "rowLabel": "Partner", "ordered": false }, "e.financial_periods": { "rowLabel": "Period", "ordered": true } },
+  "grids": { "a.partners": { "rowLabel": "Partner", "ordered": false }, "e.financial_periods": { "rowLabel": "Period", "ordered": true, "labelField": "e.financial_statement_header.fiscal_year_financial_statement_date" } },
   "lists": { "country": [{ "code": "KW", "label": "Kuwait" }] },     // tenant value lists used by the layout
   "modules": [{
     "code": "borrower_profile", "letter": "a", "title": "Borrower Profile",
@@ -58,7 +59,7 @@ Hidden fields (tenant override) are not returned. Sections left empty are droppe
   "completeness": {
     "mode": "warn",                          // tenant parameter credit_request.mandatory_fields_on_submit: off | warn | block
     "modules": { "borrower_profile": { "mandatory": 42, "filled": 10 } },
-    "missing": [{ "key": "…", "label": "…", "module": "borrower_profile", "section": "a.general_information", "rowKey": null }]
+    "missing": [{ "key": "…", "label": "…", "module": "borrower_profile", "section": "a.general_information", "sectionTitle": "General Information", "rowKey": null }]
   }
 }
 ```

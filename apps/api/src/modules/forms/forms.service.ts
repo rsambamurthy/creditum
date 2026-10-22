@@ -146,8 +146,12 @@ export class FormsService implements OnModuleInit {
         return { code: s.code, title: s.title, kind: s.kind, grid: s.grid ?? null, rowLabel: s.rowLabel ?? null, fields, columns };
       }).filter(s => s.fields.length || s.columns.length),
     }));
+    const places = async (key: string) => this.config.integer(key, m);
     return {
-      version: model.doc.version, baseCurrency: currencies.find(c => c.isBase)?.code ?? null,
+      version: model.doc.version,
+      // display rounding of calculated percentages and ratios (stored values keep full precision)
+      display: { percentagePlaces: await places('display.percentage_places'), ratioPlaces: await places('display.ratio_places') },
+      baseCurrency: currencies.find(c => c.isBase)?.code ?? null,
       currencies: currencies.map(c => ({ code: c.code, minorUnits: c.minorUnits })), grids: model.doc.grids,
       lists: Object.fromEntries([...used].filter(k => lists.has(k)).sort().map(k => [k, lists.get(k)!.map(e => ({ code: e.code, label: e.label }))])),
       modules,
@@ -233,7 +237,7 @@ export class FormsService implements OnModuleInit {
   // ---------------------------------------------------------------- completeness (mandatory manual fields)
   private completeness(model: Model, data: FormData) {
     const modules: Record<string, { mandatory: number; filled: number }> = {};
-    const missing: { key: string; label: string; module: string; section: string; rowKey: string | null }[] = [];
+    const missing: { key: string; label: string; module: string; section: string; sectionTitle: string; rowKey: string | null }[] = [];
     const filled = (key: string, values: Record<string, Value>, meta: FieldMeta) =>
       meta.parts ? meta.parts.every(p => !isEmpty(values[`${key}:${p}`])) : !isEmpty(values[key]);
     for (const p of model.placed.values()) {
@@ -243,7 +247,7 @@ export class FormsService implements OnModuleInit {
       const check = (values: Record<string, Value>, rowKey: string | null) => {
         tally.mandatory += 1;
         if (filled(p.key, values, meta)) tally.filled += 1;
-        else missing.push({ key: p.key, label: meta.label, module: p.module, section: p.section, rowKey });
+        else missing.push({ key: p.key, label: meta.label, module: p.module, section: p.section, sectionTitle: p.sectionTitle, rowKey });
       };
       if (p.grid === null) check(data.record, null);
       else for (const row of data.grids[p.grid] ?? []) check(row.values, row.rowKey);
