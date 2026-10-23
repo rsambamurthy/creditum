@@ -15,9 +15,10 @@ import { FieldValue, RECORD_ROW } from '../field-registry/field-registry.entitie
 import { EffectiveField, FieldRegistryService } from '../field-registry/field-registry.service';
 import { ConfigParameter, FxRate, TenantCurrency, ValueListEntry } from '../configuration/configuration.entities';
 import { ConfigurationService, GovernanceService } from '../configuration/configuration.service';
-import { ruleReferences, RulesService } from '../rules/rules.service';
+import { REQUEST_CONTEXT, RuleContext, ruleReferences, RulesService } from '../rules/rules.service';
 import { Rule } from '../rules/rule-evaluator';
 import { WorkflowService } from '../workflow/workflow.service';
+import { WorkflowDefinition } from '../workflow/workflow.entities';
 import { AuditService } from '../audit/audit.service';
 import { CORE_SCOPE, T } from '../../common/db-types';
 import { dec, isDecimalText, multiply, toText } from '../../common/decimal';
@@ -75,7 +76,8 @@ export class FormsService implements OnModuleInit {
 
   onModuleInit() {
     this.requests.useMandatoryCheck((id, m) => this.mandatoryCheck(id, m));
-    this.rules.useReferenceCheck((m, rule) => this.checkRuleReferences(m, rule));
+    this.rules.useReferenceCheck((m, rule, ctx) => this.checkRuleReferences(m, rule, ctx));
+    this.requests.useCreateFields(m => this.createFieldKeys(m));
     this.governance.register('layout', (m, ref, p) => this.applyLayout(m, ref, p), (m, ref, p) => this.validateLayout(m, ref, p));
     this.governance.register('formula', (m, ref, p) => this.applyFormula(m, ref, p), (m, ref, p) => this.validateFormula(m, ref, p).then(() => undefined));
   }
@@ -160,8 +162,13 @@ export class FormsService implements OnModuleInit {
       }).filter(s => s.fields.length || s.columns.length),
     }));
     const places = async (key: string) => this.config.integer(key, m);
+    const createForm = (model.doc.createFields ?? []).map(k => model.placed.get(k)).filter((p): p is PlacedField => !!p)
+      .map(p => this.meta(model, p)).filter((x): x is FieldMeta => !!x && !x.readOnly);
+    createForm.forEach(f => f.list && used.add(f.list));
     return {
       version: model.doc.version,
+      // fields on the New Credit Request form besides the header (configurable on the screen-layout page)
+      createForm,
       // display rounding of calculated percentages and ratios (stored values keep full precision)
       display: { percentagePlaces: await places('display.percentage_places'), ratioPlaces: await places('display.ratio_places') },
       baseCurrency: currencies.find(c => c.isBase)?.code ?? null,
@@ -366,7 +373,16 @@ export class FormsService implements OnModuleInit {
 
       // rules (record level, as for the header)
       const ruleRecord = recordView(r, Object.fromEntries(Object.entries(computed.record).filter(([, v]) => !isEmpty(v))));
-      const outcome = await this.rules.evaluate(ENTITY, 'on_save', ruleRecord, m);
+      // rules for what is being saved: the modules of the fields sent, and the request form if any of its fields were sent
+      const sent = [...Object.keys(input.record ?? {}), ...Object.values(input.grids ?? {}).flatMap(rows => rows.flatMap(r => Object.keys(r.values ?? {}))),
+      ].map(k => this.baseKey(k));
+      const contexts = new Set(sent.map(k => model.placed.get(k)?.module).filter((x): x is string => !!x));
+      for (const g of Object.keys(input.grids ?? {})) {
+        const mod = model.doc.modules.find(x => x.sections.some(sec => sec.grid === g));
+        if (mod) contexts.add(mod.code);
+      }
+      if (sent.some(k => (model.doc.createFields ?? []).includes(k))) contexts.add(REQUEST_CONTEXT);
+      const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [...contexts] }, ruleRecord, m);
       enforce(outcome, ruleRecord);
 
       const changes = await this.persist(m, id, model, before, computed, rows, values);
@@ -516,7 +532,8 @@ export class FormsService implements OnModuleInit {
     }
     const d = p.document as LayoutDocument;
     // store only the arrangement; grids and field properties always come from the core layout
-    const definitionJson = JSON.stringify({ layout: LAYOUT_KEY, version: core.layoutVersion, grids: {}, modules: d.modules.map(mod => ({
+    const definitionJson = JSON.stringify({ layout: LAYOUT_KEY, version: core.layoutVersion, grids: {},
+      ...(d.createFields ? { createFields: d.createFields } : {}), modules: d.modules.map(mod => ({
       code: mod.code, letter: mod.letter, title: mod.title.trim(), sections: mod.sections.map(s => ({ code: s.code, title: s.title.trim(), kind: s.kind,
         ...(s.grid ? { grid: s.grid, rowLabel: s.rowLabel } : {}), fields: s.fields.map(f => ({ ...f })), ...(s.columns ? { columns: s.columns.map(f => ({ ...f })) } : {}) })) })) });
     const summary = (doc: LayoutDocument) => doc.modules.map(mod => `${mod.title}: ${mod.sections.map(s => s.title).join(', ')}`);
@@ -621,11 +638,12 @@ export class FormsService implements OnModuleInit {
     const params = await m.getRepository(ConfigParameter).find({ where: tenantWhere<ConfigParameter>(), order: { paramKey: 'ASC' } });
     const currencies = await m.getRepository(TenantCurrency).find({ where: tenantWhere<TenantCurrency>({ isActive: true }), order: { code: 'ASC' } });
     const modTitle = new Map(model.doc.modules.map(x => [x.code, x.title]));
-    const header = FormsService.HEADER_FIELDS.map(h => ({ ...h, group: 'Request', section: 'Request header', valueKind: valueKind(h.dataType), hidden: false }));
+    const header = FormsService.HEADER_FIELDS.map(h => ({ ...h, group: 'Request', module: REQUEST_CONTEXT, onCreateForm: true, section: 'Request header',
+      valueKind: valueKind(h.dataType), hidden: false }));
     const form = [...model.placed.values()].filter(p => p.grid === null && model.fields.has(p.key)).map(p => {
       const f = model.fields.get(p.key)!;
       return { key: p.key, label: f.label, dataType: f.dataType, valueKind: valueKind(f.dataType), group: modTitle.get(p.module) ?? p.module,
-        section: p.sectionTitle, hidden: f.hidden, ...(p.list ? { list: p.list } : {}) };
+        module: p.module, onCreateForm: (model.doc.createFields ?? []).includes(p.key), section: p.sectionTitle, hidden: f.hidden, ...(p.list ? { list: p.list } : {}) };
     }).filter(f => f.valueKind !== 'none' && f.valueKind !== 'composite');
     const used = new Set([...header, ...form].map(f => (f as { list?: string }).list).filter((x): x is string => !!x));
     return {
@@ -633,16 +651,61 @@ export class FormsService implements OnModuleInit {
       parameters: params.map(p => ({ key: p.paramKey, valueType: p.valueType, value: p.paramValue, description: p.description })),
       lists: Object.fromEntries([...used].filter(k => lists.has(k)).map(k => [k, lists.get(k)!.map(e => ({ code: e.code, label: e.label }))])),
       currencies: currencies.map(c => ({ code: c.code, name: c.name })),
+      // where a rule can run (see checkRuleReferences)
+      contexts: {
+        modules: model.doc.modules.map(x => ({ code: x.code, title: x.title })),
+        createFields: model.doc.createFields ?? [],
+        actions: await this.workflowActions(m),
+      },
     };
   }
 
-  private async checkRuleReferences(m: EntityManager, rule: Pick<Rule, 'condition' | 'actions'>) {
+  private async workflowActions(m: EntityManager) {
+    const defs = await m.getRepository(WorkflowDefinition).find({ where: tenantWhere<WorkflowDefinition>() });
+    const out = new Map<string, string>();
+    for (const d of defs) for (const t of (JSON.parse(d.definitionJson).transitions as { action: string; label: string }[])) if (!out.has(t.action)) out.set(t.action, t.label);
+    return [...out].map(([code, label]) => ({ code, label }));
+  }
+
+  /** Fields the New Credit Request form may carry (for the request service). */
+  async createFieldKeys(m: EntityManager): Promise<Set<string>> {
+    return new Set((await this.model(m)).doc.createFields ?? []);
+  }
+
+  /**
+   * A rule may only use fields that exist where it runs. On the New/Edit Credit Request form: the header and the
+   * form's configured fields. On a module save: those, plus the module's fields (conditions may read any saved
+   * record field). At submission or a workflow action: any record-level field.
+   */
+  private async checkRuleReferences(m: EntityManager, rule: Pick<Rule, 'condition' | 'actions'>, ctx: RuleContext) {
     const model = await this.model(m);
     const { vars, cfgs, actionFields } = ruleReferences(rule);
     const header = new Set(FormsService.HEADER_FIELDS.map(h => h.key));
+    const createFields = new Set(model.doc.createFields ?? []);
     const recordField = (k: string) => model.placed.get(k)?.grid === null;
+    const label = (k: string) => model.fields.get(k)?.label ?? FormsService.HEADER_FIELDS.find(h => h.key === k)?.label ?? k;
+    const modules = new Map(model.doc.modules.map(x => [x.code, x.title]));
+    if (ctx.trigger === 'on_save') {
+      for (const c of ctx.contexts) if (c !== REQUEST_CONTEXT && !modules.has(c)) throw new DomainError('invalid_rule', `Unknown screen "${c}" to check on save`);
+    }
+    if (ctx.trigger === 'on_action') {
+      const actions = new Set((await this.workflowActions(m)).map(a => a.code));
+      for (const a of ctx.contexts) if (!actions.has(a)) throw new DomainError('invalid_rule', `"${a}" is not a workflow action of this workspace`);
+    }
     for (const v of vars) if (!header.has(v) && !recordField(v)) throw new DomainError('invalid_rule', `The rule refers to an unknown field "${v}"`);
     for (const f of actionFields) if (!recordField(f)) throw new DomainError('invalid_rule', `The rule's action refers to an unknown field "${f}"`);
+    if (ctx.trigger === 'on_save') {
+      const onlyRequest = ctx.contexts.every(c => c === REQUEST_CONTEXT);
+      const inScope = (k: string) => createFields.has(k) || (ctx.contexts.includes(model.placed.get(k)?.module ?? ''));
+      if (onlyRequest) {
+        for (const v of vars) if (!header.has(v) && !createFields.has(v)) {
+          throw new DomainError('invalid_rule', `"${label(v)}" is not on the New Credit Request form, so a rule checked there cannot use it — check it when its module is saved, or at submission`);
+        }
+      }
+      for (const f of actionFields) if (!inScope(f)) {
+        throw new DomainError('invalid_rule', `"${label(f)}" cannot be ${rule.actions.find(a => a.field === f)?.type === 'hide' ? 'hidden' : 'required'} here: it is not on the screen being saved (${ctx.contexts.map(c => c === REQUEST_CONTEXT ? 'New Credit Request form' : modules.get(c)).join(', ')}) — choose its module, or check at submission`);
+      }
+    }
     if (cfgs.size) {
       const params = new Set((await m.getRepository(ConfigParameter).find({ where: tenantWhere<ConfigParameter>({ paramKey: In([...cfgs]) }) })).map(p => p.paramKey));
       for (const c of cfgs) if (!params.has(c)) throw new DomainError('invalid_rule', `The rule refers to a parameter "${c}" that is not configured`);

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { CreditRequest } from './credit-request.entities';
 import { ConfigurationService } from '../configuration/configuration.service';
-import { RulesService } from '../rules/rules.service';
+import { REQUEST_CONTEXT, RulesService } from '../rules/rules.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { FieldRegistryService } from '../field-registry/field-registry.service';
 import { AuditService } from '../audit/audit.service';
@@ -44,6 +44,16 @@ export class CreditRequestService {
   private mandatoryCheck?: MandatoryCheck;
   /** Called by FormsService at start-up so submission can check the module data without a circular dependency. */
   useMandatoryCheck(check: MandatoryCheck) { this.mandatoryCheck = check; }
+  private createFields?: (m: EntityManager) => Promise<Set<string>>;
+  /** Fields allowed on the New/Edit Credit Request form besides the header (from the layout configuration). */
+  useCreateFields(fn: (m: EntityManager) => Promise<Set<string>>) { this.createFields = fn; }
+
+  private async checkFormFields(m: EntityManager, fields: Record<string, unknown> | undefined) {
+    if (!fields || !this.createFields) return;
+    const allowed = await this.createFields(m);
+    const extra = Object.keys(fields).filter(k => !allowed.has(k));
+    if (extra.length) throw new DomainError('unknown_field', `Not on the credit request form: ${extra.join(', ')} — enter module fields on the request's tabs`, undefined, { fields: extra });
+  }
 
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly rules: RulesService,
               private readonly workflow: WorkflowService, private readonly registry: FieldRegistryService, private readonly audit: AuditService) {}
@@ -80,8 +90,9 @@ export class CreditRequestService {
       const draft = { borrowerName: input.borrowerName.trim(), borrowerRef: input.borrowerRef.trim(), requestType: input.requestType,
         currencyCode: input.currencyCode, ...money };
       const fields = input.fields ?? {};
+      await this.checkFormFields(m, fields);
       const record = recordView(draft, fields);
-      const outcome = await this.rules.evaluate(ENTITY, 'on_save', record, m);
+      const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);
       enforce(outcome, record);
       const scheme = await this.scheme(m);
       const year = new Date().getUTCFullYear();
@@ -111,9 +122,10 @@ export class CreditRequestService {
       const next = { borrowerName: input.borrowerName?.trim() ?? current.borrowerName, borrowerRef: input.borrowerRef?.trim() ?? current.borrowerRef,
         requestType, currencyCode: input.currencyCode ?? current.currencyCode, ...money };
       const existingFields = await this.registry.values(ENTITY, id, m);
+      await this.checkFormFields(m, input.fields);
       const fields = { ...existingFields, ...(input.fields ?? {}) };
       const record = recordView(next, fields);
-      const outcome = await this.rules.evaluate(ENTITY, 'on_save', record, m);
+      const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);
       enforce(outcome, record);
       const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: expectedVersion }),
         { ...next, rowVersion: expectedVersion + 1, updatedAt: new Date() });
@@ -145,10 +157,15 @@ export class CreditRequestService {
       const t = resolveTransition(def, r.status, action, await this.transitionContext(m, r), remarks);
       const leavingEditable = def.states.find(s => s.code === r.status)?.editable;
       const warnings: string[] = [];
+      const record = recordView(r, await this.registry.values(ENTITY, id, m));
+      // rules for this workflow action (e.g. "when Approve is taken")
+      const atAction = await this.rules.evaluateIn({ trigger: 'on_action', contexts: [t.action] }, record, m);
+      enforce(atAction, record);
+      warnings.push(...atAction.warnings.map(w => w.message));
       if (leavingEditable) {
-        const fields = await this.registry.values(ENTITY, id, m);
-        const record = recordView(r, fields);
-        enforce(await this.rules.evaluate(ENTITY, 'on_submit', record, m), record);
+        const atSubmit = await this.rules.evaluateIn({ trigger: 'on_submit', contexts: [] }, record, m);
+        enforce(atSubmit, record);
+        warnings.push(...atSubmit.warnings.map(w => w.message));
         if (this.mandatoryCheck) {
           const { mode, missing } = await this.mandatoryCheck(id, m);
           if (missing.length && mode === 'block') {

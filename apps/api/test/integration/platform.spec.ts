@@ -223,8 +223,15 @@ describe('configuration governance and the field registry', () => {
     const admin = await login('abc-finance', 'admin.anita');
     await http().post('/api/fields/custom/x.msme_udyam_number').set(auth(admin)).send({ label: 'MSME Registration Number', module: 'Borrower Profile',
       group: 'General Information', dataType: 'Text (identifier)' }).expect(201);
-    await http().put('/api/rules/ABC-002').set(auth(admin)).send({ name: 'MSME number required for new loans', triggerOn: 'on_save',
-      condition: { '==': [{ var: 'request_type' }, 'new'] }, actions: [{ type: 'require', field: 'x.msme_udyam_number', message: 'MSME registration number is required' }] }).expect(200);
+    const rule = { name: 'MSME number required for new loans', triggerOn: 'on_save', scope: ['request'],
+      condition: { '==': [{ var: 'request_type' }, 'new'] }, actions: [{ type: 'require', field: 'x.msme_udyam_number', message: 'MSME registration number is required' }] };
+    // a rule checked on the New Credit Request form can only require a field that is on that form …
+    const refused = await http().put('/api/rules/ABC-002').set(auth(admin)).send(rule).expect(422);
+    expect(refused.body.message).toMatch(/not on the screen being saved/);
+    // … so the administrator first puts the field on the form (screen-layout configuration), then adds the rule
+    const layout = (await http().get('/api/layout/admin').set(auth(admin)).expect(200)).body.document;
+    await http().put('/api/layout').set(auth(admin)).send({ document: { ...layout, createFields: [...layout.createFields, 'x.msme_udyam_number'] } }).expect(200);
+    await http().put('/api/rules/ABC-002').set(auth(admin)).send(rule).expect(200);
     const ro = await login('abc-finance', 'ro.priya');
     await http().post('/api/credit-requests').set(auth(ro)).send({ borrowerName: 'Nashik Agro', borrowerRef: 'B-90', requestType: 'new',
       requestedAmount: '200000', currencyCode: 'INR' }).expect(422);

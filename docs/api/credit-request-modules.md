@@ -127,3 +127,22 @@ fields later, they are added to the tenant's arrangement automatically.
 Rules may use the request header fields and record-level form fields (not per-row values). Rules naming an unknown field or an
 unconfigured parameter are rejected (422 `invalid_rule`). The stored condition language is unchanged (`var`, `cfg`, `and`, `or`,
 `not`, `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, `empty`; actions `block`, `warn`, `require`, `hide`).
+
+## Rule contexts — a rule runs only where its fields exist
+
+| `triggerOn` | `scope` | Runs when | Fields a Require/Hide action may name |
+|---|---|---|---|
+| `on_save` | `["request"]` | the New / Edit Credit Request form is saved (create, header edit, or a tab save that changes one of the form's fields) | the form's fields (`createFields`) |
+| `on_save` | module codes, e.g. `["borrower_profile"]` | that module's tab is saved | fields of those modules (and the form's fields) |
+| `on_submit` | — | the request leaves an editable state | any record-level field |
+| `on_action` | workflow action codes, e.g. `["approve"]` | that action is taken | any record-level field |
+
+Rules checked only on the New Credit Request form may read only the header and the form's fields. Anything else is refused
+with a plain reason (422 `invalid_rule`). Existing `on_save` rules received the `request` context (migration 0003).
+`GET /api/rules` returns `contexts` per rule; `GET /api/rules/catalog` returns `contexts: { modules, createFields, actions }`
+and, per field, `module` and `onCreateForm`.
+
+**New Credit Request form** — `GET /api/layout` returns `createForm: FieldMeta[]`: the record-level fields shown on the form
+besides the header. Tenants choose them on the screen-layout page (`document.createFields` in `PUT /api/layout`).
+`POST/PUT /api/credit-requests` accept in `fields` only those keys (422 `unknown_field` otherwise); everything else is entered
+on the module tabs.

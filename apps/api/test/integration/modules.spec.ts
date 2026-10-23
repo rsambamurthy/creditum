@@ -371,8 +371,47 @@ describe('low-code editing: formula text and rule references', () => {
       .toMatch(/unknown field "a.nope"/);
     expect((await http().put('/api/rules/ABC-900').set(admin).send(rule({ '>': [{ var: 'base_amount' }, { cfg: 'no.such' }] }, [{ type: 'warn', message: 'x' }])).expect(422)).body.message)
       .toMatch(/parameter "no.such"/);
-    await http().put('/api/rules/ABC-900').set(admin).send(rule({ and: [{ '>': [{ var: 'base_amount' }, { cfg: 'credit_request.narrative_required_above' }] },
-      { in: [{ var: 'request_type' }, ['new', 'increase']] }] }, [{ type: 'require', field: 'a.general_information.purpose_code', message: 'Purpose code is required' }])).expect(200);
+    const purpose = rule({ and: [{ '>': [{ var: 'base_amount' }, { cfg: 'credit_request.narrative_required_above' }] },
+      { in: [{ var: 'request_type' }, ['new', 'increase']] }] }, [{ type: 'require', field: 'a.general_information.purpose_code', message: 'Purpose code is required' }]);
+    // Purpose Code is not on the New Credit Request form, so it cannot be required there …
+    expect((await http().put('/api/rules/ABC-900').set(admin).send(purpose).expect(422)).body.message).toMatch(/not on the screen being saved/);
+    expect(cat.contexts.createFields).toContain('a.client_request.client_request_details');
+    expect(cat.contexts.actions.map((a: { code: string }) => a.code)).toContain('approve');
+    // … but it can be required when Borrower Profile is saved, at submission, or at a workflow action
+    await http().put('/api/rules/ABC-900').set(admin).send({ ...purpose, scope: ['borrower_profile'] }).expect(200);
+    await http().put('/api/rules/ABC-901').set(admin).send({ ...purpose, triggerOn: 'on_submit' }).expect(200);
+    await http().put('/api/rules/ABC-902').set(admin).send({ ...purpose, triggerOn: 'on_action', scope: ['approve'] }).expect(200);
+    await http().put('/api/rules/ABC-903').set(admin).send({ ...purpose, triggerOn: 'on_action', scope: ['teleport'] }).expect(422);
+    await http().put('/api/rules/ABC-904').set(admin).send({ ...purpose, triggerOn: 'on_submit', scope: ['borrower_profile'] }).expect(422);
+    for (const k of ['ABC-900', 'ABC-901', 'ABC-902']) {
+      await http().put(`/api/rules/${k}`).set(admin).send({ ...purpose, triggerOn: k === 'ABC-900' ? 'on_save' : k === 'ABC-901' ? 'on_submit' : 'on_action',
+        scope: k === 'ABC-900' ? ['borrower_profile'] : k === 'ABC-902' ? ['approve'] : undefined, isActive: false }).expect(200);
+    }
+  });
+
+  it('runs each rule only in its own context', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const ro = await as('abc-finance', 'ro.priya');
+    // rule: when Borrower Profile is saved and the borrower is a board member of the bank, Group Information must explain the relationship
+    await http().put('/api/rules/ABC-910').set(admin).send({ name: 'Board-related borrowers need group details', triggerOn: 'on_save', scope: ['borrower_profile'],
+      condition: { '==': [{ var: 'a.general_information.customer_is_a_board_member_of_the_bank' }, true] },
+      actions: [{ type: 'require', field: 'a.group_information.change_of_ownership_management', message: 'Explain the board relationship under Group Information' }] }).expect(200);
+    // creating a request is not affected (the rule is not on the New Credit Request form)
+    const r = await newRequest('abc-finance', 'ro.priya', 'INR');
+    // saving a different module is not affected either
+    await http().put(`/api/credit-requests/${r.id}/data`).set(ro).send({ expectedVersion: r.rowVersion,
+      record: { 'd.swot_analysis.strengths': 'Long-standing customer base' } }).expect(200);
+    // saving Borrower Profile with the condition true is stopped with the rule's message
+    const stopped = await http().put(`/api/credit-requests/${r.id}/data`).set(ro).send({ expectedVersion: r.rowVersion + 1,
+      record: { 'a.general_information.customer_is_a_board_member_of_the_bank': true } }).expect(422);
+    expect(stopped.body.message).toMatch(/Explain the board relationship/);
+    await http().put(`/api/credit-requests/${r.id}/data`).set(ro).send({ expectedVersion: r.rowVersion + 1,
+      record: { 'a.general_information.customer_is_a_board_member_of_the_bank': true, 'a.group_information.change_of_ownership_management': 'Director is a board member' } }).expect(200);
+    await http().put('/api/rules/ABC-910').set(admin).send({ name: 'x', triggerOn: 'on_save', scope: ['borrower_profile'], condition: { '==': [1, 1] },
+      actions: [{ type: 'warn', message: 'x' }], isActive: false }).expect(200);
+    // module fields are entered on the tabs, not on the New Credit Request form
+    expect((await http().post('/api/credit-requests').set(ro).send({ borrowerName: 'A', borrowerRef: 'B', requestType: 'new', requestedAmount: '10',
+      currencyCode: 'INR', fields: { 'a.general_information.purpose_code': 'x' } }).expect(422)).body.error).toBe('unknown_field');
   });
 });
 

@@ -74,7 +74,7 @@ export async function seedCoreFormulas(ds: DataSource): Promise<number> {
   return changed;
 }
 
-interface RuleSeed { ruleKey: string; name: string; entityType: string; triggerOn: 'on_save' | 'on_submit'; condition: unknown; actions: [] }
+interface RuleSeed { ruleKey: string; name: string; entityType: string; triggerOn: 'on_save' | 'on_submit' | 'on_action'; scope?: string[]; condition: unknown; actions: [] }
 
 async function insertRules(m: EntityManager, ownerScope: string, rules: RuleSeed[]) {
   const repo = m.getRepository(RuleDefinition);
@@ -82,6 +82,7 @@ async function insertRules(m: EntityManager, ownerScope: string, rules: RuleSeed
     validateRule(r);
     if (await repo.findOne({ where: { ownerScope, ruleKey: r.ruleKey } })) continue;
     await repo.insert({ id: newId(), ownerScope, ruleKey: r.ruleKey, name: r.name, entityType: r.entityType, triggerOn: r.triggerOn,
+      triggerScope: r.scope ? JSON.stringify(r.scope) : r.triggerOn === 'on_save' ? JSON.stringify(['request']) : null,
       conditionJson: JSON.stringify(r.condition), actionsJson: JSON.stringify(r.actions), isActive: true, rowVersion: 1,
       updatedBy: SYSTEM_ACTOR.userId, updatedAt: new Date() });
   }

@@ -10,7 +10,10 @@ export class RuleDefinition {
   @Column({ ...T.str(120), name: 'rule_key' }) ruleKey: string;
   @Column({ ...T.str(250), name: 'rule_name' }) name: string;
   @Column({ ...T.str(60), name: 'entity_type' }) entityType: string;
-  @Column({ ...T.str(30), name: 'trigger_on' }) triggerOn: 'on_save' | 'on_submit';
+  /** When the rule runs: on_save (in the contexts listed in triggerScope), on_submit, on_action (workflow actions in triggerScope). */
+  @Column({ ...T.str(30), name: 'trigger_on' }) triggerOn: 'on_save' | 'on_submit' | 'on_action';
+  /** JSON list: for on_save "request" and/or module codes; for on_action workflow action codes; null otherwise. */
+  @Column({ ...T.text({ nullable: true }), name: 'trigger_scope' }) triggerScope: string | null;
   @Column({ ...T.text(), name: 'condition_json' }) conditionJson: string;
   @Column({ ...T.text(), name: 'actions_json' }) actionsJson: string;
   @Column({ ...T.bool(), name: 'is_active' }) isActive: boolean;

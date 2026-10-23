@@ -40,7 +40,8 @@ class CustomFieldDto {
   @IsString() dataType: string; @IsOptional() @IsString() requirement?: string; @IsOptional() @IsString() requirementBasis?: string;
 }
 class RuleDto {
-  @IsString() @IsNotEmpty() name: string; @IsOptional() @IsString() entityType?: string; @IsOptional() @IsIn(['on_save', 'on_submit']) triggerOn?: string;
+  @IsString() @IsNotEmpty() name: string; @IsOptional() @IsString() entityType?: string; @IsOptional() @IsIn(['on_save', 'on_submit', 'on_action']) triggerOn?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) scope?: string[];
   @IsObject() condition: object; @IsArray() actions: unknown[]; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsInt() expectedVersion?: number;
 }
 class RuleTestDto { @IsObject() rule: { ruleKey: string; name: string; condition: unknown; actions: [] }; @IsObject() record: Record<string, unknown>; }

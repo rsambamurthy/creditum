@@ -23,7 +23,7 @@ LIB = json.loads((SEED / 'creditum-core-field-library.v1.json').read_text())
 FIELDS = [f for f in LIB['fields'] if not f['module'].startswith('Workspace')]
 BY_KEY = {f['field_key']: f for f in FIELDS}
 
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 3
 FORMULA_VERSION = 1
 
 MODULES = [  # SDD module order; the letter is the field-key prefix
@@ -115,6 +115,7 @@ GRIDS = {
 PERIOD_GROUPS = ['financial_statement_header', 'income_statement', 'balance_sheet_assets', 'balance_sheet_liabilities_net_worth',
                  'contingent_liabilities_commitments', 'financial_ratios_summary']
 PERIOD_GRID = 'e.financial_periods'
+CREATE_FIELDS = ['a.client_request.client_request_details']
 # Field whose value names a row (column headings of the period grid).
 GRID_LABEL_FIELDS = {PERIOD_GRID: 'e.financial_statement_header.fiscal_year_financial_statement_date'}
 
@@ -186,6 +187,8 @@ def build_layout():
                        grids=OrderedDict((s['grid'], OrderedDict(rowLabel=s['rowLabel'], ordered=s['kind'] == 'periods',
                                                                  **({'labelField': GRID_LABEL_FIELDS[s['grid']]} if s['grid'] in GRID_LABEL_FIELDS else {})))
                                          for m in modules for s in m['sections'] if s.get('grid')),
+                       # fields shown on the New Credit Request form, besides the request header (record-level only)
+                       createFields=CREATE_FIELDS,
                        modules=modules)
 
 

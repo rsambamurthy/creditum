@@ -14,6 +14,8 @@ export interface LayoutModule { code: string; letter: string; title: string; sec
 export interface LayoutDocument {
   layout: string; version: number;
   grids: Record<string, { rowLabel: string; ordered: boolean; labelField?: string }>;
+  /** Record-level fields shown on the New Credit Request form, besides the request header. */
+  createFields?: string[];
   modules: LayoutModule[];
 }
 
@@ -89,6 +91,11 @@ export function validateTenantLayout(doc: LayoutDocument, core: LayoutDocument, 
     if (c.grid !== p.grid) bad(`"${key}" must stay ${c.grid ? `in grid "${c.grid}"` : 'at record level'}`);
     if ((c.bind ?? null) !== (p.bind ?? null) || (c.list ?? null) !== (p.list ?? null) || (c.display ?? null) !== (p.display ?? null)) bad(`The properties of "${key}" cannot be changed in the layout`);
   }
+  if (doc.createFields !== undefined) {
+    if (!Array.isArray(doc.createFields)) bad('createFields must be a list of field keys');
+    for (const k of doc.createFields) if (placed.get(k)?.grid !== null) bad(`"${k}" cannot be on the New Credit Request form: only record-level fields of this form can`);
+    if (new Set(doc.createFields).size !== doc.createFields.length) bad('A field appears twice on the New Credit Request form');
+  }
   const missing = [...corePlaced.keys()].filter(k => !placed.has(k));
   if (missing.length) bad(`The layout leaves out ${missing.length} field(s), e.g. "${missing[0]}" — hide fields through field settings instead`);
 }
@@ -109,7 +116,8 @@ export function mergeLayouts(tenant: LayoutDocument, core: LayoutDocument, custo
     if (!tm) { modules.push({ ...cm, sections: [] }); tm = modules[modules.length - 1]; }
     for (const cs of cm.sections) if (!tm.sections.some(s => s.code === cs.code)) tm.sections.push({ ...cs, fields: [], columns: cs.columns ? [] : undefined });
   }
-  const doc: LayoutDocument = { ...core, modules };
+  const createFields = (tenant.createFields ?? core.createFields ?? []).filter(k => corePlaced.get(k)?.grid === null || customKeys.has(k));
+  const doc: LayoutDocument = { ...core, createFields, modules };
   const present = new Set(modules.flatMap(m => m.sections.flatMap(s => [...s.fields, ...(s.columns ?? [])].map(f => f.key))));
   for (const cm of core.modules) for (const cs of cm.sections) {
     const target = modules.flatMap(m => m.sections).find(s => s.code === cs.code)!;
