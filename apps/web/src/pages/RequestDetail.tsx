@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, errorMessage, type CreditRequestDetail, type Layout, type MissingEntry, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
+import { api, ApiError, errorMessage, type CreditRequestDetail, type FormValue, type Layout, type MissingEntry, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
 import { useAuth } from '../auth';
 import { useReference } from '../reference';
 import { formatDateTime, humanize, initials, trimDecimal } from '../format';
@@ -12,7 +12,8 @@ import { Amount } from '../components/Money';
 import { Modal } from '../components/Modal';
 import { Timeline } from '../components/Timeline';
 import { useToast } from '../components/Toast';
-import { CLIENT_DETAILS_KEY, RequestForm } from '../components/RequestForm';
+import { formFields, RequestForm } from '../components/RequestForm';
+import { FieldInput } from '../forms/FieldInput';
 import { CreditRequestModules, type ModulesHandle } from '../forms/CreditRequestModules';
 
 /** Missing mandatory fields reported when a step was refused, grouped by module, each linking to its field. */
@@ -110,8 +111,7 @@ export function RequestDetailPage() {
   if (!req || !history) return <div className="page"><Spinner /></div>;
 
   const base = ref.baseCurrency?.code;
-  const detailsField = ref.field(CLIENT_DETAILS_KEY);
-  const details = req.fields[CLIENT_DETAILS_KEY];
+  const formExtra = formFields(layout);
   const canEdit = req.editable && hasRole('relationship_officer', 'credit_analyst');
   const missing = actionError instanceof ApiError ? actionError.missingFields : [];
 
@@ -186,12 +186,20 @@ export function RequestDetailPage() {
                   <ReadOnly label="Required authority level">{ref.levelName(req.requiredLevel)} <span className="muted small">({req.requiredLevel})</span></ReadOnly>
                 </div>
               </Group>
-              <Group title={detailsField?.group ?? 'Client request'}>
-                <div className={missing.some(m => m.field === CLIENT_DETAILS_KEY) ? 'has-error' : undefined}>
-                  <ReadOnly label={detailsField?.label ?? 'Client Request Details'} wide>{typeof details === 'string' ? details : ''}</ReadOnly>
-                  {missing.some(m => m.field === CLIENT_DETAILS_KEY) && <p className="field-error">{missing.find(m => m.field === CLIENT_DETAILS_KEY)!.message}{canEdit && <> — <button type="button" className="link-btn small" onClick={() => setEditing(true)}>edit the request</button></>}</p>}
-                </div>
-              </Group>
+              {formExtra.length > 0 && layout && (
+                <Group title="Request details">
+                  <div className="form-2col">
+                    {formExtra.map(f => {
+                      const miss = missing.find(m => m.field === f.key);
+                      return (
+                        <FieldInput key={f.key} view meta={f} values={req.fields as Record<string, FormValue>} layout={layout} disabled
+                          header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }} onChange={() => undefined} message={miss?.message} />
+                      );
+                    })}
+                  </div>
+                  {missing.some(m => formExtra.some(f => f.key === m.field)) && canEdit && <p className="small"><button type="button" className="link-btn small" onClick={() => setEditing(true)}>Edit the request</button> to fill the missing details.</p>}
+                </Group>
+              )}
             </div>
           )}
         </div>

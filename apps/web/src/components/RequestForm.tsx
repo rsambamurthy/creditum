@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ApiError, errorMessage, type CreditRequestDetail, type CreditRequestInput, type RuleMessage } from '../api';
+import { ApiError, errorMessage, type CreditRequestDetail, type CreditRequestInput, type FieldMeta, type FormValue, type Layout, type RuleMessage } from '../api';
 import { useReference } from '../reference';
 import { isNonZeroDecimal, isUnsignedDecimalText, scaleOf, trimDecimal } from '../format';
 import { Field, Group } from './Field';
-import { RichText } from './RichText';
-import { Alert, ErrorAlert } from './Feedback';
-import { RequirementBadge } from './Badge';
+import { Alert, ErrorAlert, Spinner } from './Feedback';
+import { FieldInput } from '../forms/FieldInput';
+import { isDecimalText } from '../forms/formState';
 
-/** Registry key of the narrative captured with every request (label and requirement are tenant-configurable). */
-export const CLIENT_DETAILS_KEY = 'a.client_request.client_request_details';
+type Errors = Partial<Record<'borrowerName' | 'borrowerRef' | 'requestType' | 'currencyCode' | 'requestedAmount', string>>;
 
-type Errors = Partial<Record<'borrowerName' | 'borrowerRef' | 'requestType' | 'currencyCode' | 'requestedAmount' | 'details', string>>;
+/** Editable fields of the New Credit Request form besides the header (the tenant chooses them on the Screen Layout page). */
+export const formFields = (layout: Layout | null) => (layout?.createForm ?? []).filter(f => !f.readOnly && f.valueKind !== 'none');
 
 export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload }: {
   initial?: CreditRequestDetail;
@@ -21,17 +21,19 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   onReload?: () => void;
 }) {
   const ref = useReference();
-  const [fieldsReady, setFieldsReady] = useState(!!ref.fields);
-  useEffect(() => { ref.loadFields().then(() => setFieldsReady(true)).catch(() => setFieldsReady(true)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const detailsField = ref.field(CLIENT_DETAILS_KEY);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [layoutError, setLayoutError] = useState<unknown>(null);
+  useEffect(() => { ref.loadLayout().then(setLayout).catch(setLayoutError); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const extra: FieldMeta[] = useMemo(() => formFields(layout), [layout]);
 
   const [borrowerName, setBorrowerName] = useState(initial?.borrowerName ?? '');
   const [borrowerRef, setBorrowerRef] = useState(initial?.borrowerRef ?? '');
   const [requestType, setRequestType] = useState(initial?.requestType ?? '');
   const [currencyCode, setCurrencyCode] = useState(initial?.currencyCode ?? '');
   const [amount, setAmount] = useState(initial ? trimDecimal(initial.requestedAmount) : '');
-  const initialDetails = initial?.fields?.[CLIENT_DETAILS_KEY];
-  const [details, setDetails] = useState(typeof initialDetails === 'string' ? initialDetails : '');
+  // Values of the form's extra fields, as the API stores them (text, decimal text, YYYY-MM-DD, booleans).
+  const [values, setValues] = useState<Record<string, FormValue>>(() => ({ ...((initial?.fields ?? {}) as Record<string, FormValue>) }));
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Errors>({});
   const [serverError, setServerError] = useState<unknown>(null);
   const [ruleMessages, setRuleMessages] = useState<string[]>([]);
@@ -67,25 +69,38 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     ev.preventDefault();
     setServerError(null); setRuleMessages([]);
     const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length) return;
+    setErrors(e); setFieldErrors({});
+    const badNumbers = extra.filter(f => f.valueKind === 'decimal' && typeof values[f.key] === 'string' && (values[f.key] as string).trim() !== '' && !isDecimalText((values[f.key] as string).trim()));
+    if (Object.keys(e).length || badNumbers.length) return;
     const input: Partial<CreditRequestInput> = {
       borrowerName: borrowerName.trim(), borrowerRef: borrowerRef.trim(), requestType, currencyCode, requestedAmount: amount.trim(),
     };
-    if (details.trim() || (initial && typeof initialDetails === 'string')) input.fields = { [CLIENT_DETAILS_KEY]: details };
+    // Only the form's own fields are sent; blank ones are sent only to clear a value that was there before.
+    const fields: Record<string, FormValue> = {};
+    for (const f of extra) {
+      for (const k of f.valueKind === 'composite' && f.parts?.length ? f.parts.map(p => `${f.key}:${p}`) : [f.key]) {
+        const v = values[k];
+        const blank = v === undefined || v === null || v === '';
+        const had = initial?.fields?.[k] !== undefined && initial?.fields?.[k] !== null && initial?.fields?.[k] !== '';
+        if (!blank) fields[k] = typeof v === 'string' && f.valueKind === 'decimal' ? v.trim() : v;
+        else if (had) fields[k] = null;
+      }
+    }
+    if (Object.keys(fields).length) input.fields = fields;
     setBusy(true);
     try {
       await onSubmit(input);
     } catch (err) {
       if (err instanceof ApiError && err.code === 'required_fields') {
-        const fe: Errors = {};
+        const fe: Record<string, string> = {};
         const other: string[] = [];
         for (const m of err.missingFields) {
-          if (m.field === CLIENT_DETAILS_KEY) fe.details = m.message; else other.push(`${ref.field(m.field)?.label ?? m.field}: ${m.message}`);
+          const onForm = extra.find(f => f.key === m.field);
+          if (onForm) fe[m.field] = m.message; else other.push(`${m.field}: ${m.message}`);
         }
-        setErrors(fe); setRuleMessages(other);
+        setFieldErrors(fe); setRuleMessages(other);
         setServerError(new ApiError(err.status, err.code, 'Some information is required before this request can be saved.'));
-        requestAnimationFrame(() => document.querySelector<HTMLElement>('.has-error textarea, .has-error input')?.focus());
+        requestAnimationFrame(() => document.querySelector<HTMLElement>('.has-error textarea, .has-error input, .has-error select')?.focus());
       } else if (err instanceof ApiError && ['amount_scale', 'invalid_amount', 'invalid_decimal'].includes(err.code)) {
         setErrors({ requestedAmount: err.message });
       } else {
@@ -96,8 +111,6 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     }
   };
 
-  const detailsLabel = detailsField?.label ?? 'Client Request Details';
-  const showDetails = !detailsField?.hidden || !!errors.details || !!details;
 
   return (
     <form onSubmit={submit} noValidate>
@@ -135,13 +148,16 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
             </Field>
           </div>
         </Group>
-        {showDetails && (
-          <Group title={detailsField?.group ?? 'Client request'}>
-            <Field label={detailsLabel} wide error={errors.details}
-              extra={detailsField ? <span style={{ marginInlineStart: 8, textTransform: 'none', letterSpacing: 0 }}><RequirementBadge value={detailsField.requirement} /></span> : undefined}
-              help={detailsField?.helpText ?? (fieldsReady ? 'Describe what the client is asking for, the purpose and any context for the credit team. Required above the configured amount.' : undefined)}>
-              <RichText value={details} onChange={setDetails} maxLength={20000} />
-            </Field>
+        {layoutError ? <ErrorAlert error={layoutError} /> : !layout ? <Spinner label="Loading the form…" /> : extra.length > 0 && (
+          <Group title="Request details">
+            <div className="form-2col">
+              {extra.map(f => (
+                <FieldInput key={f.key} meta={f} values={values} layout={layout} disabled={busy}
+                  header={{ borrowerName, borrowerRef }} message={fieldErrors[f.key]}
+                  onChange={(k, v) => { setValues(x => ({ ...x, [k]: v })); setFieldErrors(x => { const n = { ...x }; delete n[k]; return n; }); }} />
+              ))}
+            </div>
+            <p className="field-help" style={{ margin: '12px 0 0' }}>Everything else is entered on the module tabs after the request is saved.</p>
           </Group>
         )}
       </div>

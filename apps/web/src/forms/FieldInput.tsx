@@ -24,6 +24,10 @@ export interface FieldInputProps {
   cell?: boolean;
   /** Accessible name when shown as a cell (e.g. "Revenue, Period 2"). */
   cellLabel?: string;
+  /** A message from the server about this field (e.g. a rule's requirement). */
+  message?: string;
+  /** Show the value only (read-only view of an ordinary field, without the "Calculated" badge). */
+  view?: boolean;
 }
 
 const PART_LABEL: Record<string, string> = { from: 'From', to: 'To', rate: 'Rate %' };
@@ -77,10 +81,10 @@ export function FieldInput(p: FieldInputProps) {
   const helpId = `${autoId}-help`;
   const v = values[meta.key];
   const str = typeof v === 'string' ? v : '';
-  const mandatory = meta.requirement === 'Mandatory' && !meta.readOnly && !meta.bind;
+  const mandatory = meta.requirement === 'Mandatory' && !meta.readOnly && !meta.bind && !p.view;
   const decimalError = isDecimalField(meta) && str.trim() !== '' && !isDecimalText(str.trim());
   const describedBy = !cell && (meta.helpText || meta.calc) ? helpId : undefined;
-  const common = { id, disabled, 'aria-describedby': describedBy, 'aria-invalid': decimalError || p.missing ? true : undefined,
+  const common = { id, disabled, 'aria-describedby': describedBy, 'aria-invalid': decimalError || p.missing || p.message ? true : undefined,
     'aria-required': mandatory || undefined, 'aria-label': cell ? p.cellLabel ?? meta.label : undefined };
 
   // ---- display-only
@@ -95,7 +99,9 @@ export function FieldInput(p: FieldInputProps) {
   }
 
   let control: ReactNode;
-  if (meta.bind) {
+  if (p.view && !meta.calc) {
+    control = <div className="ro-value" id={id}>{displayValue(meta, v, layout)}</div>;
+  } else if (meta.bind) {
     control = <div className="ro-value" id={id}>{header[meta.bind] || <span className="muted">—</span>}<span className="calc-badge">From request</span></div>;
   } else if (meta.calc || meta.readOnly) {
     control = <Calculated meta={meta} value={v} cell={cell} layout={layout} />;
@@ -159,14 +165,14 @@ export function FieldInput(p: FieldInputProps) {
   }
 
   const listHint = meta.list && !layout.lists[meta.list] && !meta.readOnly ? 'No value list configured' : null;
-  const error = decimalError ? 'Enter a number using digits and an optional decimal point' : null;
+  const error = decimalError ? 'Enter a number using digits and an optional decimal point' : p.message ?? null;
   const missingNote = !error && p.missing ? 'Required before submission' : null;
 
   if (cell) {
     return <div className={`cell-input${error ? ' has-error' : ''}${missingNote ? ' is-missing' : ''}`} id={p.domId} title={error ?? missingNote ?? listHint ?? undefined}>{control}</div>;
   }
 
-  const labelEl = meta.valueKind === 'bool' || meta.valueKind === 'composite' || meta.calc || meta.readOnly
+  const labelEl = meta.valueKind === 'bool' || meta.valueKind === 'composite' || meta.calc || meta.readOnly || p.view
     ? <span className="field-label" id={`${autoId}-lbl`}>{meta.label}{mandatory && <span className="req" aria-hidden="true"> *</span>}</span>
     : <label htmlFor={id} id={`${autoId}-lbl`}>{meta.label}{mandatory && <span className="req" aria-hidden="true"> *</span>}{mandatory && <span className="sr-only"> (mandatory)</span>}</label>;
 

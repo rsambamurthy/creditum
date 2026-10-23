@@ -123,7 +123,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
       setSaveError(e);
       if (e instanceof ApiError && e.status === 422) {
         const d = e.details as { key?: string; field?: string; keys?: string[]; fields?: string[] } | undefined;
-        const keys = [d?.key, d?.field, ...(d?.keys ?? []), ...(d?.fields ?? [])].filter((k): k is string => !!k);
+        const keys = [d?.key, d?.field, ...(d?.keys ?? []), ...(d?.fields ?? []), ...e.missingFields.map(m => m.field)].filter((k): k is string => !!k);
         setServerKeys(new Set(keys));
       }
     } finally { setSaving(false); }
@@ -183,7 +183,22 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
             <Alert tone="warning" action={<button type="button" className="btn btn-secondary btn-sm" onClick={load}>Reload</button>}>
               This request was changed by someone else — reload to see the latest version. Your unsaved changes will be discarded.
             </Alert>
-          ) : saveError ? <Alert tone="error">{errorMessage(saveError)}</Alert> : null}
+          ) : saveError ? (
+            <Alert tone="error">
+              {errorMessage(saveError)}
+              {saveError instanceof ApiError && saveError.missingFields.length > 0 && idx && (
+                <ul>{saveError.missingFields.map(m => {
+                  const pl = idx.fields.get(m.field);
+                  return (
+                    <li key={m.field}>
+                      <strong>{pl?.meta.label ?? m.field}</strong>{pl && <> — <button type="button" className="link-btn small"
+                        onClick={() => focusField({ key: m.field, label: pl.meta.label, module: pl.module, section: pl.section, rowKey: null })}>go to the field</button></>}
+                    </li>
+                  );
+                })}</ul>
+              )}
+            </Alert>
+          ) : null}
           {moduleMissing.length > 0 && editable && (
             <details className="missing-list">
               <summary><span className="badge badge-warn">{moduleMissing.length}</span> mandatory field{moduleMissing.length === 1 ? '' : 's'} still empty in {activeModule.title}</summary>

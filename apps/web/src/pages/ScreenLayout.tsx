@@ -97,6 +97,17 @@ export function ScreenLayoutPage() {
     if (e.key === 'ArrowLeft') { e.preventDefault(); setActive((i - 1 + n) % n); }
   };
 
+  // ---- New Credit Request form: record-level fields shown on the form besides the header
+  const createFields = doc.createFields ?? [];
+  const placement = new Map<string, { section: string; module: string }>();
+  for (const m of doc.modules) for (const s of m.sections) for (const f of s.fields) placement.set(f.key, { section: s.title, module: m.title });
+  const formEligible = (f: LayoutDocField) => {
+    const meta = view.fields[f.key];
+    return !!meta && !meta.calculated && !f.bind && !f.display && !['Section Heading', 'Chart (derived)', 'Table (derived)'].includes(meta.dataType);
+  };
+  const setCreate = (keys: string[]) => edit(d => { d.createFields = keys; });
+  const onForm = (key: string) => createFields.includes(key);
+
   const fieldRows = ({ section, list, mi, si, record }: { section: LayoutDocSection; list: LayoutDocField[]; mi: number; si: number; record: boolean }) => (
     <ul className="layout-fields">
       {list.map((f, fi) => {
@@ -112,6 +123,12 @@ export function ScreenLayoutPage() {
               {meta?.calculated && <Badge tone="auto">Calculated</Badge>}
               {meta?.scope === 'tenant' && <Badge tone="info">Custom</Badge>}
             </span>
+            {record && formEligible(f) && (canEdit
+              ? <button type="button" className={`btn btn-sm ${onForm(f.key) ? 'btn-on-form' : 'btn-secondary'}`} aria-pressed={onForm(f.key)}
+                  title={onForm(f.key) ? 'Shown on the New Credit Request form — click to remove it from the form' : 'Show this field on the New Credit Request form'}
+                  onClick={() => setCreate(onForm(f.key) ? createFields.filter(k => k !== f.key) : [...createFields, f.key])}>
+                  {onForm(f.key) ? '✓ On the request form' : 'Add to the request form'}</button>
+              : onForm(f.key) && <Badge tone="info">On the request form</Badge>)}
             {canEdit && (
               <span className="row-tools">
                 {record && (
@@ -153,6 +170,43 @@ export function ScreenLayoutPage() {
       </div>
       <ChangeStatus result={result} what="The new layout" />
       {error instanceof ApiError && error.status === 422 ? <Alert tone="error">{errorMessage(error)}</Alert> : <ErrorAlert error={error} onReload={load} />}
+
+      <section className="card create-form-panel" aria-labelledby="cf-head" style={{ marginBottom: 18 }}>
+        <div className="card-head"><h3 id="cf-head">New Credit Request form</h3><span className="muted small">{createFields.length} field{createFields.length === 1 ? '' : 's'} besides the header</span></div>
+        <div className="card-body">
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Always on the form: Borrower name, Borrower reference, Request type, Currency and Requested amount. Add other fields with
+            “Add to the request form” on a field below — everything else is entered on the module tabs after the request is saved.
+          </p>
+          {createFields.length === 0 ? <p className="muted small">Only the header fields are on the form.</p> : (
+            <ol className="layout-fields create-list">
+              {createFields.map((k, i) => {
+                const meta = view.fields[k]; const pl = placement.get(k);
+                return (
+                  <li key={k}>
+                    <span className="lf-num muted">{i + 1}</span>
+                    <span className="lf-main">
+                      <span className="lf-label">{meta?.label ?? k}</span>
+                      <span className="muted small">{pl ? `${pl.section} · ${pl.module}` : k} · {meta?.dataType ?? ''}{meta?.requirement === 'Mandatory' ? ' · Mandatory' : ''}</span>
+                    </span>
+                    {meta?.hidden && <Badge tone="neutral">Hidden</Badge>}
+                    {meta?.scope === 'tenant' && <Badge tone="info">Custom</Badge>}
+                    {canEdit && (
+                      <span className="row-tools">
+                        <button type="button" className="icon-btn" disabled={i === 0} aria-label={`Move ${meta?.label ?? k} up on the form`}
+                          onClick={() => { const n = [...createFields]; swap(n, i, -1); setCreate(n); }}>↑</button>
+                        <button type="button" className="icon-btn" disabled={i === createFields.length - 1} aria-label={`Move ${meta?.label ?? k} down on the form`}
+                          onClick={() => { const n = [...createFields]; swap(n, i, 1); setCreate(n); }}>↓</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCreate(createFields.filter(x => x !== k))}>Remove from form</button>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      </section>
 
       <section className="card">
         <div className="tabs" role="tablist" aria-label="Modules">

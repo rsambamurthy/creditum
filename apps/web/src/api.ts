@@ -108,11 +108,14 @@ export interface FieldOverrideInput { labelOverride?: string; requirementOverrid
 export interface CustomFieldInput { label: string; module: string; group: string; dataType: string; requirement?: string; requirementBasis?: string }
 
 export interface RuleRow {
-  id: string; ownerScope: string; ruleKey: string; name: string; entityType: string; triggerOn: 'on_save' | 'on_submit';
+  id: string; ownerScope: string; ruleKey: string; name: string; entityType: string; triggerOn: RuleTrigger;
+  /** Where the rule runs: ["request"] and/or module codes (on_save), workflow action codes (on_action). */
+  contexts?: string[] | null;
   conditionJson: string; actionsJson: string; isActive: boolean; rowVersion: number; updatedBy: string; updatedAt: string; scope: 'core' | 'tenant';
 }
+export type RuleTrigger = 'on_save' | 'on_submit' | 'on_action';
 export interface RuleInput {
-  name: string; entityType?: string; triggerOn?: 'on_save' | 'on_submit'; condition: object; actions: unknown[]; isActive?: boolean; expectedVersion?: number;
+  name: string; entityType?: string; triggerOn?: RuleTrigger; scope?: string[]; condition: object; actions: unknown[]; isActive?: boolean; expectedVersion?: number;
 }
 
 export interface WfState { code: string; label: string; final?: boolean; editable?: boolean }
@@ -149,6 +152,8 @@ export interface Layout {
   grids: Record<string, GridMeta>; lists: Record<string, ListEntry[]>; modules: ModuleMeta[];
   /** Tenant display rounding of calculated values (number of decimal places — display only, never stored). */
   display?: DisplayPlaces;
+  /** Record-level fields shown on the New Credit Request form besides the header (tenant-configurable). */
+  createForm?: FieldMeta[];
 }
 export interface GridMeta { rowLabel: string; ordered: boolean; /** Field whose value names a row (e.g. the period's statement date). */ labelField?: string }
 export interface DisplayPlaces {
@@ -186,14 +191,20 @@ export interface FormulaInput { status?: 'active' | 'pending'; expression?: Form
 export interface FormulaParse { expression: FormulaExpr; text: string }
 export type FormulaPreview = { value: string | null } | { rows: { rowKey: string; label: string; value: string | null }[] };
 // ---- rule builder catalog
-export interface CatalogField { key: string; label: string; dataType: string; valueKind: 'text' | 'decimal' | 'date' | 'bool'; group: string; section: string; hidden: boolean; list?: string }
+export interface CatalogField {
+  key: string; label: string; dataType: string; valueKind: 'text' | 'decimal' | 'date' | 'bool'; group: string; section: string; hidden: boolean; list?: string;
+  /** Module code, or "request" for the request header. */ module?: string; onCreateForm?: boolean;
+}
 export interface CatalogParameter { key: string; valueType: string; value: string; description: string | null }
-export interface RuleCatalog { fields: CatalogField[]; parameters: CatalogParameter[]; lists: Record<string, ListEntry[]>; currencies: { code: string; name: string }[] }
+export interface RuleCatalog {
+  fields: CatalogField[]; parameters: CatalogParameter[]; lists: Record<string, ListEntry[]>; currencies: { code: string; name: string }[];
+  contexts?: { modules: { code: string; title: string }[]; createFields: string[]; actions: { code: string; label: string }[] };
+}
 /** Layout document as stored. Unknown properties are preserved untouched when the document is sent back. */
 export interface LayoutDocField { key: string; [prop: string]: unknown }
 export interface LayoutDocSection { code: string; title: string; kind: 'record' | 'grid' | 'periods'; grid?: string; rowLabel?: string; fields: LayoutDocField[]; columns?: LayoutDocField[]; [prop: string]: unknown }
 export interface LayoutDocModule { code: string; letter: string; title: string; sections: LayoutDocSection[]; [prop: string]: unknown }
-export interface LayoutDocument { modules: LayoutDocModule[]; [prop: string]: unknown }
+export interface LayoutDocument { modules: LayoutDocModule[]; createFields?: string[]; [prop: string]: unknown }
 export interface LayoutAdminField { label: string; dataType: string; requirement: string; hidden: boolean; scope: 'core' | 'tenant'; calculated: boolean }
 export interface LayoutAdmin { scope: 'core' | 'tenant'; coreVersion: number; updatedAt: string; document: LayoutDocument; fields: Record<string, LayoutAdminField> }
 

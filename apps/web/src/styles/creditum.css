@@ -892,3 +892,19 @@ details.advanced > summary { cursor: pointer; font-size: 13px; color: #64748b; f
 .preview-value { margin: 10px 0 0; font-size: 15px }
 .formula-text { color: #0f172a; margin-bottom: 2px; overflow-wrap: anywhere }
 .help-list { margin: 8px 0 0; padding-inline-start: 18px; display: grid; gap: 4px; color: #334155 }
+.combo-opt.unavailable { cursor: not-allowed }
+.combo-opt.unavailable .combo-label { color: #94a3b8 }
+.combo-opt.unavailable .combo-sub { color: #b45309 }
+.combo-opt.unavailable.active { background: #f8fafc }
+.btn-on-form { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd }
+.btn-on-form:hover:not(:disabled) { background: #dbeafe }
+.create-list li { gap: 12px }
+.lf-num { width: 18px; text-align: end; font-variant-numeric: tabular-nums }
+.context-chooser { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 18px 0 0; display: grid; gap: 8px; min-width: 0 }
+.context-chooser > legend { padding: 0 4px }
+.ctx-option { border-radius: 6px; padding: 6px 8px }
+.ctx-option.selected { background: #f8fafc }
+.ctx-option .radio { font-weight: 600 !important; color: #0f172a }
+.ctx-sub { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 2px 26px }
+[dir=rtl] .ctx-sub { margin: 8px 26px 2px 0 }
+.ctx-sub .field-help { flex-basis: 100%; margin: 2px 0 0 }

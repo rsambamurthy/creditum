@@ -197,14 +197,71 @@ function sumNode(n: RuleNode, names: Names, nested: boolean): string {
   return needsValue(n.op) ? `${label} ${opLabel(kindOf(f), n.op)} ${valueText(n, names)}` : `${label} ${opLabel(kindOf(f), n.op)}`;
 }
 
-export function summarise(root: GroupNode, actions: ActionNode[], names: Names): string {
+export function summarise(root: GroupNode, actions: ActionNode[], names: Names, context?: string): string {
   const when = sumNode(root, names, false);
   const then = actions.map(a => {
     const fl = a.field ? names.field(a.field)?.label ?? a.field : '…';
     const msg = a.message?.trim() ? `: “${a.message.trim()}”` : '';
     return a.type === 'require' ? `require ${fl}${msg}` : a.type === 'hide' ? `hide ${fl}` : a.type === 'block' ? `block saving${msg}` : `warn${msg}`;
   }).join('; ');
-  return `When ${when} → ${then || '…'}`;
+  return context ? `${context}: if ${when} → ${then || '…'}` : `When ${when} → ${then || '…'}`;
+}
+
+// ---------------------------------------------------------------- rule context (where a rule runs)
+export type Trigger = 'on_save' | 'on_submit' | 'on_action';
+/** Where a rule runs: the New Credit Request form and/or module tabs being saved, submission, or workflow actions. */
+export interface RuleContext { trigger: Trigger; form: boolean; modules: string[]; actions: string[] }
+
+export function contextFromRule(trigger: Trigger, contexts: string[] | null | undefined): RuleContext {
+  const list = contexts ?? [];
+  if (trigger === 'on_save') {
+    const form = list.length === 0 || list.includes('request');
+    return { trigger, form, modules: list.filter(c => c !== 'request'), actions: [] };
+  }
+  return { trigger, form: false, modules: [], actions: trigger === 'on_action' ? list : [] };
+}
+
+export function contextScope(c: RuleContext): string[] | undefined {
+  if (c.trigger === 'on_save') return [...(c.form ? ['request'] : []), ...c.modules];
+  if (c.trigger === 'on_action') return c.actions;
+  return undefined;
+}
+
+export function contextProblem(c: RuleContext): string | null {
+  if (c.trigger === 'on_save' && !c.form && c.modules.length === 0) return 'Choose the form or at least one module the rule checks when saved';
+  if (c.trigger === 'on_action' && c.actions.length === 0) return 'Choose at least one workflow action';
+  return null;
+}
+
+export interface ContextNames { module: (code: string) => string; action: (code: string) => string }
+
+function orList(xs: string[]): string {
+  return xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`;
+}
+
+/** "When Borrower Profile is saved", "When the request is submitted", "When Approve is taken". */
+export function contextPhrase(c: RuleContext, n: ContextNames): string {
+  if (c.trigger === 'on_submit') return 'When the request is submitted';
+  if (c.trigger === 'on_action') return `When ${orList(c.actions.map(n.action)) || '…'} is taken`;
+  const parts = [...(c.form ? ['the New Credit Request form'] : []), ...c.modules.map(n.module)];
+  return `When ${orList(parts) || '…'} is saved`;
+}
+
+/**
+ * Why a field cannot be used here, or null when it can. Conditions of a form-only rule may read the header and the
+ * form's fields; Require / Hide actions of a save rule must name a field on the screen being saved.
+ */
+export function fieldUnavailable(f: CatalogField | undefined, c: RuleContext, purpose: 'condition' | 'action', n: ContextNames): string | null {
+  if (!f || c.trigger !== 'on_save') return null;
+  const onForm = f.module === 'request' || !!f.onCreateForm;
+  if (purpose === 'condition') {
+    if (c.form && c.modules.length === 0 && !onForm) return 'Not on the New Credit Request form';
+    return null;
+  }
+  if (c.form && f.onCreateForm) return null;
+  if (f.module && c.modules.includes(f.module)) return null;
+  if (c.modules.length === 0) return 'Not on the New Credit Request form';
+  return `Not on the ${orList(c.modules.map(n.module))} tab${c.form ? ' or the New Credit Request form' : ''}`;
 }
 
 /** Field keys a condition reads (for the test panel). */
