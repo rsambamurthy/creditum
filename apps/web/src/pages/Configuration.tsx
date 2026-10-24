@@ -12,6 +12,10 @@ import { DataTable, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { useToast } from '../components/Toast';
+import { marketName } from '../forms/AttributesPanel';
+
+/** The parameter naming the bank's market profile (field formats and lengths); edited as a choice of installed profiles. */
+const MARKET_PARAM = 'market.profile';
 
 type Tab = 'parameters' | 'currencies' | 'lists' | 'authority' | 'pending';
 const TABS: { key: Tab; label: string }[] = [
@@ -22,6 +26,7 @@ const TABS: { key: Tab; label: string }[] = [
 function ParamEditor({ p, onDone }: { p: Parameter; onDone: (saved: boolean) => void }) {
   const toast = useToast();
   const [value, setValue] = useState(p.paramValue);
+  const markets = useApi(() => (p.paramKey === MARKET_PARAM ? api.fieldMarkets() : Promise.resolve([] as string[])), [p.paramKey]);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -35,7 +40,12 @@ function ParamEditor({ p, onDone }: { p: Parameter; onDone: (saved: boolean) => 
     <div className="stack" style={{ gap: 6 }} onClick={e => e.stopPropagation()}>
       <div className="inline-edit">
         <label htmlFor={`pv-${p.id}`} className="sr-only">New value for {p.paramKey}</label>
-        {p.valueType === 'boolean' ? (
+        {p.paramKey === MARKET_PARAM ? (
+          <select id={`pv-${p.id}`} value={value} onChange={e => setValue(e.target.value)}>
+            {(markets.data ?? [value]).map(m => <option key={m} value={m}>{marketName(m)}</option>)}
+            {markets.data && !markets.data.includes(value) && <option value={value}>{value}</option>}
+          </select>
+        ) : p.valueType === 'boolean' ? (
           <select id={`pv-${p.id}`} value={value} onChange={e => setValue(e.target.value)}><option value="true">true</option><option value="false">false</option></select>
         ) : (
           <input id={`pv-${p.id}`} value={value} onChange={e => setValue(e.target.value)} inputMode={p.valueType === 'decimal' || p.valueType === 'integer' ? 'decimal' : undefined}
@@ -56,7 +66,7 @@ function ParametersTab({ canEdit }: { canEdit: boolean }) {
     { key: 'key', header: 'Key', cell: p => <span className="icode">{p.paramKey}</span> },
     { key: 'type', header: 'Type', cell: p => <Badge tone="neutral">{p.valueType}</Badge> },
     { key: 'value', header: 'Value', cell: p => editing === p.paramKey ? <ParamEditor p={p} onDone={saved => { setEditing(null); if (saved) void state.reload(); }} />
-      : <span className="mono-num strong">{p.valueType === 'decimal' ? formatDecimal(p.paramValue) : p.paramValue}</span> },
+      : <span className="mono-num strong">{p.paramKey === MARKET_PARAM ? marketName(p.paramValue) : p.valueType === 'decimal' ? formatDecimal(p.paramValue) : p.paramValue}</span> },
     { key: 'desc', header: 'Description', hideSm: true, cell: p => <span className="small">{p.description ?? '—'}</span> },
     { key: 'ver', header: 'Version', num: true, cell: p => p.rowVersion },
     { key: 'act', header: <span className="sr-only">Actions</span>, className: 'actions', cell: p => canEdit && editing !== p.paramKey

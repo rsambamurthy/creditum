@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from 'react';
 import type { FieldMeta, FormValue, Layout, SectionMeta } from '../api';
 import { Modal } from '../components/Modal';
-import { FieldInput, formatFieldDecimal, type Header } from './FieldInput';
+import { FieldInput, formatFieldDecimal, widthOf, type Header } from './FieldInput';
 import { newRowId, type LocalRow } from './formState';
 
 export interface FormCtx {
@@ -18,6 +18,8 @@ export interface FormCtx {
   disabled: boolean;
   /** Missing mandatory values: "key" (record) or "key@rowKey" (grid cell). */
   missing: Set<string>;
+  /** Server messages for one field: "key" or "key@rowKey". */
+  messages?: Map<string, string>;
 }
 
 /** Columns shown in a grid table before switching to a row-card editor. */
@@ -33,7 +35,7 @@ function RecordFields({ fields, ctx }: { fields: FieldMeta[]; ctx: FormCtx }) {
     <div className="form-2col">
       {fields.map(f => (
         <FieldInput key={f.key} meta={f} values={ctx.record} onChange={ctx.setRecord} layout={ctx.layout} header={ctx.header}
-          disabled={ctx.disabled} domId={fieldDomId(f.key)} missing={ctx.missing.has(f.key)} />
+          disabled={ctx.disabled} domId={fieldDomId(f.key)} missing={ctx.missing.has(f.key)} message={ctx.messages?.get(f.key)} />
       ))}
     </div>
   );
@@ -58,7 +60,8 @@ function RowEditor({ section, row, index, ctx, onApply, onClose }: {
       <div className="form-2col">
         {(section.columns ?? []).map(c => (
           <FieldInput key={c.key} meta={c} values={values} onChange={(k, v) => setValues(x => ({ ...x, [k]: v }))} layout={ctx.layout}
-            header={ctx.header} disabled={ctx.disabled} missing={!!row.rowKey && ctx.missing.has(`${c.key}@${row.rowKey}`)} />
+            header={ctx.header} disabled={ctx.disabled} missing={!!row.rowKey && ctx.missing.has(`${c.key}@${row.rowKey}`)}
+            message={row.rowKey ? ctx.messages?.get(`${c.key}@${row.rowKey}`) : undefined} />
         ))}
       </div>
       {!ctx.disabled && <p className="muted small" style={{ margin: '14px 0 0' }}>Apply keeps the change on screen; use Save to store it.</p>}
@@ -82,7 +85,7 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
     setRows(next);
     if (!inline) setEditing(next.length - 1);
   };
-  const rowMissing = (r: LocalRow) => !!r.rowKey && cols.some(c => ctx.missing.has(`${c.key}@${r.rowKey}`));
+  const rowMissing = (r: LocalRow) => !!r.rowKey && cols.some(c => ctx.missing.has(`${c.key}@${r.rowKey}`) || ctx.messages?.has(`${c.key}@${r.rowKey}`));
 
   return (
     <>
@@ -94,7 +97,7 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
             <thead>
               <tr>
                 <th scope="col" className="num">#</th>
-                {shown.map(c => <th scope="col" key={c.key} className={c.valueKind === 'decimal' ? 'num' : undefined}>{c.label}{c.requirement === 'Mandatory' && <span className="req" aria-hidden="true"> *</span>}</th>)}
+                {shown.map(c => <th scope="col" key={c.key} className={`${c.valueKind === 'decimal' ? 'num ' : ''}cw-${widthOf(c)}`}>{c.label}{c.requirement === 'Mandatory' && <span className="req" aria-hidden="true"> *</span>}</th>)}
                 {!inline && <th scope="col" className="muted">{cols.length - shown.length} more</th>}
                 <th scope="col"><span className="sr-only">Row actions</span></th>
               </tr>
@@ -105,11 +108,11 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
                 <tr key={r.id} id={r.rowKey ? `row-${fieldDomId(section.code, r.rowKey)}` : undefined} className={rowMissing(r) ? 'has-issue' : undefined}>
                   <td className="num muted">{i + 1}</td>
                   {shown.map(c => (
-                    <td key={c.key} className={c.valueKind === 'decimal' ? 'num' : undefined}>
+                    <td key={c.key} className={`${c.valueKind === 'decimal' ? 'num ' : ''}cw-${widthOf(c)}`}>
                       {inline ? (
                         <FieldInput cell meta={c} values={r.values} onChange={(k, v) => setCell(i, k, v)} layout={ctx.layout} header={ctx.header}
                           disabled={ctx.disabled} cellLabel={`${c.label}, ${label} ${i + 1}`} domId={r.rowKey ? fieldDomId(c.key, r.rowKey) : undefined}
-                          missing={!!r.rowKey && ctx.missing.has(`${c.key}@${r.rowKey}`)} />
+                          missing={!!r.rowKey && ctx.missing.has(`${c.key}@${r.rowKey}`)} message={r.rowKey ? ctx.messages?.get(`${c.key}@${r.rowKey}`) : undefined} />
                       ) : <CellText meta={c} v={r.values[c.key]} ctx={ctx} />}
                     </td>
                   ))}
@@ -211,7 +214,7 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
                     <td key={p.id} className="num">
                       <FieldInput cell meta={c} values={p.values} onChange={(k, v) => setCell(i, k, v)} layout={ctx.layout} header={ctx.header}
                         disabled={ctx.disabled} cellLabel={`${c.label}, ${label} ${i + 1}`} domId={p.rowKey ? fieldDomId(c.key, p.rowKey) : undefined}
-                        missing={!!p.rowKey && ctx.missing.has(`${c.key}@${p.rowKey}`)} />
+                        missing={!!p.rowKey && ctx.missing.has(`${c.key}@${p.rowKey}`)} message={p.rowKey ? ctx.messages?.get(`${c.key}@${p.rowKey}`) : undefined} />
                     </td>
                   ))}
                   {periods.length === 0 && <td />}

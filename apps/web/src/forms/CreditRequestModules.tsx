@@ -41,12 +41,14 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   const [loadError, setLoadError] = useState<unknown>(null);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [serverKeys, setServerKeys] = useState<Set<string>>(new Set());
+  /** Messages the server attached to one field (422 invalid_value): "key" or "key@rowKey" → message. */
+  const [serverMessages, setServerMessages] = useState<Map<string, string>>(new Map());
   const [saving, setSaving] = useState(false);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const apply = useCallback((d: RequestData) => {
     const s = fromData(d);
-    setData(d); setOrig(s); setCur(s); setServerKeys(new Set());
+    setData(d); setOrig(s); setCur(s); setServerKeys(new Set()); setServerMessages(new Map());
   }, []);
 
   const load = useCallback(async () => {
@@ -112,7 +114,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
 
   const save = async () => {
     if (!data || !cur || !idx || !dirty || invalid.size) return;
-    setSaving(true); setSaveError(null);
+    setSaving(true); setSaveError(null); setServerMessages(new Map());
     try {
       const res = await api.saveRequestData(requestId, payload(data.rowVersion, cur, ch, idx));
       apply(res);
@@ -122,9 +124,15 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
     } catch (e) {
       setSaveError(e);
       if (e instanceof ApiError && e.status === 422) {
-        const d = e.details as { key?: string; field?: string; keys?: string[]; fields?: string[] } | undefined;
-        const keys = [d?.key, d?.field, ...(d?.keys ?? []), ...(d?.fields ?? []), ...e.missingFields.map(m => m.field)].filter((k): k is string => !!k);
+        const d = e.details as { key?: string; field?: string; rowKey?: string | null; keys?: string[]; fields?: string[] } | undefined;
+        const named = d?.field ? (d.rowKey ? `${d.field}@${d.rowKey}` : d.field) : null;
+        if (e.code === 'invalid_value' && named) setServerMessages(new Map([[named, e.message.replace(/^[^:]+:\s*/, '')]]));
+        const keys = [d?.key, e.code === 'invalid_value' ? null : named, ...(d?.keys ?? []), ...(d?.fields ?? []), ...e.missingFields.map(m => m.field)]
+          .filter((k): k is string => !!k);
         setServerKeys(new Set(keys));
+        // Take the user to the field the server named (e.g. 422 invalid_value with details.field).
+        const pl = d?.field ? idx.fields.get(d.field) : undefined;
+        if (pl) focusField({ key: d!.field!, label: pl.meta.label, module: pl.module, section: pl.section, rowKey: d?.rowKey ?? null });
       }
     } finally { setSaving(false); }
   };
@@ -133,7 +141,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   if (loadError && !data) return <ErrorAlert error={loadError} onReload={load} />;
   if (!layout || !data || !cur || !idx) return <Spinner label="Loading request modules…" />;
 
-  const ctx: FormCtx = { layout, record: cur.record, grids: cur.grids, setRecord, setGrid, header, disabled: !editable || saving, missing };
+  const ctx: FormCtx = { layout, record: cur.record, grids: cur.grids, setRecord, setGrid, header, disabled: !editable || saving, missing, messages: serverMessages };
   const activeModule = modules.find(m => m.code === active);
   const totals = Object.values(data.completeness.modules).reduce((a, m) => ({ f: a.f + m.filled, n: a.n + m.mandatory }), { f: 0, n: 0 });
   const moduleMissing = data.completeness.missing.filter(m => m.module === active);
@@ -217,7 +225,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
           <span className="grow">
             <strong>Unsaved changes</strong>
             <span className="muted small"> in {modules.filter(m => dirtyTabs.has(m.code)).map(m => m.title).join(', ') || '…'}</span>
-            {invalid.size > 0 && <span className="err-text small"> · fix {invalid.size} invalid number{invalid.size === 1 ? '' : 's'} before saving</span>}
+            {invalid.size > 0 && <span className="err-text small"> · fix {invalid.size} value{invalid.size === 1 ? '' : 's'} marked in red before saving</span>}
           </span>
           <button type="button" className="btn btn-secondary" onClick={discard} disabled={saving}>Discard</button>
           <button type="button" className="btn btn-primary" onClick={save} disabled={saving || invalid.size > 0}>{saving ? 'Saving…' : 'Save'}</button>

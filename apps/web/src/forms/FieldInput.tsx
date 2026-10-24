@@ -2,11 +2,12 @@
  * Generic editor for one layout field, chosen from its metadata (valueKind / dataType / list / calc / bind / display).
  * Nothing here knows a specific field key. Values are kept exactly as typed — decimals stay text.
  */
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type { FieldMeta, FormValue, Layout } from '../api';
 import { formatDecimal, roundDecimalText } from '../format';
 import { RichText } from '../components/RichText';
 import { isDecimalText } from './formState';
+import { attrKind, checkValue, ruleFor, transformText, type Width } from './attributes';
 
 export interface Header { borrowerName: string; borrowerRef: string }
 
@@ -35,6 +36,9 @@ const PART_LABEL: Record<string, string> = { from: 'From', to: 'To', rate: 'Rate
 export const isDecimalField = (m: FieldMeta) => m.valueKind === 'decimal';
 const isPercent = (m: FieldMeta) => m.dataType === 'Percentage';
 export const isWide = (m: FieldMeta) => m.dataType === 'Rich Text' || m.dataType === 'Address (structured)' || m.valueKind === 'composite' || !!m.display;
+/** Grid width of a field: its configured attribute, else wide types full and others small. */
+export const widthOf = (m: FieldMeta): Width => m.attrs?.width ?? (isWide(m) ? 'full' : 's');
+const rawDecimals = (s: string) => { const i = s.indexOf('.'); return i < 0 ? 0 : s.length - i - 1; };
 
 /**
  * Display text of a decimal value. Calculated Percentage and Ratio values are rounded for display with the tenant's
@@ -79,12 +83,27 @@ export function FieldInput(p: FieldInputProps) {
   const autoId = useId();
   const id = `${autoId}-in`;
   const helpId = `${autoId}-help`;
+  const [focused, setFocused] = useState(false);
   const v = values[meta.key];
   const str = typeof v === 'string' ? v : '';
+  // Attributes: the format in force may depend on another field of the same row / record (e.g. ID number by ID type).
+  const attrs = meta.attrs;
+  const kind = attrKind(meta.valueKind, meta.dataType);
+  const depVal = attrs?.variants ? values[attrs.variants.dependsOn] : undefined;
+  const rule = ruleFor(attrs, depVal);
+  const attrError = !focused && !meta.readOnly && !meta.calc && !p.view ? checkValue(str, attrs, kind, depVal) : null;
+  const maxLen = kind === 'text' && rule.maxLength != null ? rule.maxLength : undefined;
+  const setText = (raw: string) => onChange(meta.key, transformText(raw, rule));
+  const setNumber = (raw: string) => {
+    const x = raw.replace(/\s/g, '');
+    if (attrs?.maxDecimals != null && rawDecimals(x) > attrs.maxDecimals) return; // block extra decimal places as typed
+    onChange(meta.key, x);
+  };
+  const focusProps = { onFocus: () => setFocused(true), onBlur: () => setFocused(false) };
   const mandatory = meta.requirement === 'Mandatory' && !meta.readOnly && !meta.bind && !p.view;
   const decimalError = isDecimalField(meta) && str.trim() !== '' && !isDecimalText(str.trim());
-  const describedBy = !cell && (meta.helpText || meta.calc) ? helpId : undefined;
-  const common = { id, disabled, 'aria-describedby': describedBy, 'aria-invalid': decimalError || p.missing || p.message ? true : undefined,
+  const describedBy = !cell && (meta.helpText || meta.calc || rule.patternHint) ? helpId : undefined;
+  const common = { id, disabled, 'aria-describedby': describedBy, 'aria-invalid': decimalError || attrError || p.missing || p.message ? true : undefined,
     'aria-required': mandatory || undefined, 'aria-label': cell ? p.cellLabel ?? meta.label : undefined };
 
   // ---- display-only
@@ -154,22 +173,27 @@ export function FieldInput(p: FieldInputProps) {
       </div>
     );
   } else if (isDecimalField(meta)) {
-    const input = <input value={str} inputMode="decimal" autoComplete="off" onChange={e => onChange(meta.key, e.target.value.replace(/\s/g, ''))} {...common} />;
+    const input = <input value={str} inputMode="decimal" autoComplete="off" placeholder={attrs?.placeholder ?? undefined} onChange={e => setNumber(e.target.value)} {...focusProps} {...common} />;
     control = isPercent(meta) ? <div className="suffix-input">{input}<span aria-hidden="true">%</span></div> : input;
   } else if (meta.dataType === 'Rich Text' && !cell) {
-    control = <RichText value={str} onChange={x => onChange(meta.key, x)} id={id} disabled={disabled} aria-describedby={describedBy} aria-required={mandatory || undefined} maxLength={20000} />;
+    control = <RichText value={str} onChange={setText} id={id} disabled={disabled} aria-describedby={describedBy} aria-required={mandatory || undefined}
+      maxLength={maxLen ?? 20000} rows={attrs?.rows ?? 7} placeholder={rule.placeholder ?? undefined} {...focusProps} />;
   } else if (meta.dataType === 'Address (structured)' && !cell) {
-    control = <textarea rows={3} value={str} onChange={e => onChange(meta.key, e.target.value)} {...common} />;
+    control = <textarea rows={attrs?.rows ?? 3} value={str} maxLength={maxLen} placeholder={rule.placeholder ?? undefined} onChange={e => setText(e.target.value)} {...focusProps} {...common} />;
   } else {
-    control = <input value={str} onChange={e => onChange(meta.key, e.target.value)} autoComplete="off" {...common} />;
+    control = <input value={str} maxLength={maxLen} placeholder={rule.placeholder ?? undefined} onChange={e => setText(e.target.value)} autoComplete="off"
+      className={rule.transform === 'upper' || rule.pattern ? 'ltr' : undefined} {...focusProps} {...common} />;
   }
 
   const listHint = meta.list && !layout.lists[meta.list] && !meta.readOnly ? 'No value list configured' : null;
-  const error = decimalError ? 'Enter a number using digits and an optional decimal point' : p.message ?? null;
+  const error = decimalError ? 'Enter a number using digits and an optional decimal point' : attrError ?? p.message ?? null;
+  const len = [...str].length;
+  const counter = maxLen !== undefined && meta.dataType !== 'Rich Text' && len >= Math.floor(maxLen * 0.8) ? `${len} / ${maxLen}` : null;
+  const formatHint = kind === 'text' && rule.patternHint ? `Format: ${rule.patternHint}` : null;
   const missingNote = !error && p.missing ? 'Required before submission' : null;
 
   if (cell) {
-    return <div className={`cell-input${error ? ' has-error' : ''}${missingNote ? ' is-missing' : ''}`} id={p.domId} title={error ?? missingNote ?? listHint ?? undefined}>{control}</div>;
+    return <div className={`cell-input${error ? ' has-error' : ''}${missingNote ? ' is-missing' : ''}`} id={p.domId} title={error ?? missingNote ?? formatHint ?? listHint ?? undefined}>{control}</div>;
   }
 
   const labelEl = meta.valueKind === 'bool' || meta.valueKind === 'composite' || meta.calc || meta.readOnly || p.view
@@ -177,11 +201,14 @@ export function FieldInput(p: FieldInputProps) {
     : <label htmlFor={id} id={`${autoId}-lbl`}>{meta.label}{mandatory && <span className="req" aria-hidden="true"> *</span>}{mandatory && <span className="sr-only"> (mandatory)</span>}</label>;
 
   return (
-    <div className={`field${isWide(meta) ? ' field-wide' : ''}${error ? ' has-error' : ''}${p.missing ? ' is-missing' : ''}`} id={p.domId}>
+    <div className={`field w-${widthOf(meta)}${error ? ' has-error' : ''}${p.missing ? ' is-missing' : ''}`} id={p.domId}>
       {labelEl}
       {control}
-      {(meta.helpText || meta.calc?.description || listHint) && (
-        <span className="field-help" id={helpId}>{meta.helpText ?? (meta.calc ? meta.calc.description : null)}{listHint && <>{meta.helpText ? ' · ' : ''}{listHint}</>}</span>
+      {(meta.helpText || meta.calc?.description || listHint || formatHint || counter) && (
+        <span className="field-help help-row" id={helpId}>
+          <span>{[meta.helpText ?? (meta.calc ? meta.calc.description : null), formatHint, listHint].filter(Boolean).join(' · ')}</span>
+          {counter && <span className={`char-count${len >= (maxLen ?? 0) ? ' full' : ''}`} aria-live="polite">{counter}</span>}
+        </span>
       )}
       {error && <span className="field-error" role="alert">{error}</span>}
       {missingNote && <span className="field-missing">{missingNote}</span>}

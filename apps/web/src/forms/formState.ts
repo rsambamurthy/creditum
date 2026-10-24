@@ -3,6 +3,7 @@
  * values stay as the API sends them (decimal strings, booleans, YYYY-MM-DD dates) and are never converted to numbers.
  */
 import type { FieldMeta, FormValue, GridRowData, Layout, RequestData, RequestDataInput } from '../api';
+import { attrKind, checkValue } from './attributes';
 
 /** A grid row on screen. `id` is a client-only identity (the server rowKey, or a temporary id for new rows). */
 export interface LocalRow { id: string; rowKey?: string; values: Record<string, FormValue> }
@@ -109,17 +110,24 @@ export function payload(expectedVersion: number, cur: FormState, ch: Changes, id
   return body;
 }
 
-/** Decimal-typed values (record and grid cells) that are not decimal text. Keys are "key" or "key@rowId". */
+/**
+ * Values that cannot be saved: decimal-typed values that are not decimal text, and values breaking the field's attributes
+ * (length, format, decimal places, range — the format may depend on another field of the same row / record).
+ * Keys are "key" or "key@rowId".
+ */
 export function invalidDecimals(cur: FormState, idx: LayoutIndex): Set<string> {
   const bad = new Set<string>();
-  const check = (meta: FieldMeta | undefined, valueKey: string, v: FormValue | undefined, suffix: string) => {
+  const check = (meta: FieldMeta | undefined, valueKey: string, v: FormValue | undefined, suffix: string, scope: Record<string, FormValue>) => {
     if (!meta || meta.readOnly) return;
     const decimal = meta.valueKind === 'decimal' || meta.valueKind === 'composite';
-    if (decimal && typeof v === 'string' && v.trim() !== '' && !DECIMAL.test(v.trim())) bad.add(valueKey + suffix);
+    if (decimal && typeof v === 'string' && v.trim() !== '' && !DECIMAL.test(v.trim())) { bad.add(valueKey + suffix); return; }
+    if (valueKey.includes(':') || !meta.attrs) return;
+    const dep = meta.attrs.variants ? scope[meta.attrs.variants.dependsOn] : undefined;
+    if (checkValue(v, meta.attrs, attrKind(meta.valueKind, meta.dataType), dep)) bad.add(valueKey + suffix);
   };
-  for (const [k, v] of Object.entries(cur.record)) check(idx.fields.get(fieldOf(k))?.meta, k, v, '');
+  for (const [k, v] of Object.entries(cur.record)) check(idx.fields.get(fieldOf(k))?.meta, k, v, '', cur.record);
   for (const rows of Object.values(cur.grids)) {
-    for (const r of rows) for (const [k, v] of Object.entries(r.values)) check(idx.fields.get(fieldOf(k))?.meta, k, v, `@${r.id}`);
+    for (const r of rows) for (const [k, v] of Object.entries(r.values)) check(idx.fields.get(fieldOf(k))?.meta, k, v, `@${r.id}`, r.values);
   }
   return bad;
 }

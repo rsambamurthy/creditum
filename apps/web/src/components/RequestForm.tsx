@@ -6,6 +6,13 @@ import { Field, Group } from './Field';
 import { Alert, ErrorAlert, Spinner } from './Feedback';
 import { FieldInput } from '../forms/FieldInput';
 import { isDecimalText } from '../forms/formState';
+import { checkValue, ruleFor, transformText, type FieldAttributes } from '../forms/attributes';
+
+/** Attributes of the library field a header input is bound to (borrower name ← Name of Borrower, reference ← Customer Number). */
+function boundField(layout: Layout | null, bind: 'borrowerName' | 'borrowerRef'): { key?: string; attrs?: FieldAttributes } {
+  for (const m of layout?.modules ?? []) for (const s of m.sections) for (const f of s.fields) if (f.bind === bind) return { key: f.key, attrs: f.attrs };
+  return {};
+}
 
 type Errors = Partial<Record<'borrowerName' | 'borrowerRef' | 'requestType' | 'currencyCode' | 'requestedAmount', string>>;
 
@@ -25,6 +32,12 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   const [layoutError, setLayoutError] = useState<unknown>(null);
   useEffect(() => { ref.loadLayout().then(setLayout).catch(setLayoutError); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const extra: FieldMeta[] = useMemo(() => formFields(layout), [layout]);
+  const nameBound = useMemo(() => boundField(layout, 'borrowerName'), [layout]);
+  const refBound = useMemo(() => boundField(layout, 'borrowerRef'), [layout]);
+  const nameAttrs = nameBound.attrs;
+  const refAttrs = refBound.attrs;
+  const nameRule = ruleFor(nameAttrs, undefined);
+  const refRule = ruleFor(refAttrs, undefined);
 
   const [borrowerName, setBorrowerName] = useState(initial?.borrowerName ?? '');
   const [borrowerRef, setBorrowerRef] = useState(initial?.borrowerRef ?? '');
@@ -51,7 +64,9 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   const validate = (): Errors => {
     const e: Errors = {};
     if (!borrowerName.trim()) e.borrowerName = 'Enter the borrower name';
+    else { const why = checkValue(borrowerName.trim(), nameAttrs, 'text', undefined); if (why) e.borrowerName = why; }
     if (!borrowerRef.trim()) e.borrowerRef = 'Enter the borrower reference';
+    else { const why = checkValue(borrowerRef.trim(), refAttrs, 'text', undefined); if (why) e.borrowerRef = why; }
     if (!requestType) e.requestType = 'Choose a request type';
     if (!currencyCode) e.currencyCode = 'Choose a currency';
     const a = amount.trim();
@@ -101,6 +116,14 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
         setFieldErrors(fe); setRuleMessages(other);
         setServerError(new ApiError(err.status, err.code, 'Some information is required before this request can be saved.'));
         requestAnimationFrame(() => document.querySelector<HTMLElement>('.has-error textarea, .has-error input, .has-error select')?.focus());
+      } else if (err instanceof ApiError && err.code === 'invalid_value' && (err.details as { field?: string } | undefined)?.field) {
+        // A field breaks its attributes (length, format, range): show the reason on that field.
+        const f = (err.details as { field: string }).field;
+        const why = err.message.replace(/^[^:]+:\s*/, '');
+        if (f === nameBound.key || f === 'borrower_name') setErrors({ borrowerName: why });
+        else if (f === refBound.key || f === 'borrower_ref') setErrors({ borrowerRef: why });
+        else if (extra.some(x => x.key === f)) setFieldErrors({ [f]: why });
+        else setServerError(err);
       } else if (err instanceof ApiError && ['amount_scale', 'invalid_amount', 'invalid_decimal'].includes(err.code)) {
         setErrors({ requestedAmount: err.message });
       } else {
@@ -122,10 +145,13 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
         <Group title="Borrower">
           <div className="field-grid">
             <Field label="Borrower name" required error={errors.borrowerName}>
-              <input value={borrowerName} onChange={e => setBorrowerName(e.target.value)} maxLength={250} autoComplete="off" />
+              <input value={borrowerName} onChange={e => setBorrowerName(transformText(e.target.value, nameRule))} maxLength={nameRule.maxLength ?? 250}
+                placeholder={nameRule.placeholder ?? undefined} autoComplete="off" />
             </Field>
-            <Field label="Borrower reference" required error={errors.borrowerRef} help="Customer or CIF reference in the core banking system">
-              <input value={borrowerRef} onChange={e => setBorrowerRef(e.target.value)} maxLength={80} autoComplete="off" className="ltr" />
+            <Field label="Borrower reference" required error={errors.borrowerRef}
+              help={`Customer or CIF reference in the core banking system${refRule.patternHint ? ` · Format: ${refRule.patternHint}` : ''}${refRule.maxLength ? ` · up to ${refRule.maxLength} characters` : ''}`}>
+              <input value={borrowerRef} onChange={e => setBorrowerRef(transformText(e.target.value, refRule))} maxLength={refRule.maxLength ?? 80}
+                placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr" />
             </Field>
           </div>
         </Group>

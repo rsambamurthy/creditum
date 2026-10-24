@@ -1,3 +1,4 @@
+import type { FieldAttributes } from './forms/attributes';
 /**
  * Typed client for the Creditum API. Amounts are always decimal strings — they are never converted to
  * JavaScript numbers here or anywhere in the UI.
@@ -140,6 +141,8 @@ export interface FieldMeta {
   key: string; label: string; helpText?: string | null; dataType: string; valueKind: ValueKind; parts?: string[];
   source?: string; adapter?: string | null; requirement: string; list?: string; bind?: 'borrowerName' | 'borrowerRef';
   display?: 'chart' | 'table' | 'heading'; calc?: CalcMeta; readOnly?: boolean;
+  /** Effective field attributes (product → market → bank): length, format, range, presentation. */
+  attrs?: FieldAttributes;
 }
 export interface SectionMeta {
   code: string; title: string; kind: 'record' | 'grid' | 'periods'; grid: string | null; rowLabel: string | null;
@@ -208,6 +211,12 @@ export interface LayoutDocument { modules: LayoutDocModule[]; createFields?: str
 export interface LayoutAdminField { label: string; dataType: string; requirement: string; hidden: boolean; scope: 'core' | 'tenant'; calculated: boolean }
 export interface LayoutAdmin { scope: 'core' | 'tenant'; coreVersion: number; updatedAt: string; document: LayoutDocument; fields: Record<string, LayoutAdminField> }
 
+// ---- field attributes (layers)
+export interface FieldAttributeLayers {
+  fieldKey: string; market: string; core: FieldAttributes | null; marketLayer: FieldAttributes | null; tenant: FieldAttributes | null;
+  tenantVersion: number | null; effective: FieldAttributes;
+}
+
 // ---------------------------------------------------------------- endpoints
 const enc = encodeURIComponent;
 
@@ -231,6 +240,11 @@ export const api = {
   saveRequestData: (id: string, body: RequestDataInput) => request<RequestData>('PUT', `/credit-requests/${enc(id)}/data`, body),
 
   fields: () => request<EffectiveField[]>('GET', '/fields'),
+  fieldMarkets: () => request<string[]>('GET', '/fields/markets'),
+  fieldAttributes: (key: string) => request<FieldAttributeLayers>('GET', `/fields/${enc(key)}/attributes`),
+  saveFieldAttributes: (key: string, attributes: FieldAttributes, expectedVersion?: number | null) =>
+    request<WriteResult>('PUT', `/fields/${enc(key)}/attributes`, { attributes, ...(expectedVersion != null ? { expectedVersion } : {}) }),
+  revertFieldAttributes: (key: string) => request<WriteResult>('DELETE', `/fields/${enc(key)}/attributes`),
   overrideField: (key: string, body: FieldOverrideInput) => request<WriteResult>('PUT', `/fields/${enc(key)}/override`, body),
   customField: (key: string, body: CustomFieldInput) => request<WriteResult>('POST', `/fields/custom/${enc(key)}`, body),
 

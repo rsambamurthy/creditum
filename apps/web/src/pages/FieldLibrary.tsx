@@ -11,6 +11,7 @@ import { DataTable, Pager, type Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { useToast } from '../components/Toast';
+import { AttributesPanel } from '../forms/AttributesPanel';
 
 const PAGE = 50;
 /** Requirement values accepted by the registry (validated again by the API). */
@@ -88,6 +89,7 @@ function FieldDetail({ f, canEdit, onClose, onSaved }: { f: EffectiveField; canE
           )}
         </div>
       </div>
+      <AttributesPanel field={f} canEdit={canEdit} />
     </Modal>
   );
 }
