@@ -208,7 +208,7 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
                 <tr key={c.key}>
                   <th scope="row" className="matrix-item">
                     {c.label}{c.requirement === 'Mandatory' && !c.readOnly && <span className="req" aria-hidden="true"> *</span>}
-                    {c.calc && <span className={`calc-tag${c.calc.status === 'pending' ? ' pending' : ''}`} title={[c.calc.description, c.calc.note].filter(Boolean).join(' — ')}>{c.calc.status === 'pending' ? 'Pending formula' : 'Calc'}</span>}
+                    {c.calc && <span className={`calc-tag${c.calc.status === 'pending' ? ' pending' : ''}`} title={[c.calc.description, c.calc.note].filter(Boolean).join(' — ')}>{c.calc.status === 'pending' ? 'No formula yet' : 'Calc'}</span>}
                   </th>
                   {periods.map((p, i) => (
                     <td key={p.id} className="num">

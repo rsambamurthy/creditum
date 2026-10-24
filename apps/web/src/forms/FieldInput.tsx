@@ -72,7 +72,7 @@ function Calculated({ meta, value, cell, layout }: { meta: FieldMeta; value: For
   const tip = [meta.calc?.description, meta.calc?.note].filter(Boolean).join(' — ');
   return (
     <div className={`calc-value${cell ? ' cell' : ''}${pending ? ' pending' : ''}`} title={tip || undefined}>
-      {pending ? <span className="muted small">Formula pending approval</span> : displayValue(meta, value, layout)}
+      {pending ? <span className="muted small">No formula yet</span> : displayValue(meta, value, layout)}
       {!cell && <span className="calc-badge" aria-label={tip ? `Calculated: ${tip}` : 'Calculated'}>Calculated</span>}
     </div>
   );

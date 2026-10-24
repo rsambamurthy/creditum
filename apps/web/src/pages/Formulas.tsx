@@ -162,7 +162,7 @@ function FormulaEditor({ f, view, places, names, support, canEdit, onClose, onSa
       <FormulaBar id="fx-text" value={text} onChange={v => { setText(v); setCheck(null); }} fields={fields} functions={support.functions} settings={support.settings}
         disabled={!canEdit} errorAt={errorAt} describedBy="fx-status" />
       <div id="fx-status" className="fx-status" aria-live="polite">
-        {!text.trim() ? <span className="muted">{status === 'pending' ? 'No formula yet — the field shows “Formula pending approval”.' : 'Write the formula, e.g. PERCENT([Gross Profit], [Revenue / Sales]).'}</span>
+        {!text.trim() ? <span className="muted">{status === 'pending' ? 'No formula yet — the field shows “No formula yet”.' : 'Write the formula, e.g. PERCENT([Gross Profit], [Revenue / Sales]).'}</span>
           : pendingParse || !parsed ? <span className="muted">Checking…</span>
             : parsed.ok ? <>
               <span className="check-ok">✓ Understood</span>
