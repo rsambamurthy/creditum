@@ -5,9 +5,9 @@ import { useAuth } from '../auth';
 import { useReference } from '../reference';
 import { formatDateTime, humanize, initials, trimDecimal } from '../format';
 import { useCrumbs } from '../layout/crumbs';
-import { Alert, ErrorAlert, PageHead, Spinner } from '../components/Feedback';
+import { Alert, ErrorAlert, Spinner } from '../components/Feedback';
 import { StatusBadge } from '../components/Badge';
-import { Group, ReadOnly, Field } from '../components/Field';
+import { ReadOnly, Field } from '../components/Field';
 import { Amount } from '../components/Money';
 import { Modal } from '../components/Modal';
 import { Timeline } from '../components/Timeline';
@@ -89,6 +89,10 @@ export function RequestDetailPage() {
   const [mandatory, setMandatory] = useState<MissingEntry[] | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const modulesRef = useRef<ModulesHandle>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const closeMenu = () => { if (menuRef.current) menuRef.current.open = false; };
   const onVersion = useCallback((v: number) => setReq(r => (r && r.rowVersion !== v ? { ...r, rowVersion: v } : r)), []);
   useEffect(() => { ref.loadLayout().then(setLayout).catch(() => setLayout(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [warnings, setWarnings] = useState<RuleMessage[]>(() => (location.state as { warnings?: RuleMessage[] } | null)?.warnings ?? []);
@@ -142,12 +146,64 @@ export function RequestDetailPage() {
   }));
   timeline.unshift({ id: 'created', statusCode: 'draft', marker: '+', title: 'Created', meta: <>Request {req.requestNumber} created</>, when: req.createdAt, remarks: null });
 
+  const preview = (v: unknown) => {
+    const t = typeof v === 'string' ? v.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim() : v == null ? '' : String(v);
+    return t.length > 90 ? `${t.slice(0, 90)}…` : t;
+  };
+  const primaryIdx = req.actions.findIndex(a => !/back|declin|reject/.test(a.action));
+  const actionClass = (a: TransitionAction, i: number) =>
+    i === primaryIdx ? 'btn-primary' : /declin|reject/.test(a.action) ? 'btn-danger-ghost' : 'btn-secondary';
+  const blocked = editing || dataDirty;
+
   return (
-    <div className="page">
-      <Link to="/requests" className="back"><span className="rtl-flip" aria-hidden="true">←</span> Credit requests</Link>
-      <PageHead title={req.requestNumber} badge={<StatusBadge code={req.status} label={req.statusLabel} />}
-        subtitle={<>{req.borrowerName} · {ref.requestTypeLabel(req.requestType)} · updated {formatDateTime(req.updatedAt)}</>}
-        actions={canEdit && !editing ? <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>Edit request</button> : undefined} />
+    <div className="page page-request">
+      {/* Summary band: the request at a glance in two lines, with the workflow actions */}
+      <section className="req-band" aria-label="Request summary">
+        <div className="rb-line1">
+          <Link to="/requests" className="rb-back" aria-label="Back to credit requests" title="Credit requests"><span className="rtl-flip" aria-hidden="true">←</span></Link>
+          <h1 className="rb-number">{req.requestNumber}</h1>
+          <StatusBadge code={req.status} label={req.statusLabel} />
+          <span className="rb-borrower" title={req.borrowerName}>{req.borrowerName}</span>
+          <span className="rb-muted mono">{req.borrowerRef}</span>
+          <span className="rb-dot" aria-hidden="true">·</span>
+          <span className="rb-muted">{ref.requestTypeLabel(req.requestType)}</span>
+          <span className="grow" />
+          {dataDirty && <span className="warn-text small rb-hint">Save or discard changes before an action</span>}
+          {req.actions.map((a, i) => (
+            <button key={a.action} type="button" className={`btn btn-sm ${actionClass(a, i)}`} onClick={() => setPending(a)} disabled={blocked}>{a.label}</button>
+          ))}
+          <details className="menu" ref={menuRef}>
+            <summary className="btn btn-sm btn-secondary" aria-label="More actions">More <span aria-hidden="true">▾</span></summary>
+            <div className="menu-list" role="menu">
+              <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowDetails(true); }}>{canEdit ? 'Edit request details' : 'Request details'}</button>
+              <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowHistory(true); }}>Workflow history ({history.length})</button>
+              {hasRole('auditor', 'config_admin') && <button type="button" role="menuitem" onClick={() => { closeMenu(); navigate('/admin/audit'); }}>Audit trail</button>}
+            </div>
+          </details>
+        </div>
+        <dl className="rb-line2">
+          <div><dt>Requested</dt><dd className="mono-num"><Amount value={req.requestedAmount} code={req.currencyCode} showCode={false} /> {req.currencyCode}</dd></div>
+          {base && req.currencyCode !== base && <>
+            <div><dt>Base</dt><dd className="mono-num"><Amount value={req.baseAmount} code={base} showCode={false} /> {base}</dd></div>
+            <div><dt>FX rate</dt><dd className="mono-num">{trimDecimal(req.fxRateUsed)}</dd></div>
+          </>}
+          <div><dt>Authority</dt><dd>{ref.levelName(req.requiredLevel)} <span className="rb-muted">({req.requiredLevel})</span></dd></div>
+          <div><dt>Updated</dt><dd>{formatDateTime(req.updatedAt)} <span className="rb-muted" title="Version">v{req.rowVersion}</span></dd></div>
+          {formExtra.map(f => {
+            const v = (req.fields as Record<string, unknown>)[f.key];
+            const miss = missing.some(m => m.field === f.key);
+            return (
+              <div key={f.key} className="rb-text">
+                <dt>{f.label}</dt>
+                <dd>
+                  {v ? <span title={typeof v === 'string' ? v : undefined}>{preview(v)}</span> : <span className={miss ? 'err-text' : 'rb-muted'}>{miss ? 'Required' : 'Not provided'}</span>}
+                  <button type="button" className="link-btn small" onClick={() => setShowDetails(true)}>{canEdit ? 'Edit' : 'View'}</button>
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </section>
 
       {warnings.length > 0 && <Alert tone="warning"><strong>Rule warnings</strong><ul>{warnings.map(w => <li key={w.rule + w.message}>{w.message} <span className="muted small">({w.rule})</span></li>)}</ul></Alert>}
       {actionError instanceof ApiError && actionError.isConflict ? (
@@ -155,89 +211,56 @@ export function RequestDetailPage() {
           This request was changed by someone else — Reload to see the latest version before acting.
         </Alert>
       ) : actionError ? (
-        <Alert tone="error">{errorMessage(actionError)}{missing.length > 0 && <ul>{missing.map(m => <li key={m.field}>{ref.field(m.field)?.label ?? m.field}: {m.message}</li>)}</ul>}</Alert>
+        <Alert tone="error">{errorMessage(actionError)}{missing.length > 0 && <ul>{missing.map(m => <li key={m.field}>{ref.field(m.field)?.label ?? m.field}: {m.message}{formExtra.some(f => f.key === m.field) && canEdit && <> — <button type="button" className="link-btn small" onClick={() => setShowDetails(true)}>edit request details</button></>}</li>)}</ul>}</Alert>
       ) : null}
 
-      <div className="detail-grid">
-        <div>
+      <CreditRequestModules handle={modulesRef} requestId={req.id} header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }}
+        headerVersion={req.rowVersion} canEdit={hasRole('relationship_officer', 'credit_analyst')} onVersion={onVersion} onDirtyChange={setDataDirty}
+        navFooter={<>
+          <button type="button" className="rn-extra" onClick={() => setShowHistory(true)}>Workflow history <span className="rn-count">{history.length}</span></button>
+          {hasRole('auditor', 'config_admin') && <button type="button" className="rn-extra" onClick={() => navigate('/admin/audit')}>Audit trail</button>}
+        </>} />
+
+      {showDetails && (
+        <Modal wide title={canEdit && !editing ? 'Request details' : canEdit ? 'Edit request details' : 'Request details'} onClose={() => { setShowDetails(false); setEditing(false); }}
+          footer={!editing ? <>
+            {canEdit && <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)} disabled={dataDirty}>Edit</button>}
+            <button type="button" className="btn btn-primary" onClick={() => setShowDetails(false)}>Close</button>
+          </> : undefined}>
           {editing ? (
-            <RequestForm initial={req} submitLabel="Save changes" onCancel={() => setEditing(false)} onReload={() => { setEditing(false); void load(); }}
+            <RequestForm initial={req} submitLabel="Save changes" onCancel={() => setEditing(false)} onReload={() => { setEditing(false); setShowDetails(false); void load(); }}
               onSubmit={async input => {
                 const res = await api.updateRequest(req.id, req.rowVersion, input);
-                setReq(res.request); setWarnings(res.warnings); setEditing(false); setActionError(null);
+                setReq(res.request); setWarnings(res.warnings); setEditing(false); setShowDetails(false); setActionError(null);
                 toast.show(`${res.request.requestNumber} saved`, 'ok');
                 return res.warnings;
               }} />
           ) : (
-            <div className="section-groups">
-              <Group title="Borrower">
-                <div className="field-grid">
-                  <ReadOnly label="Borrower name">{req.borrowerName}</ReadOnly>
-                  <ReadOnly label="Borrower reference">{req.borrowerRef}</ReadOnly>
-                  <ReadOnly label="Request type">{ref.requestTypeLabel(req.requestType)}</ReadOnly>
-                </div>
-              </Group>
-              <Group title="Facility request">
-                <div className="field-grid">
-                  <ReadOnly label="Requested amount" mono><Amount value={req.requestedAmount} code={req.currencyCode} showCode={false} /></ReadOnly>
-                  <ReadOnly label="Currency">{req.currencyCode}{ref.currency(req.currencyCode) ? ` — ${ref.currency(req.currencyCode)!.name}` : ''}</ReadOnly>
-                  <ReadOnly label={`Base amount${base ? ` (${base})` : ''}`} mono><Amount value={req.baseAmount} code={base} showCode={false} /></ReadOnly>
-                  <ReadOnly label="FX rate used" mono>{trimDecimal(req.fxRateUsed)}{base && req.currencyCode !== base ? <span className="muted small"> {req.currencyCode} → {base}</span> : null}</ReadOnly>
-                  <ReadOnly label="Required authority level">{ref.levelName(req.requiredLevel)} <span className="muted small">({req.requiredLevel})</span></ReadOnly>
-                </div>
-              </Group>
-              {formExtra.length > 0 && layout && (
-                <Group title="Request details">
-                  <div className="form-2col">
-                    {formExtra.map(f => {
-                      const miss = missing.find(m => m.field === f.key);
-                      return (
-                        <FieldInput key={f.key} view meta={f} values={req.fields as Record<string, FormValue>} layout={layout} disabled
-                          header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }} onChange={() => undefined} message={miss?.message} />
-                      );
-                    })}
-                  </div>
-                  {missing.some(m => formExtra.some(f => f.key === m.field)) && canEdit && <p className="small"><button type="button" className="link-btn small" onClick={() => setEditing(true)}>Edit the request</button> to fill the missing details.</p>}
-                </Group>
-              )}
+            <div className="form-2col">
+              <ReadOnly label="Borrower name">{req.borrowerName}</ReadOnly>
+              <ReadOnly label="Borrower reference">{req.borrowerRef}</ReadOnly>
+              <ReadOnly label="Request type">{ref.requestTypeLabel(req.requestType)}</ReadOnly>
+              <ReadOnly label="Currency">{req.currencyCode}{ref.currency(req.currencyCode) ? ` — ${ref.currency(req.currencyCode)!.name}` : ''}</ReadOnly>
+              <ReadOnly label="Requested amount" mono><Amount value={req.requestedAmount} code={req.currencyCode} showCode={false} /></ReadOnly>
+              <ReadOnly label={`Base amount${base ? ` (${base})` : ''}`} mono><Amount value={req.baseAmount} code={base} showCode={false} /></ReadOnly>
+              <ReadOnly label="FX rate used" mono>{trimDecimal(req.fxRateUsed)}</ReadOnly>
+              <ReadOnly label="Required authority level">{ref.levelName(req.requiredLevel)} ({req.requiredLevel})</ReadOnly>
+              {layout && formExtra.map(f => (
+                <FieldInput key={f.key} view meta={f} values={req.fields as Record<string, FormValue>} layout={layout} disabled
+                  header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }} onChange={() => undefined}
+                  message={missing.find(m => m.field === f.key)?.message} />
+              ))}
             </div>
           )}
-        </div>
-
-        <aside className="side-col">
-          <section className="card" aria-labelledby="actions-head">
-            <div className="card-head"><h3 id="actions-head">Actions</h3></div>
-            <div className="card-body">
-              {req.actions.length === 0 ? <p className="muted small" style={{ margin: 0 }}>No action is available to you at this stage.</p> : (
-                <div className="stack">
-                  {req.actions.map((a, i) => (
-                    <button key={a.action} type="button" className={`btn ${i === 0 && !/back|declin|reject/.test(a.action) ? 'btn-primary' : /declin|reject/.test(a.action) ? 'btn-danger-ghost' : 'btn-secondary'}`}
-                      onClick={() => setPending(a)} disabled={editing || dataDirty}>{a.label}</button>
-                  ))}
-                  {dataDirty && <p className="warn-text small" style={{ margin: 0 }}>Save or discard your changes below before taking an action.</p>}
-                </div>
-              )}
-              <p className="muted small" style={{ margin: '12px 0 0' }}>Version {req.rowVersion}. Actions are recorded against this version.</p>
-            </div>
-          </section>
-          <section className="card" aria-labelledby="hist-head">
-            <div className="card-head"><h3 id="hist-head">Workflow history</h3></div>
-            <div className="card-body"><Timeline items={timeline} /></div>
-          </section>
-          <section className="card" aria-label="Audit">
-            <div className="card-body small muted">
-              Every change to this request is recorded in the tamper-evident audit trail under <span className="icode">{req.requestNumber}</span>.
-              {hasRole('auditor', 'config_admin') && <> <button type="button" className="link-btn small" onClick={() => navigate('/admin/audit')}>Open audit trail</button></>}
-            </div>
-          </section>
-        </aside>
-      </div>
-
-      <div style={{ marginTop: 18 }}>
-        <CreditRequestModules handle={modulesRef} requestId={req.id} header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }}
-          headerVersion={req.rowVersion} canEdit={hasRole('relationship_officer', 'credit_analyst')} onVersion={onVersion} onDirtyChange={setDataDirty} />
-      </div>
-
+        </Modal>
+      )}
+      {showHistory && (
+        <Modal title={`Workflow history · ${req.requestNumber}`} onClose={() => setShowHistory(false)}
+          footer={<button type="button" className="btn btn-primary" onClick={() => setShowHistory(false)}>Close</button>}>
+          <Timeline items={timeline} />
+          <p className="muted small" style={{ marginBottom: 0 }}>Every change to this request is also recorded in the tamper-evident audit trail under <span className="icode">{req.requestNumber}</span>.</p>
+        </Modal>
+      )}
       {mandatory && <MissingFieldsModal missing={mandatory} layout={layout} onClose={() => setMandatory(null)}
         onGo={m => { setMandatory(null); modulesRef.current?.focusField(m); }} />}
       {pending && <TransitionModal action={pending} onCancel={() => setPending(null)} onConfirm={r => doTransition(pending, r)} />}

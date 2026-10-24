@@ -3,7 +3,7 @@
  * Holds the editing state for the whole request (one save covers every tab), tracks dirty tabs,
  * and saves with optimistic locking (expectedVersion = the request's rowVersion).
  */
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type ReactNode, type Ref } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, type FormValue, type Layout, type MissingEntry, type RequestData } from '../api';
 import { useReference } from '../reference';
@@ -20,7 +20,7 @@ export interface ModulesHandle {
   reload: () => Promise<void>;
 }
 
-export function CreditRequestModules({ requestId, header, headerVersion, canEdit, onVersion, onDirtyChange, handle }: {
+export function CreditRequestModules({ requestId, header, headerVersion, canEdit, onVersion, onDirtyChange, handle, navFooter }: {
   requestId: string;
   header: Header;
   /** The request's current rowVersion as the page knows it (header edits and transitions change it). */
@@ -30,6 +30,8 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   onVersion: (rowVersion: number) => void;
   onDirtyChange: (dirty: boolean) => void;
   handle?: Ref<ModulesHandle>;
+  /** Extra entries at the bottom of the module navigation (history, audit). */
+  navFooter?: ReactNode;
 }) {
   const ref = useReference();
   const toast = useToast();
@@ -44,7 +46,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   /** Messages the server attached to one field (422 invalid_value): "key" or "key@rowKey" → message. */
   const [serverMessages, setServerMessages] = useState<Map<string, string>>(new Map());
   const [saving, setSaving] = useState(false);
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [currentSection, setCurrentSection] = useState<string | null>(null);
 
   const apply = useCallback((d: RequestData) => {
     const s = fromData(d);
@@ -81,10 +83,28 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
 
   const modules = layout?.modules ?? [];
   const active = modules.find(m => m.code === params.get('module'))?.code ?? modules[0]?.code;
-  const selectTab = (code: string, focus = false) => {
+  const selectTab = (code: string) => {
     const p = new URLSearchParams(params); p.set('module', code); setParams(p, { replace: true });
-    if (focus) tabRefs.current[code]?.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const goSection = (code: string) => {
+    document.getElementById(sectionDomId(code))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setCurrentSection(code);
+  };
+  // Scroll-spy: highlight the section in view in the module navigation.
+  useEffect(() => {
+    const mod = layout?.modules.find(m => m.code === active);
+    if (!mod || typeof IntersectionObserver === 'undefined') return;
+    const els = mod.sections.map(sc => document.getElementById(sectionDomId(sc.code))).filter((e): e is HTMLElement => !!e);
+    const seen = new Map<string, boolean>();
+    const obs = new IntersectionObserver(entries => {
+      for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+      const first = mod.sections.find(sc => seen.get(sectionDomId(sc.code)));
+      if (first) setCurrentSection(first.code);
+    }, { rootMargin: '-180px 0px -55% 0px' });
+    els.forEach(e => obs.observe(e));
+    return () => obs.disconnect();
+  }, [layout, active, data]);
 
   const focusField = (m: MissingEntry) => {
     selectTab(m.module);
@@ -146,91 +166,106 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   const totals = Object.values(data.completeness.modules).reduce((a, m) => ({ f: a.f + m.filled, n: a.n + m.mandatory }), { f: 0, n: 0 });
   const moduleMissing = data.completeness.missing.filter(m => m.module === active);
 
-  const onTabKey = (e: KeyboardEvent, i: number) => {
-    const n = modules.length;
-    const go = (j: number) => { e.preventDefault(); selectTab(modules[(j + n) % n].code, true); };
-    const rtl = document.documentElement.dir === 'rtl';
-    if (e.key === (rtl ? 'ArrowLeft' : 'ArrowRight')) go(i + 1);
-    else if (e.key === (rtl ? 'ArrowRight' : 'ArrowLeft')) go(i - 1);
-    else if (e.key === 'Home') go(0);
-    else if (e.key === 'End') go(n - 1);
-  };
+  const c0 = activeModule ? data.completeness.modules[activeModule.code] : undefined;
+  const pct = (c?: { filled: number; mandatory: number }) => (c && c.mandatory ? Math.round((100 * c.filled) / c.mandatory) : 100);
 
   return (
-    <section className="card modules-card" aria-label="Credit request details by module">
-      <div className="modules-head">
-        <div>
-          <h2 className="modules-title">Credit request details</h2>
-          <p className="muted small" style={{ margin: 0 }}>
-            Mandatory fields filled: <strong className="mono-num">{totals.f} / {totals.n}</strong>
-            {data.completeness.mode !== 'off' && <> · at submission missing fields {data.completeness.mode === 'block' ? 'block the step' : 'are reported as warnings'}</>}
-          </p>
-        </div>
-        {!editable && <span className="badge badge-neutral">{data.editable ? 'View only for your role' : 'Read-only at this stage'}</span>}
-      </div>
-      <div className="tabs module-tabs" role="tablist" aria-label="Modules">
-        {modules.map((m, i) => {
-          const c = data.completeness.modules[m.code];
-          const complete = c && c.filled >= c.mandatory;
-          const selected = m.code === active;
-          return (
-            <button key={m.code} type="button" role="tab" id={`mtab-${m.code}`} aria-selected={selected} aria-controls={`mpanel-${m.code}`}
-              tabIndex={selected ? 0 : -1} className={selected ? 'active' : ''} ref={el => { tabRefs.current[m.code] = el; }}
-              onClick={() => selectTab(m.code)} onKeyDown={e => onTabKey(e, i)}>
-              <span className="tab-letter" aria-hidden="true">{m.letter.toUpperCase()}</span>
-              {m.title}
-              {c && <span className={`completeness ${complete ? 'done' : ''}`} aria-label={`${c.filled} of ${c.mandatory} mandatory fields filled`}>{c.filled}/{c.mandatory}</span>}
-              {dirtyTabs.has(m.code) && <span className="dirty-dot" aria-label="unsaved changes" title="Unsaved changes" />}
-            </button>
-          );
-        })}
-      </div>
-      {activeModule && (
-        <div role="tabpanel" id={`mpanel-${activeModule.code}`} aria-labelledby={`mtab-${activeModule.code}`} className="module-panel" tabIndex={-1}>
-          {saveError instanceof ApiError && saveError.isConflict ? (
-            <Alert tone="warning" action={<button type="button" className="btn btn-secondary btn-sm" onClick={load}>Reload</button>}>
-              This request was changed by someone else — reload to see the latest version. Your unsaved changes will be discarded.
-            </Alert>
-          ) : saveError ? (
-            <Alert tone="error">
-              {errorMessage(saveError)}
-              {saveError instanceof ApiError && saveError.missingFields.length > 0 && idx && (
-                <ul>{saveError.missingFields.map(m => {
-                  const pl = idx.fields.get(m.field);
-                  return (
-                    <li key={m.field}>
-                      <strong>{pl?.meta.label ?? m.field}</strong>{pl && <> — <button type="button" className="link-btn small"
-                        onClick={() => focusField({ key: m.field, label: pl.meta.label, module: pl.module, section: pl.section, rowKey: null })}>go to the field</button></>}
-                    </li>
-                  );
-                })}</ul>
+    <div className="req-workspace">
+      <div className="req-main">
+        {activeModule && (
+          <section id={`mpanel-${activeModule.code}`} className="module-panel" aria-labelledby={`mhead-${activeModule.code}`}>
+            <div className="module-head">
+              <h2 id={`mhead-${activeModule.code}`}><span className="tab-letter" aria-hidden="true">{activeModule.letter.toUpperCase()}</span>{activeModule.title}</h2>
+              {c0 && c0.mandatory > 0 && (
+                <span className="mh-progress" aria-label={`${c0.filled} of ${c0.mandatory} mandatory fields filled`}>
+                  <span className="mh-bar"><span style={{ width: `${pct(c0)}%` }} /></span>
+                  <span className="mono-num">{c0.filled}/{c0.mandatory} mandatory</span>
+                </span>
               )}
-            </Alert>
-          ) : null}
-          {moduleMissing.length > 0 && editable && (
-            <details className="missing-list">
-              <summary><span className="badge badge-warn">{moduleMissing.length}</span> mandatory field{moduleMissing.length === 1 ? '' : 's'} still empty in {activeModule.title}</summary>
-              <ul>{moduleMissing.slice(0, 40).map(m => (
-                <li key={`${m.key}@${m.rowKey ?? ''}`}><button type="button" className="link-btn small" onClick={() => focusField(m)}>{m.label}</button></li>
-              ))}</ul>
-            </details>
-          )}
-          <div className="section-groups">
-            {activeModule.sections.map(s => <SectionRenderer key={s.code} section={s} ctx={ctx} />)}
+              {!editable && <span className="badge badge-neutral">{data.editable ? 'View only for your role' : 'Read-only at this stage'}</span>}
+            </div>
+            {saveError instanceof ApiError && saveError.isConflict ? (
+              <Alert tone="warning" action={<button type="button" className="btn btn-secondary btn-sm" onClick={load}>Reload</button>}>
+                This request was changed by someone else — reload to see the latest version. Your unsaved changes will be discarded.
+              </Alert>
+            ) : saveError ? (
+              <Alert tone="error">
+                {errorMessage(saveError)}
+                {saveError instanceof ApiError && saveError.missingFields.length > 0 && idx && (
+                  <ul>{saveError.missingFields.map(m => {
+                    const pl = idx.fields.get(m.field);
+                    return (
+                      <li key={m.field}>
+                        <strong>{pl?.meta.label ?? m.field}</strong>{pl && <> — <button type="button" className="link-btn small"
+                          onClick={() => focusField({ key: m.field, label: pl.meta.label, module: pl.module, section: pl.section, rowKey: null })}>go to the field</button></>}
+                      </li>
+                    );
+                  })}</ul>
+                )}
+              </Alert>
+            ) : null}
+            {moduleMissing.length > 0 && editable && (
+              <details className="missing-line">
+                <summary><span className="badge badge-warn sm">{moduleMissing.length}</span> mandatory field{moduleMissing.length === 1 ? '' : 's'} still empty in this module <span className="link-btn small">Show</span></summary>
+                <ul>{moduleMissing.slice(0, 60).map(m => (
+                  <li key={`${m.key}@${m.rowKey ?? ''}`}><button type="button" className="link-btn small" onClick={() => focusField(m)}>{m.label}</button></li>
+                ))}</ul>
+              </details>
+            )}
+            <div className="section-groups">
+              {activeModule.sections.map(sc => <SectionRenderer key={sc.code} section={sc} ctx={ctx} />)}
+            </div>
+          </section>
+        )}
+        {editable && (dirty || saving) && (
+          <div className="save-bar" role="region" aria-label="Unsaved changes">
+            <span className="grow">
+              <strong>Unsaved changes</strong>
+              <span className="muted small"> in {modules.filter(m => dirtyTabs.has(m.code)).map(m => m.title).join(', ') || '…'}</span>
+              {invalid.size > 0 && <span className="err-text small"> · fix {invalid.size} value{invalid.size === 1 ? '' : 's'} marked in red before saving</span>}
+            </span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={discard} disabled={saving}>Discard</button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={saving || invalid.size > 0}>{saving ? 'Saving…' : 'Save'}</button>
           </div>
-        </div>
-      )}
-      {editable && (dirty || saving) && (
-        <div className="save-bar" role="region" aria-label="Unsaved changes">
-          <span className="grow">
-            <strong>Unsaved changes</strong>
-            <span className="muted small"> in {modules.filter(m => dirtyTabs.has(m.code)).map(m => m.title).join(', ') || '…'}</span>
-            {invalid.size > 0 && <span className="err-text small"> · fix {invalid.size} value{invalid.size === 1 ? '' : 's'} marked in red before saving</span>}
+        )}
+      </div>
+
+      <nav className="req-nav" aria-label="Credit request modules">
+        <div className="rn-head">
+          <span>Modules</span>
+          <span className="rn-total mono-num" title={data.completeness.mode !== 'off' ? `At submission missing fields ${data.completeness.mode === 'block' ? 'block the step' : 'are reported as warnings'}` : undefined}>
+            {totals.f}/{totals.n} mandatory
           </span>
-          <button type="button" className="btn btn-secondary" onClick={discard} disabled={saving}>Discard</button>
-          <button type="button" className="btn btn-primary" onClick={save} disabled={saving || invalid.size > 0}>{saving ? 'Saving…' : 'Save'}</button>
         </div>
-      )}
-    </section>
+        <ul className="rn-list">
+          {modules.map(m => {
+            const c = data.completeness.modules[m.code];
+            const selected = m.code === active;
+            const state = !c || c.mandatory === 0 ? 'none' : c.filled >= c.mandatory ? 'done' : c.filled > 0 ? 'part' : 'empty';
+            return (
+              <li key={m.code}>
+                <button type="button" className={`rn-item ${selected ? 'active' : ''}`} aria-current={selected ? 'page' : undefined} onClick={() => selectTab(m.code)}>
+                  <span className="tab-letter" aria-hidden="true">{m.letter.toUpperCase()}</span>
+                  <span className="rn-title">{m.title}</span>
+                  {dirtyTabs.has(m.code) && <span className="dirty-dot" aria-label="unsaved changes" title="Unsaved changes" />}
+                  {c && c.mandatory > 0 && <span className={`rn-count ${state}`} aria-label={`${c.filled} of ${c.mandatory} mandatory fields filled`}>{c.filled}/{c.mandatory}</span>}
+                </button>
+                {selected && (
+                  <ul className="rn-sections">
+                    {m.sections.map(sc => (
+                      <li key={sc.code}>
+                        <button type="button" className={currentSection === sc.code ? 'current' : ''} aria-current={currentSection === sc.code ? 'location' : undefined}
+                          onClick={() => goSection(sc.code)}>{sc.title}</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {navFooter && <div className="rn-foot">{navFooter}</div>}
+      </nav>
+    </div>
   );
 }

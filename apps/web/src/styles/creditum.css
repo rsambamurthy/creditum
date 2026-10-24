@@ -944,3 +944,139 @@ details.advanced > summary { cursor: pointer; font-size: 13px; color: #64748b; f
 .attr-table td.attr-edit input, .attr-table td.attr-edit select { min-height: 34px !important; padding: 5px 10px; font-size: 13px }
 .attr-cases td input, .attr-cases td select { min-height: 34px !important; padding: 5px 8px; font-size: 13px }
 .attr-actions { align-items: center }
+
+/* ================================================================ Density — enterprise workspace scale (request screen redesign)
+   13px base, sentence-case labels, 32px controls, read-only values as plain text. Applies app-wide. */
+:root { font-size: 13px; line-height: 1.4 }
+body { font-size: 13px; line-height: 1.4 }
+.page { padding: 16px 20px 72px; max-width: 1480px }
+.page-head { margin-bottom: 14px }
+.page-head h1 { font-size: 18px; font-weight: 600; margin-bottom: 2px }
+.page-head .sub { font-size: 13px }
+h2 { font-size: 15px } h3 { font-size: 13.5px }
+.small, .link-btn.small { font-size: 12px }
+.af-crumbs { height: 34px; font-size: 12px }
+
+.card .card-head { padding: 10px 14px }
+.card .card-head h3, .modules-title { font-size: 13.5px }
+.card-body { padding: 14px }
+.group { padding: 0 16px 14px }
+.group > legend { width: calc(100% + 32px); margin: 0 -16px 12px; padding: 9px 16px; font-size: 13.5px }
+.section-groups { gap: 12px }
+
+.field { gap: 3px }
+.field label, .field-label, fieldset.field legend { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #475569 }
+.req-tag { font-size: 9.5px }
+input, select, textarea { font-size: 13px; padding: 5px 9px; border-radius: 4px }
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]), select { min-height: 32px }
+.field-help, .field-error { font-size: 11.5px }
+.field-grid, .form-2col { gap: 10px 16px }
+.ro-value, .calc-value { background: transparent; border: 0; border-bottom: 1px solid #eef2f6; border-radius: 0; padding: 6px 0; min-height: 32px; font-size: 13px; font-weight: 400 }
+.calc-value { font-weight: 500 }
+.rte textarea { min-height: 96px; font-size: 13px }
+.rte-bar button { font-size: 12px; padding: 2px 7px }
+
+.btn { padding: 6px 14px; font-size: 13px; border-radius: 5px }
+.btn-sm { padding: 4px 10px; font-size: 12px }
+.badge { font-size: 11px; padding: 2px 8px }
+.table th { font-size: 12px; padding: 8px 12px }
+.table td { padding: 8px 12px; font-size: 13px }
+.table.compact th, .table.compact td { padding: 6px 10px }
+.tabs button { padding: 10px 12px; font-size: 13px }
+.stat-n { font-size: 18px } .tile-n { font-size: 20px }
+.alert { padding: 8px 12px; font-size: 13px; margin-bottom: 10px }
+.modal-head h2 { font-size: 15px }
+.combo-label, .rule-summary p, .formula-reading, .fb-input { font-size: 13px }
+
+@media (min-width: 1200px) { .form-2col { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
+
+/* ---------------------------------------------------------------- request screen: summary band + module navigation */
+.page-request { max-width: none; padding-top: 0 }
+.req-band { position: sticky; top: 48px; z-index: 30; margin: 0 -20px 12px; padding: 8px 20px 8px; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 #0f172a08 }
+.rb-line1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 32px }
+.rb-back { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; color: #475569; text-decoration: none }
+.rb-back:hover { background: #f1f5f9 }
+.rb-number { margin: 0; font-size: 15px; font-weight: 600; font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace; color: #0f172a; display: inline }
+.rb-borrower { font-weight: 600; color: #0f172a; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.rb-muted { color: #64748b }
+.rb-dot { color: #94a3b8 }
+.rb-hint { margin-inline-end: 4px }
+.rb-line2 { display: flex; flex-wrap: wrap; gap: 2px 0; margin: 4px 0 0; padding-inline-start: 32px; font-size: 12px; color: #334155 }
+.rb-line2 > div { display: flex; align-items: baseline; gap: 5px; padding-inline: 12px; border-inline-start: 1px solid #e2e8f0; min-width: 0 }
+.rb-line2 > div:first-child { padding-inline-start: 0; border-inline-start: 0 }
+.rb-line2 dt { color: #64748b }
+.rb-line2 dd { margin: 0; color: #0f172a; display: flex; align-items: baseline; gap: 6px; min-width: 0 }
+.rb-text dd > span:first-child { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom }
+.menu { position: relative }
+.menu > summary { list-style: none; cursor: pointer }
+.menu > summary::-webkit-details-marker { display: none }
+.menu-list { position: absolute; inset-inline-end: 0; top: calc(100% + 4px); z-index: 40; min-width: 200px; padding: 4px 0; background: #fff; border: 1px solid var(--input-line); border-radius: 6px; box-shadow: 0 10px 28px #0f172a24 }
+.menu-list button { display: block; width: 100%; text-align: start; background: none; border: 0; padding: 7px 12px; font: inherit; font-size: 13px; color: #0f172a; cursor: pointer }
+.menu-list button:hover, .menu-list button:focus-visible { background: #eff6ff }
+
+.req-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 16px; align-items: start }
+.req-main { min-width: 0 }
+.module-panel { background: transparent; padding: 0 }
+.module-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 2px 0 10px }
+.module-head h2 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #0f172a }
+.mh-progress { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #475569 }
+.mh-bar { width: 120px; height: 6px; border-radius: 99px; background: #e2e8f0; overflow: hidden }
+.mh-bar > span { display: block; height: 100%; background: #16a34a; border-radius: 99px }
+.missing-line { margin: 0 0 10px; padding: 6px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 6px; font-size: 12.5px; color: #92400e }
+.missing-line > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px }
+.missing-line > summary::-webkit-details-marker { display: none }
+.missing-line[open] > summary .link-btn { visibility: hidden }
+.missing-line ul { margin: 8px 0 2px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px }
+
+.req-nav { position: sticky; top: 132px; max-height: calc(100vh - 148px); overflow-y: auto; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 0; scrollbar-width: thin }
+.rn-head { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 12px 8px; border-bottom: 1px solid var(--line-2); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #64748b }
+.rn-total { text-transform: none; letter-spacing: 0; font-weight: 500 }
+.rn-list { list-style: none; margin: 0; padding: 4px 0 }
+.rn-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 12px; background: none; border: 0; border-inline-start: 3px solid transparent; font: inherit; font-size: 13px; color: #334155; text-align: start; cursor: pointer }
+.rn-item:hover { background: #f8fafc }
+.rn-item.active { background: #eff6ff; color: var(--title-blue); font-weight: 600; border-inline-start-color: var(--title-blue) }
+.rn-item.active .tab-letter { background: #dbeafe; color: var(--title-blue) }
+.rn-title { flex: 1; min-width: 0 }
+.rn-count { font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; border-radius: 99px; padding: 0 6px; line-height: 17px; background: #f1f5f9; color: #475569 }
+.rn-count.empty { background: #fef3c7; color: #92400e }
+.rn-count.part { background: #fef9c3; color: #854d0e }
+.rn-count.done { background: #dcfce7; color: #166534 }
+.rn-sections { list-style: none; margin: 0 0 4px; padding: 2px 0 4px }
+.rn-sections button { display: block; width: 100%; padding: 4px 12px 4px 41px; background: none; border: 0; font: inherit; font-size: 12px; color: #64748b; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+[dir=rtl] .rn-sections button { padding: 4px 41px 4px 12px }
+.rn-sections button:hover { color: #0f172a }
+.rn-sections button.current { color: var(--title-blue); font-weight: 600 }
+.rn-foot { border-top: 1px solid var(--line-2); padding: 4px 0 0; margin-top: 2px }
+.rn-extra { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 7px 12px; background: none; border: 0; font: inherit; font-size: 12.5px; color: #475569; text-align: start; cursor: pointer }
+.rn-extra:hover { background: #f8fafc; color: #0f172a }
+.section-groups .form-section { scroll-margin-top: 140px }
+.page-request .save-bar { margin-top: 12px; border-radius: 8px; padding: 8px 14px }
+
+@media (max-width: 1100px) {
+  .req-workspace { grid-template-columns: 1fr }
+  .req-nav { order: -1; position: static; max-height: none; padding: 0; overflow-x: auto; overflow-y: hidden }
+  .rn-head, .rn-sections, .rn-foot { display: none }
+  .rn-list { display: flex; padding: 0 }
+  .rn-list > li { flex: none }
+  .rn-item { white-space: nowrap; border-inline-start: 0; border-bottom: 2px solid transparent; padding: 9px 12px }
+  .rn-item.active { border-bottom-color: var(--title-blue) }
+}
+@media (max-width: 760px) {
+  .req-band { position: static }
+  .rb-line2 { padding-inline-start: 0 }
+}
+
+/* Density — grids and band refinements */
+.rb-line2 > div.rb-text { flex: 1 1 220px }
+.rb-text dd { flex: 1 1 auto }
+.rb-text dd > span:first-child { max-width: none; flex: 1 1 0; min-width: 0 }
+.req-main .matrix th.matrix-item, .req-main .matrix td.matrix-item { font-size: 12.5px; font-weight: 500; min-width: 220px }
+.req-main .matrix td { padding: 4px 8px }
+.req-main .matrix th.matrix-period { font-size: 12px }
+.req-main .add-line { font-size: 13px; padding: 6px 2px; color: var(--af-accent, #2563eb); font-weight: 500 }
+.rb-line2 dt, .rb-line2 dd { white-space: nowrap }
+.rb-line2 > div { flex: none }
+.rb-line2 > div.rb-text { flex: 1 1 200px }
+.rb-text dd > span:first-child { overflow: hidden; text-overflow: ellipsis }
+.req-main .form-section { scroll-margin-top: 180px }
+.req-main .form-2col .field { scroll-margin-top: 190px }
