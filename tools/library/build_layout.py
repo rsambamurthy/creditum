@@ -499,3 +499,48 @@ def build_spec(layout, formulas):
 if __name__ == '__main__':
     spec = build_spec(build_layout(), build_formulas())
     (ROOT / 'docs' / 'specs' / 'formula-specification.md').write_text(spec)
+
+
+# ------------------------------------------------------------------ core field attributes (product defaults; markets and banks override)
+ATTR_BY_TYPE = {
+    'Text': {'maxLength': 250, 'width': 'm'},
+    'Text (identifier)': {'maxLength': 50, 'width': 's'},
+    'Rich Text': {'maxLength': 20000, 'width': 'full', 'rows': 6},
+    'Address (structured)': {'maxLength': 500, 'width': 'full', 'rows': 3},
+    'Dropdown': {'width': 'm'}, 'Currency Code': {'width': 'xs'}, 'Date': {'width': 's'}, 'Boolean (Yes/No)': {'width': 's'},
+    'Currency Amount': {'width': 's'}, 'Percentage': {'width': 'xs', 'maxDecimals': 4}, 'Ratio (decimal)': {'width': 'xs'},
+    'Decimal': {'width': 's'}, 'Integer': {'width': 'xs', 'maxDecimals': 0}, 'Integer (days)': {'width': 'xs', 'maxDecimals': 0},
+}
+NAME_SLUGS = {'customer_name', 'name_of_borrower', 'partner_name', 'shareholder_name', 'guarantor_name', 'company_name', 'client_name', 'client',
+              'bank_name', 'auditor_name', 'auditor_preparer_name', 'borrower_name', 'account_name', 'name_of_group', 'major_owner_group',
+              'company_existing', 'company_proposed', 'sub_group_names', 'created_by'}
+SHARE_SLUGS = {'partner_ownership', 'ownership', 'of_asset_covered', 'weight_existing', 'weight_proposed'}
+
+
+def core_attributes():
+    out = OrderedDict()
+    for f in FIELDS:
+        k = f['field_key']
+        a = dict(ATTR_BY_TYPE.get(f['data_type'], {}))
+        s = slug(k)
+        if s in NAME_SLUGS and f['data_type'] == 'Text':
+            a.update(maxLength=150)
+        if s == 'official_email_address':
+            a.update(maxLength=254, transform='lower', pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$', patternHint='name@company.com')
+        if s == 'company_website':
+            a.update(maxLength=2048, pattern=r'^https?://\S+$', patternHint='https://www.company.com', width='l')
+        if s in ('customer_number', 'borrower_customer_id', 'partner_customer_id_cif', 'group_id'):
+            a.update(maxLength=20)
+        if 'credit_request_number' in s or s in ('related_credit_request_no',):
+            a.update(maxLength=30)
+        if s in SHARE_SLUGS or s.startswith('assigned_') or s.startswith('of_total'):
+            a.update(minValue='0', maxValue='100')
+        if a:
+            out[k] = a
+    return OrderedDict(attributes='credit_request', version=1,
+                       note='Product defaults per field. Market profiles (seed/markets) and banks override individual attributes.',
+                       fields=out)
+
+
+if __name__ == '__main__':
+    (SEED / 'core-field-attributes.json').write_text(json.dumps(core_attributes(), indent=1, ensure_ascii=False) + '\n')

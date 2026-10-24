@@ -1,0 +1,29 @@
+{
+ "market": "in",
+ "name": "India",
+ "version": 1,
+ "note": "Market profile: field formats common in Indian banking and NBFC lending. Variant cases are keyed by value-list codes; a lender that uses other codes overrides them.",
+ "fields": {
+  "a.general_information.customer_id_number": {
+   "variants": { "dependsOn": "a.general_information.customer_id_type", "cases": {
+    "pan": { "pattern": "^[A-Z]{5}\\d{4}[A-Z]$", "patternHint": "ABCDE1234F", "maxLength": 10, "transform": "upper" },
+    "cin": { "pattern": "^[LU]\\d{5}[A-Z]{2}\\d{4}[A-Z]{3}\\d{6}$", "patternHint": "21 characters, e.g. U17110MH2010PTC123456", "maxLength": 21, "transform": "upper" },
+    "gstin": { "pattern": "^\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$", "patternHint": "15 characters, e.g. 27ABCDE1234F1Z5", "maxLength": 15, "transform": "upper" },
+    "udyam_registration": { "pattern": "^UDYAM-[A-Z]{2}-\\d{2}-\\d{7}$", "patternHint": "UDYAM-MH-00-0000000", "maxLength": 19, "transform": "upper" },
+    "passport": { "pattern": "^[A-Z]\\d{7}$", "patternHint": "A1234567", "maxLength": 8, "transform": "upper" } } }
+  },
+  "a.partners.partner_id_number": {
+   "variants": { "dependsOn": "a.partners.partner_id_type", "cases": {
+    "pan": { "pattern": "^[A-Z]{5}\\d{4}[A-Z]$", "patternHint": "ABCDE1234F", "maxLength": 10, "transform": "upper" },
+    "passport": { "pattern": "^[A-Z]\\d{7}$", "patternHint": "A1234567", "maxLength": 8, "transform": "upper" } } }
+  },
+  "b.guarantees.id_number": {
+   "variants": { "dependsOn": "b.guarantees.identification_document_type", "cases": {
+    "pan": { "pattern": "^[A-Z]{5}\\d{4}[A-Z]$", "patternHint": "ABCDE1234F", "maxLength": 10, "transform": "upper" },
+    "cin": { "pattern": "^[LU]\\d{5}[A-Z]{2}\\d{4}[A-Z]{3}\\d{6}$", "patternHint": "21 characters", "maxLength": 21, "transform": "upper" },
+    "passport": { "pattern": "^[A-Z]\\d{7}$", "patternHint": "A1234567", "maxLength": 8, "transform": "upper" } } }
+  },
+  "b.credit_facilities.settlement_account": { "pattern": "^\\d{9,18}$", "patternHint": "9–18 digits", "maxLength": 18 },
+  "g.facility_booking_maintenance.account_number": { "pattern": "^\\d{9,18}$", "patternHint": "9–18 digits", "maxLength": 18 }
+ }
+}

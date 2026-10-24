@@ -12,6 +12,8 @@ import { COMPOSITE_PARTS, DISPLAY_ONLY_TYPES, LayoutDocument, LayoutField, merge
 import { CreditRequest } from '../credit-request/credit-request.entities';
 import { CreditRequestService, ENTITY, enforce, recordView } from '../credit-request/credit-request.service';
 import { FieldValue, RECORD_ROW } from '../field-registry/field-registry.entities';
+import { applyAttributes, FieldAttributes } from '../field-registry/field-attributes';
+import { attributeKind, FieldAttributesService } from '../field-registry/field-attributes.service';
 import { EffectiveField, FieldRegistryService } from '../field-registry/field-registry.service';
 import { ConfigParameter, FxRate, TenantCurrency, ValueListEntry } from '../configuration/configuration.entities';
 import { ConfigurationService, GovernanceService } from '../configuration/configuration.service';
@@ -54,6 +56,8 @@ function valueKind(dataType: string): ValueKind {
 export interface FieldMeta {
   key: string; label: string; helpText: string | null; dataType: string; valueKind: ValueKind; parts?: string[]; source: string; requirement: string;
   list?: string; bind?: string; display?: string; calc?: { status: string; description: string; note: string | null }; readOnly: boolean;
+  /** Effective field attributes (product → market → bank): length, format, range, width. */
+  attrs?: FieldAttributes;
 }
 
 interface Model {
@@ -62,6 +66,7 @@ interface Model {
   fields: Map<string, EffectiveField>;
   formulas: Map<string, FieldFormula>;
   compiled: CompiledFormula[];
+  attrs: Map<string, FieldAttributes>;
 }
 
 export interface SaveInput { expectedVersion: number; record?: Record<string, unknown>; grids?: Record<string, { rowKey?: string; values: Record<string, unknown> }[]> }
@@ -72,12 +77,13 @@ const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
 export class FormsService implements OnModuleInit {
   constructor(private readonly ds: DataSource, private readonly registry: FieldRegistryService, private readonly config: ConfigurationService,
               private readonly governance: GovernanceService, private readonly rules: RulesService, private readonly workflow: WorkflowService,
-              private readonly audit: AuditService, private readonly requests: CreditRequestService) {}
+              private readonly audit: AuditService, private readonly requests: CreditRequestService,
+              private readonly attributes: FieldAttributesService) {}
 
   onModuleInit() {
     this.requests.useMandatoryCheck((id, m) => this.mandatoryCheck(id, m));
     this.rules.useReferenceCheck((m, rule, ctx) => this.checkRuleReferences(m, rule, ctx));
-    this.requests.useCreateFields(m => this.createFieldKeys(m));
+    this.requests.useFormCheck((m, header, fields) => this.checkRequestForm(m, header, fields));
     this.governance.register('layout', (m, ref, p) => this.applyLayout(m, ref, p), (m, ref, p) => this.validateLayout(m, ref, p));
     this.governance.register('formula', (m, ref, p) => this.applyFormula(m, ref, p), (m, ref, p) => this.validateFormula(m, ref, p).then(() => undefined));
   }
@@ -93,7 +99,7 @@ export class FormsService implements OnModuleInit {
     const placed = placements(doc);
     const formulas = await this.effectiveFormulas(m);
     const compiled = compile(this.activeDefs(formulas), k => (placed.has(k) ? placed.get(k)!.grid : undefined));
-    return { doc, placed, fields, formulas, compiled };
+    return { doc, placed, fields, formulas, compiled, attrs: await this.attributes.effective(m) };
   }
 
   private async layoutRows(m: EntityManager) {
@@ -142,6 +148,8 @@ export class FormsService implements OnModuleInit {
     if (lf.bind) out.bind = lf.bind;
     if (lf.display) out.display = lf.display;
     if (formula) out.calc = { status: formula.status, description: formula.description, note: formula.note };
+    const attrs = model.attrs.get(lf.key);
+    if (attrs && Object.keys(attrs).length) out.attrs = attrs;
     return out;
   }
 
@@ -245,6 +253,54 @@ export class FormsService implements OnModuleInit {
   }
 
   private baseKey(k: string) { return k.split(':')[0]; }
+
+  /**
+   * Apply field attributes to the values sent (and to values whose format depends on a field that was sent),
+   * normalising case and rejecting values outside length, format or range. Mutates `values`.
+   */
+  private checkAttributes(model: Model, values: Record<string, Value>, rowKey: string | null, sent: Set<string>, record: Record<string, Value>) {
+    const keys = new Set(sent);
+    for (const k of Object.keys(values)) {
+      const dep = model.attrs.get(this.baseKey(k))?.variants?.dependsOn;
+      if (dep && sent.has(dep)) keys.add(k);
+    }
+    for (const k of keys) {
+      const v = values[k];
+      const base = this.baseKey(k);
+      const a = model.attrs.get(base);
+      const def = model.fields.get(base);
+      if (v === null || v === undefined || !a || !def) continue;
+      const dep = a.variants ? (values[a.variants.dependsOn] ?? record[a.variants.dependsOn]) : undefined;
+      try {
+        values[k] = applyAttributes(v, a, k.includes(':') ? 'decimal' : attributeKind(def.dataType), dep, def.label) as Value;
+      } catch (e) {
+        throw new DomainError('invalid_value', (e as Error).message, undefined, { field: k, rowKey });
+      }
+    }
+  }
+
+  /**
+   * The New / Edit Credit Request form: only configured fields are accepted; header fields bound to library
+   * fields (borrower name, customer number) follow those fields' attributes. Returns normalised values.
+   */
+  async checkRequestForm(m: EntityManager, header: { borrowerName?: string; borrowerRef?: string }, fields: Record<string, unknown> | undefined) {
+    const model = await this.model(m);
+    const allowed = new Set(model.doc.createFields ?? []);
+    const extra = Object.keys(fields ?? {}).filter(k => !allowed.has(k));
+    if (extra.length) throw new DomainError('unknown_field', `Not on the credit request form: ${extra.join(', ')} — enter module fields on the request's tabs`, undefined, { fields: extra });
+    const out = { ...header };
+    for (const p of model.placed.values()) {
+      if (!p.bind) continue;
+      const v = header[p.bind];
+      const a = model.attrs.get(p.key);
+      if (typeof v !== 'string' || !a) continue;
+      try { out[p.bind] = applyAttributes(v, a, 'text', undefined, p.bind === 'borrowerName' ? 'Borrower name' : 'Borrower reference') as string; }
+      catch (e) { throw new DomainError('invalid_value', (e as Error).message, undefined, { field: p.bind }); }
+    }
+    const values: Record<string, Value> = Object.fromEntries(Object.entries(fields ?? {}).map(([k, v]) => [k, v as Value]));
+    this.checkAttributes(model, values, null, new Set(Object.keys(values)), values);
+    return { header: out, fields: values };
+  }
 
   private async mode(m: EntityManager): Promise<MandatoryMode> {
     const v = await this.config.text('credit_request.mandatory_fields_on_submit', m);
@@ -366,6 +422,13 @@ export class FormsService implements OnModuleInit {
           for (const [k, v] of Object.entries(row.values)) vals[k] = check(k, v, grid);
           return { rowKey, values: vals };
         });
+      }
+
+      // field attributes (length, format, range) — checked with the other values of the same row / record in view
+      const sentRecord = new Set(Object.keys(input.record ?? {}));
+      this.checkAttributes(model, next.record, null, sentRecord, next.record);
+      for (const [grid, list] of Object.entries(input.grids ?? {})) {
+        list.forEach((row, i) => this.checkAttributes(model, next.grids[grid][i].values, next.grids[grid][i].rowKey, new Set(Object.keys(row.values)), next.record));
       }
 
       // recompute calculated fields
@@ -667,10 +730,6 @@ export class FormsService implements OnModuleInit {
     return [...out].map(([code, label]) => ({ code, label }));
   }
 
-  /** Fields the New Credit Request form may carry (for the request service). */
-  async createFieldKeys(m: EntityManager): Promise<Set<string>> {
-    return new Set((await this.model(m)).doc.createFields ?? []);
-  }
 
   /**
    * A rule may only use fields that exist where it runs. On the New/Edit Credit Request form: the header and the

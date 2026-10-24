@@ -64,3 +64,20 @@ export class FieldValue {
   @Column({ ...T.ts({ nullable: true }), name: 'value_date' }) valueDate: Date | null;
   @Column({ ...T.bool({ nullable: true }), name: 'value_bool' }) valueBool: boolean | null;
 }
+
+/**
+ * Field attributes (length, format, range, presentation) as configuration layers: owner_scope 'core' (product
+ * defaults), 'market:<code>' (market profile) or a tenant id (the bank's own changes). JSON text, parsed by the
+ * application and never queried by the database.
+ */
+@Entity({ name: 'field_attribute_sets' })
+@Index('uq_field_attribute_sets', ['ownerScope', 'fieldKey'], { unique: true })
+export class FieldAttributeSet {
+  @PrimaryColumn(T.pk()) id: string;
+  @Column({ ...T.str(60), name: 'owner_scope' }) ownerScope: string;
+  @Column({ ...T.str(160), name: 'field_key' }) fieldKey: string;
+  @Column({ ...T.text(), name: 'attributes_json' }) attributesJson: string;
+  @Column({ ...T.int(), name: 'row_version' }) rowVersion: number;
+  @Column({ ...T.id(), name: 'updated_by' }) updatedBy: string;
+  @Column({ ...T.ts(), name: 'updated_at' }) updatedAt: Date;
+}

@@ -11,6 +11,7 @@ import { WorkflowService } from './modules/workflow/workflow.service';
 import { CreditRequestService } from './modules/credit-request/credit-request.service';
 import { AuthGuard, AuthService } from './modules/auth/auth';
 import { FormsService } from './modules/forms/forms.service';
+import { FieldAttributesService } from './modules/field-registry/field-attributes.service';
 import { ErrorFilter } from './common/errors';
 import { runWithContext } from './common/request-context';
 import {
@@ -23,7 +24,7 @@ import {
   controllers: [HealthController, AuthController, ConfigController, FieldsController, RulesController, WorkflowController, CreditRequestController, AuditController,
     LayoutController, FormulasController],
   providers: [
-    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, AuthService,
+    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, FieldAttributesService, AuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },
   ],

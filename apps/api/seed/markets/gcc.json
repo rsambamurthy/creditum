@@ -1,0 +1,28 @@
+{
+ "market": "gcc",
+ "name": "GCC (Kuwait base)",
+ "version": 1,
+ "note": "Market profile: field formats common in GCC banking. Variant cases are keyed by value-list codes; a bank that uses other codes overrides them.",
+ "fields": {
+  "a.general_information.customer_id_number": {
+   "variants": { "dependsOn": "a.general_information.customer_id_type", "cases": {
+    "civil_id": { "pattern": "^\\d{12}$", "patternHint": "12 digits, e.g. 290010112345", "maxLength": 12 },
+    "commercial_registration": { "pattern": "^\\d{1,10}$", "patternHint": "up to 10 digits", "maxLength": 10 },
+    "passport": { "pattern": "^[A-Z0-9]{6,9}$", "patternHint": "6–9 letters or digits", "maxLength": 9, "transform": "upper" } } }
+  },
+  "a.partners.partner_id_number": {
+   "variants": { "dependsOn": "a.partners.partner_id_type", "cases": {
+    "civil_id": { "pattern": "^\\d{12}$", "patternHint": "12 digits", "maxLength": 12 },
+    "commercial_registration": { "pattern": "^\\d{1,10}$", "patternHint": "up to 10 digits", "maxLength": 10 },
+    "passport": { "pattern": "^[A-Z0-9]{6,9}$", "patternHint": "6–9 letters or digits", "maxLength": 9, "transform": "upper" } } }
+  },
+  "b.guarantees.id_number": {
+   "variants": { "dependsOn": "b.guarantees.identification_document_type", "cases": {
+    "civil_id": { "pattern": "^\\d{12}$", "patternHint": "12 digits", "maxLength": 12 },
+    "commercial_registration": { "pattern": "^\\d{1,10}$", "patternHint": "up to 10 digits", "maxLength": 10 },
+    "passport": { "pattern": "^[A-Z0-9]{6,9}$", "patternHint": "6–9 letters or digits", "maxLength": 9, "transform": "upper" } } }
+  },
+  "b.credit_facilities.settlement_account": { "pattern": "^KW\\d{2}[A-Z]{4}[0-9A-Z]{22}$", "patternHint": "IBAN, 30 characters, e.g. KW81ABCD0000000000001234560101", "maxLength": 30, "transform": "upper", "width": "l" },
+  "g.facility_booking_maintenance.account_number": { "pattern": "^KW\\d{2}[A-Z]{4}[0-9A-Z]{22}$", "patternHint": "IBAN, 30 characters", "maxLength": 30, "transform": "upper", "width": "l" }
+ }
+}

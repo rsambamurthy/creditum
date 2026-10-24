@@ -164,6 +164,12 @@
       "valueType": "integer",
       "value": "2",
       "description": "Decimal places shown for calculated ratios (stored values keep full precision)"
+    },
+    {
+      "key": "market.profile",
+      "valueType": "text",
+      "value": "gcc",
+      "description": "Market profile for field formats and lengths (e.g. gcc, in)"
     }
   ],
   "valueLists": {

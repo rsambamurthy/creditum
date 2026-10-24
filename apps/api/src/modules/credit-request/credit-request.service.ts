@@ -38,22 +38,16 @@ export function enforce(outcome: Outcome, record: Record<string, unknown>) {
 
 /** Missing-mandatory check used at submission (implemented by the module-data service, registered at start-up). */
 type MandatoryCheck = FormsService['mandatoryCheck'];
+type FormCheck = FormsService['checkRequestForm'];
 
 @Injectable()
 export class CreditRequestService {
   private mandatoryCheck?: MandatoryCheck;
   /** Called by FormsService at start-up so submission can check the module data without a circular dependency. */
   useMandatoryCheck(check: MandatoryCheck) { this.mandatoryCheck = check; }
-  private createFields?: (m: EntityManager) => Promise<Set<string>>;
-  /** Fields allowed on the New/Edit Credit Request form besides the header (from the layout configuration). */
-  useCreateFields(fn: (m: EntityManager) => Promise<Set<string>>) { this.createFields = fn; }
-
-  private async checkFormFields(m: EntityManager, fields: Record<string, unknown> | undefined) {
-    if (!fields || !this.createFields) return;
-    const allowed = await this.createFields(m);
-    const extra = Object.keys(fields).filter(k => !allowed.has(k));
-    if (extra.length) throw new DomainError('unknown_field', `Not on the credit request form: ${extra.join(', ')} — enter module fields on the request's tabs`, undefined, { fields: extra });
-  }
+  private formCheck?: FormCheck;
+  /** Checks the New / Edit Credit Request form (allowed fields, field attributes), registered by the module-data service. */
+  useFormCheck(fn: FormCheck) { this.formCheck = fn; }
 
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly rules: RulesService,
               private readonly workflow: WorkflowService, private readonly registry: FieldRegistryService, private readonly audit: AuditService) {}
@@ -87,10 +81,10 @@ export class CreditRequestService {
       if (!input.borrowerName?.trim() || !input.borrowerRef?.trim()) throw new DomainError('invalid_value', 'borrowerName and borrowerRef are required');
       const money = await this.money(m, input.requestedAmount, input.currencyCode);
       const { def } = await this.workflow.definition(input.requestType, m);
-      const draft = { borrowerName: input.borrowerName.trim(), borrowerRef: input.borrowerRef.trim(), requestType: input.requestType,
+      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName.trim(), borrowerRef: input.borrowerRef.trim() }, input.fields) : null;
+      const draft = { borrowerName: form?.header.borrowerName ?? input.borrowerName.trim(), borrowerRef: form?.header.borrowerRef ?? input.borrowerRef.trim(), requestType: input.requestType,
         currencyCode: input.currencyCode, ...money };
-      const fields = input.fields ?? {};
-      await this.checkFormFields(m, fields);
+      const fields = form?.fields ?? input.fields ?? {};
       const record = recordView(draft, fields);
       const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);
       enforce(outcome, record);
@@ -119,10 +113,11 @@ export class CreditRequestService {
       const requestType = input.requestType ?? current.requestType;
       if (input.requestType) await this.config.requireValue('request_type', requestType, m);
       const money = await this.money(m, input.requestedAmount ?? current.requestedAmount, input.currencyCode ?? current.currencyCode);
+      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName?.trim(), borrowerRef: input.borrowerRef?.trim() }, input.fields) : null;
+      if (form) input = { ...input, borrowerName: form.header.borrowerName, borrowerRef: form.header.borrowerRef, fields: input.fields ? form.fields : undefined };
       const next = { borrowerName: input.borrowerName?.trim() ?? current.borrowerName, borrowerRef: input.borrowerRef?.trim() ?? current.borrowerRef,
         requestType, currencyCode: input.currencyCode ?? current.currencyCode, ...money };
       const existingFields = await this.registry.values(ENTITY, id, m);
-      await this.checkFormFields(m, input.fields);
       const fields = { ...existingFields, ...(input.fields ?? {}) };
       const record = recordView(next, fields);
       const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);

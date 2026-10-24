@@ -24,6 +24,10 @@ export class ConfigurationService {
 
   private repo<T extends object>(e: new () => T, m?: EntityManager) { return (m ?? this.ds.manager).getRepository(e); }
 
+  private paramChecks = new Map<string, (m: EntityManager, value: string) => Promise<void>>();
+  /** A parameter whose valid values come from other configuration (e.g. market.profile must name an installed market). */
+  registerParamCheck(key: string, check: (m: EntityManager, value: string) => Promise<void>) { this.paramChecks.set(key, check); }
+
   // ---------------------------------------------------------------- parameters
   async param(key: string, m?: EntityManager): Promise<ConfigParameter> {
     const p = await this.repo(ConfigParameter, m).findOne({ where: tenantWhere<ConfigParameter>({ paramKey: key }) });
@@ -73,6 +77,7 @@ export class ConfigurationService {
     if (!valueType) throw new DomainError('invalid_value', 'valueType is required for a new parameter');
     this.validateParamValue(valueType, String(payload.value), key);
     if (valueType === 'currency') await this.currency(String(payload.value), m);
+    await this.paramChecks.get(key)?.(m, String(payload.value));
   }
 
   /** Apply a parameter change (called by governance, inside its transaction). */
@@ -84,6 +89,7 @@ export class ConfigurationService {
     if (!valueType) throw new DomainError('invalid_value', 'valueType is required for a new parameter');
     this.validateParamValue(valueType, value, key);
     if (valueType === 'currency') await this.currency(value, m);
+    await this.paramChecks.get(key)?.(m, value);
     const actor = requireActor();
     if (existing) {
       if (payload.expectedVersion !== undefined && payload.expectedVersion !== existing.rowVersion) {

@@ -11,7 +11,7 @@ import { newId } from '../common/tenant';
 import { runWithContext } from '../common/request-context';
 import { AppUser, Tenant } from '../modules/tenancy/tenancy.entities';
 import { AuthorityLevel, ConfigParameter, FxRate, TenantCurrency, ValueListEntry } from '../modules/configuration/configuration.entities';
-import { FieldDefinition } from '../modules/field-registry/field-registry.entities';
+import { FieldAttributeSet, FieldDefinition } from '../modules/field-registry/field-registry.entities';
 import { RuleDefinition } from '../modules/rules/rules.entities';
 import { WorkflowDefinition } from '../modules/workflow/workflow.entities';
 import { validateDefinition, WfDefinition } from '../modules/workflow/workflow-engine';
@@ -50,6 +50,32 @@ export async function seedCoreLayout(ds: DataSource): Promise<'inserted' | 'upda
   if (existing.layoutVersion >= doc.version) return 'current';
   await repo.update({ id: existing.id, ownerScope: CORE_SCOPE }, { layoutVersion: doc.version, definitionJson, updatedAt: new Date() });
   return 'updated';
+}
+
+/** Product field attributes (core) and market profiles: product configuration, replaced when a release changes them. */
+export async function seedFieldAttributes(ds: DataSource): Promise<number> {
+  const repo = ds.getRepository(FieldAttributeSet);
+  const layers: { scope: string; fields: Record<string, unknown> }[] = [
+    { scope: CORE_SCOPE, fields: (JSON.parse(readFileSync(join(SEED_DIR, 'core-field-attributes.json'), 'utf8')) as { fields: Record<string, unknown> }).fields },
+    ...readdirSync(join(SEED_DIR, 'markets')).filter(f => f.endsWith('.json')).sort().map(f => {
+      const doc = JSON.parse(readFileSync(join(SEED_DIR, 'markets', f), 'utf8')) as { market: string; fields: Record<string, unknown> };
+      return { scope: `market:${doc.market}`, fields: doc.fields };
+    }),
+  ];
+  let changed = 0;
+  for (const { scope, fields } of layers) {
+    const existing = new Map((await repo.find({ where: { ownerScope: scope } })).map(r => [r.fieldKey, r]));
+    const inserts = [];
+    for (const [fieldKey, attrs] of Object.entries(fields)) {
+      const json = JSON.stringify(attrs);
+      const cur = existing.get(fieldKey);
+      if (!cur) inserts.push(repo.create({ id: newId(), ownerScope: scope, fieldKey, attributesJson: json, rowVersion: 1, updatedBy: SYSTEM_ACTOR.userId, updatedAt: new Date() }));
+      else if (cur.attributesJson !== json) { await repo.update({ id: cur.id, ownerScope: scope }, { attributesJson: json, rowVersion: cur.rowVersion + 1, updatedAt: new Date() }); changed += 1; }
+    }
+    for (let i = 0; i < inserts.length; i += 100) await repo.insert(inserts.slice(i, i + 100));
+    changed += inserts.length;
+  }
+  return changed;
 }
 
 interface FormulaSeed { field: string; status: 'active' | 'pending'; expression: unknown; description: string; note?: string }
@@ -193,11 +219,12 @@ export async function seedAll(ds: DataSource) {
   await seedCoreRules(ds);
   const layout = await seedCoreLayout(ds);
   const formulasChanged = await seedCoreFormulas(ds);
+  const attributesChanged = await seedFieldAttributes(ds);
   const tenants: Record<string, string> = {};
   for (const t of referenceTenantSeeds()) {
     const status = await provisionTenant(ds, t);
     const synced = status === 'exists' ? await syncTenantConfig(ds, t) : [];
     tenants[t.tenant.code] = synced.length ? `${status}; added ${synced.length} configuration item(s)` : status;
   }
-  return { coreFieldsInserted: fields, layout, formulasChanged, tenants };
+  return { coreFieldsInserted: fields, layout, formulasChanged, attributesChanged, tenants };
 }

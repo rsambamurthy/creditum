@@ -146,3 +146,24 @@ and, per field, `module` and `onCreateForm`.
 besides the header. Tenants choose them on the screen-layout page (`document.createFields` in `PUT /api/layout`).
 `POST/PUT /api/credit-requests` accept in `fields` only those keys (422 `unknown_field` otherwise); everything else is entered
 on the module tabs.
+
+## Field attributes — by market, changeable per bank
+
+Every field carries attributes in three layers: **product** defaults (`seed/core-field-attributes.json`, generated) →
+**market profile** (`seed/markets/<code>.json`: `gcc`, `in`) → **bank** (the tenant's own changes). A layer sets only the
+attributes it changes; `null` removes an inherited one. The bank's market is the parameter `market.profile`.
+
+| attribute | applies to | meaning |
+|---|---|---|
+| `maxLength`, `minLength` | text | characters |
+| `pattern` (`^…$`), `patternHint` | text | format and a plain example; nested repetition, back-references and look-arounds are refused |
+| `transform` | text | `upper` / `lower`, applied before storing |
+| `maxDecimals`, `minValue`, `maxValue` | numbers | decimal places; range (decimal text) |
+| `width` (`xs s m l full`), `rows`, `placeholder` | all | how the screen renders the input |
+| `variants: { dependsOn, cases: { <code>: {format rule} } }` | text | format by another field's value, e.g. ID number by ID type |
+
+- `GET /api/layout`: every `FieldMeta` carries `attrs` (effective). Inputs size and limit themselves from them.
+- The server applies them on every save (module data, the New/Edit Credit Request form, and the header fields bound to
+  library fields: borrower name ← Name of Borrower, borrower reference ← Customer Number). 422 `invalid_value` names the field.
+- `GET /api/fields/markets` · `GET /api/fields/:key/attributes` → `{ market, core, marketLayer, tenant, tenantVersion, effective }`
+- `PUT /api/fields/:key/attributes {attributes, expectedVersion?}` (maker-checker) · `DELETE /api/fields/:key/attributes` (back to market/product).

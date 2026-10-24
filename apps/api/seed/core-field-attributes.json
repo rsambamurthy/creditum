@@ -1,0 +1,2322 @@
+{
+ "attributes": "credit_request",
+ "version": 1,
+ "note": "Product defaults per field. Market profiles (seed/markets) and banks override individual attributes.",
+ "fields": {
+  "a.general_information.customer_number": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "a.general_information.new_existing_customer": {
+   "width": "m"
+  },
+  "a.general_information.individual_entity": {
+   "width": "m"
+  },
+  "a.general_information.customer_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.general_information.customer_segment": {
+   "width": "m"
+  },
+  "a.general_information.customer_type": {
+   "width": "m"
+  },
+  "a.general_information.legal_status": {
+   "width": "m"
+  },
+  "a.general_information.customer_id_type": {
+   "width": "m"
+  },
+  "a.general_information.customer_id_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "a.general_information.customer_id_expiry_date": {
+   "width": "s"
+  },
+  "a.general_information.customer_nationality": {
+   "width": "m"
+  },
+  "a.general_information.contract_type": {
+   "width": "m"
+  },
+  "a.general_information.credit_request_type": {
+   "width": "m"
+  },
+  "a.general_information.name_of_borrower": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.general_information.legal_entity": {
+   "width": "m"
+  },
+  "a.general_information.establishment_date": {
+   "width": "s"
+  },
+  "a.general_information.borrower_since": {
+   "width": "s"
+  },
+  "a.general_information.last_review_date": {
+   "width": "s"
+  },
+  "a.general_information.economic_sector_code": {
+   "width": "m"
+  },
+  "a.general_information.account_conduct": {
+   "width": "m"
+  },
+  "a.general_information.major_owner_group": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.general_information.addresses_mailing_work_home": {
+   "maxLength": 500,
+   "width": "full",
+   "rows": 3
+  },
+  "a.general_information.company_website": {
+   "maxLength": 2048,
+   "width": "l",
+   "pattern": "^https?://\\S+$",
+   "patternHint": "https://www.company.com"
+  },
+  "a.general_information.official_email_address": {
+   "maxLength": 254,
+   "width": "m",
+   "transform": "lower",
+   "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+   "patternHint": "name@company.com"
+  },
+  "a.general_information.relationship_with_the_bank_since": {
+   "width": "s"
+  },
+  "a.general_information.profitability": {
+   "width": "s"
+  },
+  "a.general_information.risk_rating": {
+   "width": "m"
+  },
+  "a.general_information.risk_grade": {
+   "width": "m"
+  },
+  "a.general_information.customer_is_a_board_member_of_the_bank": {
+   "width": "s"
+  },
+  "a.general_information.requires_syndication_desk_involvement": {
+   "width": "s"
+  },
+  "a.general_information.purpose_code": {
+   "width": "m"
+  },
+  "a.capital_return_summary.existing_roc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "a.capital_return_summary.proposed_roc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "a.capital_return_summary.existing_raroc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "a.capital_return_summary.proposed_raroc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "a.capital_return_summary.existing_risk_weighted_assets_rwa": {
+   "width": "s"
+  },
+  "a.capital_return_summary.proposed_risk_weighted_assets_rwa": {
+   "width": "s"
+  },
+  "a.capital_return_summary.current_strategy": {
+   "width": "m"
+  },
+  "a.capital_return_summary.proposed_strategy": {
+   "width": "m"
+  },
+  "a.risk_ratings_borrower.internal_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_borrower.internal_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_borrower.internal_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_borrower.internal_rating_previous": {
+   "width": "m"
+  },
+  "a.risk_ratings_borrower.external_rating_agency": {
+   "width": "m"
+  },
+  "a.risk_ratings_borrower.external_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_borrower.external_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_borrower.external_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_borrower.external_rating_previous": {
+   "width": "m"
+  },
+  "a.risk_ratings_personal_guarantor.internal_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_personal_guarantor.internal_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_personal_guarantor.internal_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_personal_guarantor.internal_rating_previous": {
+   "width": "m"
+  },
+  "a.risk_ratings_personal_guarantor.external_rating_agency": {
+   "width": "m"
+  },
+  "a.risk_ratings_personal_guarantor.external_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_personal_guarantor.external_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_personal_guarantor.external_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_personal_guarantor.external_rating_previous": {
+   "width": "m"
+  },
+  "a.risk_ratings_corporate_guarantor.internal_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_corporate_guarantor.internal_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_corporate_guarantor.internal_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_corporate_guarantor.internal_rating_previous": {
+   "width": "m"
+  },
+  "a.risk_ratings_corporate_guarantor.external_rating_agency": {
+   "width": "m"
+  },
+  "a.risk_ratings_corporate_guarantor.external_rating_as_of_date_current": {
+   "width": "s"
+  },
+  "a.risk_ratings_corporate_guarantor.external_rating_current": {
+   "width": "m"
+  },
+  "a.risk_ratings_corporate_guarantor.external_rating_as_of_date_previous": {
+   "width": "s"
+  },
+  "a.risk_ratings_corporate_guarantor.external_rating_previous": {
+   "width": "m"
+  },
+  "a.esg_summary.transitional_risk_mitigation_score_pre_overlay": {
+   "width": "s"
+  },
+  "a.esg_summary.transitional_risk_mitigation_score_post_overlay": {
+   "width": "s"
+  },
+  "a.esg_summary.physical_risk_score": {
+   "width": "s"
+  },
+  "a.esg_summary.other_environmental_risk_score": {
+   "width": "s"
+  },
+  "a.esg_summary.social_risk_score": {
+   "width": "s"
+  },
+  "a.esg_summary.governance_risk_score": {
+   "width": "s"
+  },
+  "a.esg_summary.internal_esg_score_pre_overlay": {
+   "width": "s"
+  },
+  "a.esg_summary.internal_esg_score_post_overlay": {
+   "width": "s"
+  },
+  "a.esg_summary.internal_esg_rating_pre_overlay": {
+   "width": "m"
+  },
+  "a.esg_summary.internal_esg_rating_post_overlay": {
+   "width": "m"
+  },
+  "a.esg_summary.external_esg_rating_provider": {
+   "width": "m"
+  },
+  "a.esg_summary.external_esg_rating": {
+   "width": "m"
+  },
+  "a.esg_summary.external_esg_rating_as_of_date": {
+   "width": "s"
+  },
+  "a.group_information.primary_group_name_and_id": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "a.group_information.sub_group_account_numbers": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "a.group_information.sub_group_names": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.group_information.change_of_ownership_management": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.deal_economics_relationship_profitability.relationship_profitability_as_of_date": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.interest_income": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.retail_income": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.fx_income": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.lc_lg_commissions": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.fees_other_income": {
+   "width": "s"
+  },
+  "a.deal_economics_relationship_profitability.total_relationship_income": {
+   "width": "s"
+  },
+  "a.partners.partner_is_an_existing_customer": {
+   "width": "s"
+  },
+  "a.partners.partner_customer_id_cif": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "a.partners.partner_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.partners.partner_id_type": {
+   "width": "m"
+  },
+  "a.partners.partner_id_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "a.partners.partner_id_expiry_date": {
+   "width": "s"
+  },
+  "a.partners.partner_nationality": {
+   "width": "m"
+  },
+  "a.partners.partner_designation": {
+   "maxLength": 250,
+   "width": "m"
+  },
+  "a.partners.partner_ownership": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "a.partners.partner_is_a_board_member_of_the_bank": {
+   "width": "s"
+  },
+  "a.partners.partner_is_board_related": {
+   "width": "s"
+  },
+  "a.partners.partner_details_and_comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.relationship_overview.total_free_funds": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_deposit": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_investments": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_cash_limit": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_cash_limit_other_banks": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_cash_outstanding": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_cash_utilization_other_banks": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_non_cash_limit": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_non_cash_limit_other_banks": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_non_cash_outstanding": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_non_cash_utilization_other_banks": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_credit_card_limit": {
+   "width": "s"
+  },
+  "a.relationship_overview.total_card_outstanding_balance": {
+   "width": "s"
+  },
+  "a.shareholders.shareholders_comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.shareholders.shareholder_type": {
+   "width": "m"
+  },
+  "a.shareholders.shareholder_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "a.shareholders.ownership": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "a.client_request.client_request_details": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.client_request.related_credit_request": {
+   "width": "s"
+  },
+  "a.client_request.related_credit_request_no": {
+   "maxLength": 30,
+   "width": "s"
+  },
+  "a.legal_clauses.serial_no": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "a.legal_clauses.legal_clause_reference": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "a.legal_clauses.legal_clause_as_stated_in_contract": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.legal_clauses.client_request": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.legal_clauses.bank_legal_feedback": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.legal_clauses.description": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.committee_details.approval_committee_level": {
+   "width": "m"
+  },
+  "a.comments.serial_no": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "a.comments.comment": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.comments.created_on": {
+   "width": "s"
+  },
+  "a.comments.created_by": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.credit_facilities.exposure_as_of_date": {
+   "width": "s"
+  },
+  "b.credit_facilities.borrower_customer_id": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "b.credit_facilities.group_id": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "b.credit_facilities.legal_entity": {
+   "width": "m"
+  },
+  "b.credit_facilities.facility_identifier_product_code_reference_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.credit_facilities.settlement_account": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.credit_facilities.limit_currency": {
+   "width": "xs"
+  },
+  "b.credit_facilities.utilization_currency": {
+   "width": "xs"
+  },
+  "b.credit_facilities.fixed_or_revolving": {
+   "width": "m"
+  },
+  "b.credit_facilities.disbursement_single_multiple_tranches": {
+   "width": "m"
+  },
+  "b.credit_facilities.amortizing_or_bullet": {
+   "width": "m"
+  },
+  "b.credit_facilities.interest_frequency": {
+   "width": "m"
+  },
+  "b.credit_facilities.current_limit": {
+   "width": "s"
+  },
+  "b.credit_facilities.current_utilization": {
+   "width": "s"
+  },
+  "b.credit_facilities.is_the_facility_secured": {
+   "width": "s"
+  },
+  "b.credit_facilities.own_package_number_if_secured": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.credit_facilities.request_action": {
+   "width": "m"
+  },
+  "b.credit_facilities.request_amount": {
+   "width": "s"
+  },
+  "b.credit_facilities.extension_count": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "b.credit_facilities.proposed_limit": {
+   "width": "s"
+  },
+  "b.credit_facilities.proposed_maturity_expiry": {
+   "width": "s"
+  },
+  "b.credit_facilities.existing_maturity_expiry": {
+   "width": "s"
+  },
+  "b.credit_facilities.original_maturity_expiry": {
+   "width": "s"
+  },
+  "b.credit_facilities.purpose_code": {
+   "width": "m"
+  },
+  "b.credit_facilities.commodity_code": {
+   "width": "m"
+  },
+  "b.credit_facilities.esg_linked_facility": {
+   "width": "s"
+  },
+  "b.credit_facilities.booking_entity_branch": {
+   "width": "m"
+  },
+  "b.credit_facilities.notes_terms_conditions": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.security_package.package_number_existing_package": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.security_package.minimum_contractual_coverage_ratio_existing_package": {
+   "width": "xs"
+  },
+  "b.security_package.committee_decision_date_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.actual_coverage_ratio_existing_package": {
+   "width": "xs"
+  },
+  "b.security_package.review_date_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.internally_accepted_coverage_ratio_existing_package": {
+   "width": "xs"
+  },
+  "b.security_package.credit_request_number_existing_package": {
+   "maxLength": 30,
+   "width": "s"
+  },
+  "b.security_package.package_value_date_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.facility_type_existing_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_currency_existing_package": {
+   "width": "xs"
+  },
+  "b.security_package.facility_value_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.calculation_method_existing_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_type_reference_existing_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_currency_existing_package": {
+   "width": "xs"
+  },
+  "b.security_package.collateral_current_value_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.nature_of_charge_existing_package": {
+   "width": "m"
+  },
+  "b.security_package.assigned_existing_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.current_collateral_assigned_value_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.own_or_other_collateral_existing_package": {
+   "width": "m"
+  },
+  "b.security_package.of_total_existing_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.total_existing_facility_value_base_reporting_currency_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.total_existing_collateral_value_base_reporting_currency_existing_package": {
+   "width": "s"
+  },
+  "b.security_package.package_number_amended_package": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.security_package.minimum_contractual_coverage_ratio_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.committee_decision_date_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.actual_coverage_ratio_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.review_date_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.internally_accepted_coverage_ratio_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.credit_request_number_amended_package": {
+   "maxLength": 30,
+   "width": "s"
+  },
+  "b.security_package.package_value_date_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.facility_type_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_currency_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.facility_value_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.calculation_method_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_request_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_request_comments_amended_package": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.security_package.collateral_type_reference_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_currency_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.collateral_current_value_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.nature_of_charge_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.assigned_amended_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.current_collateral_assigned_value_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.own_or_other_collateral_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.of_total_amended_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.collateral_request_amended_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_request_comments_amended_package": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.security_package.total_existing_facility_value_base_reporting_currency_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.total_proposed_facilities_value_base_reporting_currency_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.total_existing_collateral_value_base_reporting_currency_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.total_proposed_collateral_value_base_reporting_currency_amended_package": {
+   "width": "s"
+  },
+  "b.security_package.total_of_of_total_amended_package": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.security_package.existing_coverage_ratio_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.proposed_coverage_ratio_amended_package": {
+   "width": "xs"
+  },
+  "b.security_package.package_number_new_package": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.security_package.minimum_contractual_coverage_ratio_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.committee_decision_date_new_package": {
+   "width": "s"
+  },
+  "b.security_package.actual_coverage_ratio_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.review_date_new_package": {
+   "width": "s"
+  },
+  "b.security_package.internally_accepted_coverage_ratio_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.credit_request_number_new_package": {
+   "maxLength": 30,
+   "width": "s"
+  },
+  "b.security_package.package_value_date_new_package": {
+   "width": "s"
+  },
+  "b.security_package.facility_type_new_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_currency_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.facility_value_new_package": {
+   "width": "s"
+  },
+  "b.security_package.calculation_method_new_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_request_new_package": {
+   "width": "m"
+  },
+  "b.security_package.facility_request_comments_new_package": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.security_package.collateral_type_reference_new_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_currency_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.collateral_current_value_new_package": {
+   "width": "s"
+  },
+  "b.security_package.nature_of_charge_new_package": {
+   "width": "m"
+  },
+  "b.security_package.assigned_new_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.current_collateral_assigned_value_new_package": {
+   "width": "s"
+  },
+  "b.security_package.own_or_other_collateral_new_package": {
+   "width": "m"
+  },
+  "b.security_package.of_total_new_package": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.security_package.collateral_request_new_package": {
+   "width": "m"
+  },
+  "b.security_package.collateral_request_comments_new_package": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.security_package.total_existing_facility_value_base_reporting_currency_new_package": {
+   "width": "s"
+  },
+  "b.security_package.total_proposed_facilities_value_base_reporting_currency_new_package": {
+   "width": "s"
+  },
+  "b.security_package.total_existing_collateral_value_base_reporting_currency_new_package": {
+   "width": "s"
+  },
+  "b.security_package.total_proposed_collateral_value_base_reporting_currency_new_package": {
+   "width": "s"
+  },
+  "b.security_package.total_of_of_total_new_package": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.security_package.existing_coverage_ratio_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.proposed_coverage_ratio_new_package": {
+   "width": "xs"
+  },
+  "b.security_package.proposed_action": {
+   "width": "m"
+  },
+  "b.security_package.proposed_request_type": {
+   "width": "m"
+  },
+  "b.guarantees.guarantor_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.guarantees.guarantor_type": {
+   "width": "m"
+  },
+  "b.guarantees.rating_agency": {
+   "width": "m"
+  },
+  "b.guarantees.risk_rating": {
+   "width": "m"
+  },
+  "b.guarantees.as_of_date": {
+   "width": "s"
+  },
+  "b.guarantees.identification_document_type": {
+   "width": "m"
+  },
+  "b.guarantees.other_identification_document_type": {
+   "maxLength": 250,
+   "width": "m"
+  },
+  "b.guarantees.id_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.guarantees.guarantee_coverage_amount": {
+   "width": "s"
+  },
+  "b.guarantees.of_asset_covered": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.guarantees.package_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.guarantees.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.covenants.covenant_action": {
+   "width": "m"
+  },
+  "b.covenants.covenant_type": {
+   "width": "m"
+  },
+  "b.covenants.covenant_financial_limit": {
+   "width": "s"
+  },
+  "b.covenants.input_metric": {
+   "maxLength": 250,
+   "width": "m"
+  },
+  "b.covenants.covenant_test_value_year_adjusted_input_metric": {
+   "width": "s"
+  },
+  "b.covenants.financial_year_of_metric_from_fact_sheet_and_actual_value": {
+   "maxLength": 250,
+   "width": "m"
+  },
+  "b.covenants.covenant_check_result": {
+   "width": "m"
+  },
+  "b.covenants.covenant_outcome_action": {
+   "width": "m"
+  },
+  "b.covenants.proposed_covenant": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.covenants.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.collateral_not_in_a_package.serial_no": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "b.collateral_not_in_a_package.collateral_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "b.collateral_not_in_a_package.collateral_type": {
+   "width": "m"
+  },
+  "b.collateral_not_in_a_package.collateral_currency": {
+   "width": "xs"
+  },
+  "b.collateral_not_in_a_package.collateral_value": {
+   "width": "s"
+  },
+  "b.collateral_not_in_a_package.collateral_status": {
+   "width": "m"
+  },
+  "b.pricing_header.borrower_customer_id": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "b.pricing_header.interest_tiering_applicable": {
+   "width": "m"
+  },
+  "b.pricing.client_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.pricing.credit_request_number": {
+   "maxLength": 30,
+   "width": "s"
+  },
+  "b.pricing.proposed_pricing_roc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.proposed_pricing_raroc": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.product": {
+   "width": "m"
+  },
+  "b.pricing.existing_limit": {
+   "width": "s"
+  },
+  "b.pricing.base_rate_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.margin_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.front_end_fee_overdraft_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.undertaking_fee_loans_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.early_settlement_fee_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.proposed_limit": {
+   "width": "s"
+  },
+  "b.pricing.approved_limit": {
+   "width": "s"
+  },
+  "b.pricing.base_rate_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.margin_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.front_end_fee_overdraft_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.undertaking_fee_loans_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.early_settlement_fee_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.pricing.justification_if_proposed_rates_are_below_existing": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.roc_raroc_by_company.company_existing": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.roc_raroc_by_company.limit_existing": {
+   "width": "s"
+  },
+  "b.roc_raroc_by_company.weight_existing": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.roc_raroc_by_company.roc_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.weighted_roc_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.raroc_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.weighted_raroc_existing": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.total_group_existing": {
+   "width": "s"
+  },
+  "b.roc_raroc_by_company.company_proposed": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.roc_raroc_by_company.limit_proposed": {
+   "width": "s"
+  },
+  "b.roc_raroc_by_company.weight_proposed": {
+   "width": "xs",
+   "maxDecimals": 4,
+   "minValue": "0",
+   "maxValue": "100"
+  },
+  "b.roc_raroc_by_company.roc_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.weighted_roc_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.raroc_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.weighted_raroc_proposed": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.roc_raroc_by_company.total_group_proposed": {
+   "width": "s"
+  },
+  "b.commissions_fees.fee_type": {
+   "width": "m"
+  },
+  "b.commissions_fees.fee_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "b.commissions_fees.corporate_banking_decision_charge_if_applicable": {
+   "width": "m"
+  },
+  "b.commissions_fees.justification_for_fee_waiver": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "b.interest_tiering_applicability.serial_no": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "b.interest_tiering_applicability.name_of_group": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.interest_tiering_applicability.account_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "b.interest_tiering_applicability.borrower_customer_id": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "b.interest_tiering_applicability.tiering_applicable_for": {
+   "width": "m"
+  },
+  "b.interest_tiering_products.overdraft_tiering_applies": {
+   "width": "s"
+  },
+  "b.interest_tiering_products.short_term_loan_tiering_applies": {
+   "width": "s"
+  },
+  "b.interest_tiering_products.fixed_loan_tiering_applies": {
+   "width": "s"
+  },
+  "b.interest_tiering_type.tiering_type": {
+   "width": "m"
+  },
+  "c.client_group_exposure.company_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.client_group_exposure.existing_cash_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.existing_cash_outstanding": {
+   "width": "s"
+  },
+  "c.client_group_exposure.proposed_cash_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.change_in_cash_limit": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "c.client_group_exposure.non_cash_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.non_cash_outstanding": {
+   "width": "s"
+  },
+  "c.client_group_exposure.proposed_non_cash_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.change_in_non_cash_limit": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "c.client_group_exposure.fx_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.total_limit": {
+   "width": "s"
+  },
+  "c.client_group_exposure.total_outstanding": {
+   "width": "s"
+  },
+  "c.client_group_exposure.collateral": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.client_group_exposure.relationship_officer_recommendation": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.client_group_exposure.credit_risk_recommendation": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.client_group_exposure.collateral_recommendation": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.swot_analysis.strengths": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.swot_analysis.weaknesses": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.swot_analysis.opportunities": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.swot_analysis.threats": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.swot_analysis.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.cross_bank_exposure_borrower_group.company_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_utilized_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_utilized_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.fx_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_utilized_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_utilized_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.fx_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.cash_utilized_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.non_cash_utilized_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.fx_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_borrower_group.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.cross_bank_exposure_guarantors.company_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.cross_bank_exposure_guarantors.cash_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.cash_utilized_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_utilized_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.fx_limit_period_1_latest": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.cash_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.cash_utilized_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_utilized_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.fx_limit_period_2": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.cash_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.cash_utilized_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.non_cash_utilized_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.fx_limit_period_3": {
+   "width": "s"
+  },
+  "c.cross_bank_exposure_guarantors.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.relationship_profitability.profitability": {
+   "width": "s"
+  },
+  "c.dealings_with_other_banks.bank_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.dealings_with_other_banks.cash_facilities": {
+   "width": "s"
+  },
+  "c.dealings_with_other_banks.non_cash_facilities": {
+   "width": "s"
+  },
+  "c.dealings_with_other_banks.fx_facilities": {
+   "width": "s"
+  },
+  "c.dealings_with_other_banks.collateral_provided": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.dealings_with_other_banks.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "a.cross_selling_products.uses_point_of_sale_pos_services": {
+   "width": "s"
+  },
+  "a.cross_selling_products.uses_payment_gateway": {
+   "width": "s"
+  },
+  "a.cross_selling_products.uses_wolc": {
+   "width": "s"
+  },
+  "a.cross_selling_products.uses_salary_transfer_portal": {
+   "width": "s"
+  },
+  "a.cross_selling_products.on_approved_list": {
+   "width": "s"
+  },
+  "c.personal_net_worth_analysis.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.company_background": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.management": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.brief_on_shareholders_structure": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.meeting_highlights": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.resources_plants_and_heavy_equipment": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.main_clients_and_payment_terms_if_available": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.main_suppliers_and_payment_terms_if_available": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.company_overview.listed_company_performance_if_publicly_traded": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.performance_history_executed_projects.performance_history_executed_projects": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.ongoing_projects.ongoing_projects": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.projects_pipeline.list_of_projects_in_pipeline": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.projects_financing.projects_financing": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.relationship_history.relationship_history": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.market_analysis.demand_supply": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.market_analysis.market_share_main_competitors": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.strategic_threats": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.growth_potential": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.competition": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.barriers_to_entry": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.regulatory_framework": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.cyclicality": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_business_considerations.key_success_factors": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_credit_risks_mitigation.key_credit_risk": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "d.key_credit_risks_mitigation.mitigation": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.financial_statement_header.borrower_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "e.financial_statement_header.fiscal_year_financial_statement_date": {
+   "width": "s"
+  },
+  "e.financial_statement_header.fiscal_year_basis_standalone_consolidated": {
+   "width": "m"
+  },
+  "e.financial_statement_header.auditor_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "e.financial_statement_header.auditor_s_opinion": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.financial_statement_header.interim_financial_statement_date": {
+   "width": "s"
+  },
+  "e.financial_statement_header.interim_basis_standalone_consolidated": {
+   "width": "m"
+  },
+  "e.financial_statement_header.auditor_preparer_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.guarantor_personal_net_worth_position.guarantor_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "c.guarantor_personal_net_worth_position.cash": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.other_assets": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.balances_with_local_banks": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.balances_with_foreign_banks": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.direct_liabilities": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.indirect_liabilities_personal": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.indirect_liabilities_letters_of_guarantee": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.personal_net_worth": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.rental_income": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.shareholdings_value": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.dividend_income": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.salary_income": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.profit_share_from_companies": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.other_income": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.interest_expense": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.personal_expense": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.loan_repayment": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.other_expenses": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.net_personal_position": {
+   "width": "s"
+  },
+  "c.guarantor_personal_net_worth_position.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "c.guarantor_personal_net_worth_position.comments_on_financial_position": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.financial_ratios_summary.revenue_sales": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.cost_of_goods_sold_cogs": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.cogs_sales": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.direct_depreciation": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.gross_profit": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.gross_profit_margin": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.sg_a_expenses": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.sg_a_sales": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.net_operating_profit_nop": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.nop_margin": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.interest_coverage_nop": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.net_profit_before_unusual_items_npbui": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.return_on_sales_ros": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.return_on_assets_roa_operating": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.return_on_equity_roe_operating": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.net_profit": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.net_profit_margin": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.return_on_assets_roa_net": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.return_on_equity_roe_net": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.sales_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.breakeven_sales": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.margin_of_safety": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.operating_leverage": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.nop_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.net_profit_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.total_assets": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.current_assets": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.current_assets_total_assets": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.accounts_receivable_days_doh": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "e.financial_ratios_summary.inventory_days_doh": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "e.financial_ratios_summary.accounts_payable_accruals_days_doh": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "e.financial_ratios_summary.cash_conversion_cycle_days": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "e.financial_ratios_summary.total_liabilities": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.interest_bearing_debt": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.leasing_obligations_interest_bearing_debt": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.off_balance_sheet_liabilities": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.net_worth": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.leverage_ratio": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.leverage_ratio_excl_p_a": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.leverage_tangible_net_worth": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.gearing": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.gearing_excl_p_a": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.current_ratio": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.quick_ratio": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.assets_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.liabilities_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.net_worth_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.ebitda": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.ebitda_margin": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.ebitda_growth_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "e.financial_ratios_summary.adjusted_ebitda": {
+   "width": "s"
+  },
+  "e.financial_ratios_summary.years_to_service_debt": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.net_debt_ebitda": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.debt_adjusted_ebitda": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.interest_coverage_ebitda": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.financial_payments_coverage_ebitda": {
+   "width": "xs"
+  },
+  "e.financial_ratios_summary.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.income_statement.net_sales_revenues": {
+   "width": "s"
+  },
+  "e.income_statement.cost_of_sales_revenues": {
+   "width": "s"
+  },
+  "e.income_statement.gross_profit": {
+   "width": "s"
+  },
+  "e.income_statement.general_administrative_expense": {
+   "width": "s"
+  },
+  "e.income_statement.depreciation": {
+   "width": "s"
+  },
+  "e.income_statement.amortization": {
+   "width": "s"
+  },
+  "e.income_statement.bad_debt_expense": {
+   "width": "s"
+  },
+  "e.income_statement.total_operating_expenses": {
+   "width": "s"
+  },
+  "e.income_statement.net_operating_profit": {
+   "width": "s"
+  },
+  "e.income_statement.interest_expense": {
+   "width": "s"
+  },
+  "e.income_statement.interest_income_income_from_subsidiaries_joint_ventures": {
+   "width": "s"
+  },
+  "e.income_statement.non_cash_income": {
+   "width": "s"
+  },
+  "e.income_statement.gain_on_derivatives": {
+   "width": "s"
+  },
+  "e.income_statement.other_expense": {
+   "width": "s"
+  },
+  "e.income_statement.total_other_income_expense": {
+   "width": "s"
+  },
+  "e.income_statement.profit_before_taxes": {
+   "width": "s"
+  },
+  "e.income_statement.current_income_tax": {
+   "width": "s"
+  },
+  "e.income_statement.profit_before_extraordinary_items": {
+   "width": "s"
+  },
+  "e.income_statement.extraordinary_items": {
+   "width": "s"
+  },
+  "e.income_statement.extraordinary_gain_loss": {
+   "width": "s"
+  },
+  "e.income_statement.net_profit": {
+   "width": "s"
+  },
+  "e.income_statement.attributable_to_parent_company": {
+   "width": "s"
+  },
+  "e.income_statement.non_controlling_interests": {
+   "width": "s"
+  },
+  "e.income_statement.ebit": {
+   "width": "s"
+  },
+  "e.income_statement.ebitda": {
+   "width": "s"
+  },
+  "e.income_statement.ebida": {
+   "width": "s"
+  },
+  "e.income_statement.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.cash_flow_analysis.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.balance_sheet_assets.cash": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.time_deposits": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.marketable_securities": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.accounts_receivable_net": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.total_inventory": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.operating_current_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.prepaid_deferred_expenses_current": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.operating_current_assets_subtotal": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.total_current_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.fixed_assets_net": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.due_from_related_companies_long_term": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.investment_in_subsidiaries_associates": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.other_investments": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.operating_non_current_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.non_operating_non_current_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.intangibles_net": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.total_non_current_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.total_assets": {
+   "width": "s"
+  },
+  "e.balance_sheet_assets.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.balance_sheet_liabilities_net_worth.short_term_loans_payable_bank": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.current_portion_of_long_term_debt_cpltd_bank": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.accounts_payable_trade": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.dividends_payable": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.billings_in_excess_of_costs": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.income_taxes_payable": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.operating_current_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.non_operating_current_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.total_current_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.long_term_debt_bank": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.accrued_post_retirement_benefits_long_term": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.operating_non_current_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.total_non_current_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.total_liabilities": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.minority_interest_equity": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.capital": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.paid_in_capital": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.other_equity": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.currency_translation_reserve": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.retained_earnings_losses": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.accumulated_other_comprehensive_income_oci": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.treasury_stock": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.total_net_worth": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.total_liabilities_net_worth": {
+   "width": "s"
+  },
+  "e.balance_sheet_liabilities_net_worth.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.sources_uses.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.contingent_liabilities_commitments.letters_of_guarantee_lg": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.letters_of_credit_lc": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.other_commitments": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.contingent_liabilities_commitments.commitments_stood_at": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.acceptable_level": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.current_level": {
+   "width": "s"
+  },
+  "e.contingent_liabilities_commitments.internal_rating_trigger_level": {
+   "width": "m"
+  },
+  "e.project_cash_flow.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "e.financial_appendix.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "f.esg_classification_transitional_rating.borrower_customer_id": {
+   "maxLength": 20,
+   "width": "s"
+  },
+  "f.esg_classification_transitional_rating.client": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.segment": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.country_dominant": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.preliminary_transitional_risk_rating": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.final_transitional_risk_rating_after_overlay": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.client_name": {
+   "maxLength": 150,
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.industry": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.leed_or_equivalent_certification_real_estate_clients_only": {
+   "width": "m"
+  },
+  "f.esg_classification_transitional_rating.reason_for_overlay": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "f.transitional_risk_assessment.has_performed_a_climate_risk_impact_assessment": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.has_articulated_a_climate_risk_strategy_and_organization_wide_development_plan": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.has_a_dedicated_employee_of_appropriate_seniority_managing_climate_risk": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.seniority_level_trained_on_climate_risk": {
+   "width": "m"
+  },
+  "f.transitional_risk_assessment.seniority_level_at_which_climate_risk_is_discussed": {
+   "width": "m"
+  },
+  "f.transitional_risk_assessment.seniority_level_receiving_regular_climate_risk_reports": {
+   "width": "m"
+  },
+  "f.transitional_risk_assessment.has_measured_greenhouse_gas_emissions_scope_1_2_and_3": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.absolute_greenhouse_gas_emissions_tco2e": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.has_policies_to_reduce_mitigate_offset_greenhouse_gas_emissions": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.demonstrates_progress_against_emission_targets": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.adopts_invests_in_renewable_energy_infrastructure": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.will_require_considerable_mitigation_adaptation_capex_in_the_next_5_years": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.has_initiatives_to_reduce_fossil_fuel_use_and_production": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.profitability_significantly_impacted_by_co2_pricing_or_carbon_offsets": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.transitional_risk_score": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.client_is_engaged_in_green_or_sustainable_projects": {
+   "width": "s"
+  },
+  "f.transitional_risk_assessment.green_sustainable_project_category": {
+   "width": "m"
+  },
+  "f.physical_risk_assessment.employees_work_mostly_outdoors_e_g_construction": {
+   "width": "s"
+  },
+  "f.physical_risk_assessment.business_activity_relies_heavily_on_water_resources": {
+   "width": "s"
+  },
+  "f.physical_risk_assessment.essential_infrastructure_located_in_climate_exposed_areas": {
+   "width": "s"
+  },
+  "f.physical_risk_assessment.exposed_assets_fully_insured": {
+   "width": "s"
+  },
+  "f.physical_risk_assessment.obligor_has_experienced_climate_related_disruption": {
+   "width": "s"
+  },
+  "f.physical_risk_assessment.physical_risk_score": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.produces_hazardous_or_chemical_waste": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.recycles_reuses_waste_or_uses_sustainable_packaging": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.deploys_environmental_management_systems_to_reduce_pollution": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.activities_increase_severe_water_scarcity": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.activities_significantly_harm_biodiversity": {
+   "width": "s"
+  },
+  "f.other_environmental_risk_assessment.other_environmental_risk_score": {
+   "width": "s"
+  },
+  "f.social_risk_assessment.overall_social_risk_of_the_obligor": {
+   "width": "m"
+  },
+  "f.social_risk_assessment.social_risk_score": {
+   "width": "s"
+  },
+  "f.governance_risk_assessment.overall_governance_risk_of_the_obligor": {
+   "width": "m"
+  },
+  "f.governance_risk_assessment.governance_risk_score": {
+   "width": "s"
+  },
+  "g.committee_decision.committee_decision_date": {
+   "width": "s"
+  },
+  "g.committee_decision.approval_committee_level": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.limit_reference": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.limit_type": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.limit_amount": {
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.limit_currency": {
+   "width": "xs"
+  },
+  "g.facility_booking_maintenance.committee_approved_limit_by_purpose": {
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.account_number": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.maturity_date": {
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.pricing": {
+   "maxLength": 250,
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.overdraft_fees": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.loan_fees": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.early_settlement_fees": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.restructure_fees": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.reschedule_fees": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.past_due_rate": {
+   "width": "xs",
+   "maxDecimals": 4
+  },
+  "g.facility_booking_maintenance.contract_date": {
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.contract_reference": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "g.facility_booking_maintenance.contract_type": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.purpose": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.commodity_code": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.action": {
+   "width": "m"
+  },
+  "g.facility_booking_maintenance.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "g.collateral_booking_maintenance.collateral_no": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.collateral_type": {
+   "width": "m"
+  },
+  "g.collateral_booking_maintenance.no_of_shares": {
+   "width": "xs",
+   "maxDecimals": 0
+  },
+  "g.collateral_booking_maintenance.collateral_amount": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.proposed_collateral_amount": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.required_coverage": {
+   "width": "xs"
+  },
+  "g.collateral_booking_maintenance.linked_limits": {
+   "maxLength": 50,
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.action": {
+   "width": "m"
+  },
+  "g.collateral_booking_maintenance.comments": {
+   "maxLength": 20000,
+   "width": "full",
+   "rows": 6
+  },
+  "g.collateral_booking_maintenance.mortgage_registration_fee_government_registry": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.documentation_fee": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.signature_verification_fee": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.stamp_fee": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.mortgage_release_fee": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.assignment_of_proceeds_aop_fee": {
+   "width": "s"
+  },
+  "g.collateral_booking_maintenance.other_fee": {
+   "width": "s"
+  }
+ }
+}

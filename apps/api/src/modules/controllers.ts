@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { AuthService, Public, Roles, ROLE } from './auth/auth';
 import { ConfigurationService, GovernanceService } from './configuration/configuration.service';
 import { FieldRegistryService } from './field-registry/field-registry.service';
+import { FieldAttributesService } from './field-registry/field-attributes.service';
 import { RulesService } from './rules/rules.service';
 import { WorkflowService } from './workflow/workflow.service';
 import { CreditRequestService } from './credit-request/credit-request.service';
@@ -57,6 +58,7 @@ class UpdateRequestDto {
   @IsOptional() @IsString() requestType?: string; @IsOptional() @Matches(DECIMAL) requestedAmount?: string;
   @IsOptional() @Matches(/^[A-Z]{3}$/) currencyCode?: string; @IsOptional() @IsObject() fields?: Record<string, unknown>;
 }
+class FieldAttributesDto { @IsObject() attributes: object; @IsOptional() @IsInt() expectedVersion?: number; }
 class ModuleDataDto {
   @IsInt() expectedVersion: number;
   @IsOptional() @IsObject() record?: Record<string, unknown>;
@@ -114,9 +116,13 @@ export class ConfigController {
 
 @Controller('fields')
 export class FieldsController {
-  constructor(private readonly registry: FieldRegistryService, private readonly gov: GovernanceService) {}
+  constructor(private readonly registry: FieldRegistryService, private readonly gov: GovernanceService, private readonly attributes: FieldAttributesService) {}
   @Get() list() { return this.registry.effective(); }
   @Put(':key/override') @Roles(ROLE.configAdmin) override(@Param('key') key: string, @Body() b: OverrideDto) { return this.gov.submit('field_override', key, { ...b }); }
+  @Get('markets') markets() { return this.attributes.markets(); }
+  @Get(':key/attributes') attributesOf(@Param('key') key: string) { return this.attributes.layers(key); }
+  @Put(':key/attributes') @Roles(ROLE.configAdmin) setAttributes(@Param('key') key: string, @Body() b: FieldAttributesDto) { return this.gov.submit('field_attributes', key, { ...b }); }
+  @Delete(':key/attributes') @Roles(ROLE.configAdmin) revertAttributes(@Param('key') key: string) { return this.gov.submit('field_attributes', key, { revert: true }); }
   @Post('custom/:key') @Roles(ROLE.configAdmin) custom(@Param('key') key: string, @Body() b: CustomFieldDto) { return this.gov.submit('custom_field', key, { ...b }); }
 }
 

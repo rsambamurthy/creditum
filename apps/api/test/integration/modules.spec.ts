@@ -415,6 +415,70 @@ describe('low-code editing: formula text and rule references', () => {
   });
 });
 
+describe('field attributes by market and bank', () => {
+  const ID = 'a.general_information.customer_id_number';
+  const ID_TYPE = 'a.general_information.customer_id_type';
+
+  it('renders and enforces each market\'s formats: GCC Civil ID, Indian PAN (upper-cased)', async () => {
+    const xyz = (await http().get('/api/layout').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body as Layout;
+    const xyzId = allFields(xyz).find(f => f.key === ID) as Meta & { attrs: { maxLength: number; variants: { cases: Record<string, { patternHint: string }> } } };
+    expect(xyzId.attrs.maxLength).toBe(50);
+    expect(xyzId.attrs.variants.cases.civil_id.patternHint).toMatch(/12 digits/);
+    const abc = (await http().get('/api/layout').set(await as('abc-finance', 'ro.priya')).expect(200)).body as Layout;
+    const abcId = allFields(abc).find(f => f.key === ID) as Meta & { attrs: { variants: { cases: Record<string, unknown> } } };
+    expect(Object.keys(abcId.attrs.variants.cases)).toEqual(expect.arrayContaining(['pan', 'cin', 'gstin', 'udyam_registration']));
+
+    const rx = await newRequest('xyz-bank', 'ro.ahmed', 'KWD');
+    const xh = await as('xyz-bank', 'ro.ahmed');
+    const bad = await http().put(`/api/credit-requests/${rx.id}/data`).set(xh).send({ expectedVersion: rx.rowVersion,
+      record: { [ID_TYPE]: 'civil_id', [ID]: '12345' } }).expect(422);
+    expect(bad.body.message).toMatch(/not in the expected format — e\.g\. 12 digits/);
+    expect(bad.body.details.field).toBe(ID);
+    await http().put(`/api/credit-requests/${rx.id}/data`).set(xh).send({ expectedVersion: rx.rowVersion,
+      record: { [ID_TYPE]: 'civil_id', [ID]: '290010112345', 'b.credit_facilities.exposure_as_of_date': '2026-09-30' } }).expect(200);
+    // changing the ID type re-checks the stored number against the new format
+    expect((await http().put(`/api/credit-requests/${rx.id}/data`).set(xh).send({ expectedVersion: rx.rowVersion + 1,
+      record: { [ID_TYPE]: 'commercial_registration' } }).expect(422)).body.details.field).toBe(ID);
+
+    const ra = await newRequest('abc-finance', 'ro.priya', 'INR');
+    const ah = await as('abc-finance', 'ro.priya');
+    const saved = await http().put(`/api/credit-requests/${ra.id}/data`).set(ah).send({ expectedVersion: ra.rowVersion,
+      record: { [ID_TYPE]: 'pan', [ID]: 'abcde1234f' } }).expect(200);
+    expect(saved.body.record[ID]).toBe('ABCDE1234F');
+    await http().put(`/api/credit-requests/${ra.id}/data`).set(ah).send({ expectedVersion: ra.rowVersion + 1,
+      record: { [ID_TYPE]: 'gstin', [ID]: 'ABCDE1234F' } }).expect(422);
+    // ranges: ownership is a percentage between 0 and 100
+    expect((await http().put(`/api/credit-requests/${ra.id}/data`).set(ah).send({ expectedVersion: ra.rowVersion + 1,
+      grids: { 'a.shareholders': [{ values: { 'a.shareholders.shareholder_name': 'Promoter', 'a.shareholders.ownership': '120' } }] } }).expect(422)).body.message)
+      .toMatch(/Ownership.*at most 100/);
+    // the header follows its bound field's attributes too
+    expect((await http().post('/api/credit-requests').set(ah).send({ borrowerName: 'N'.repeat(151), borrowerRef: 'B-1', requestType: 'new',
+      requestedAmount: '10', currencyCode: 'INR' }).expect(422)).body.message).toMatch(/at most 150 characters/);
+  });
+
+  it('lets a bank change attributes through governance, shows the layers, and reverts', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    const key = 'a.general_information.major_owner_group';
+    const before = (await http().get(`/api/fields/${key}/attributes`).set(admin).expect(200)).body;
+    expect(before).toMatchObject({ market: 'in', tenant: null, effective: { maxLength: 150 } });
+    await http().put(`/api/fields/${key}/attributes`).set(admin).send({ attributes: { pattern: '^(a+)+$' } }).expect(422);
+    await http().put(`/api/fields/${key}/attributes`).set(admin).send({ attributes: { maxLength: 60, width: 'l' } }).expect(200);
+    const after = (await http().get(`/api/fields/${key}/attributes`).set(admin).expect(200)).body;
+    expect(after.effective).toMatchObject({ maxLength: 60, width: 'l' });
+    expect(after.core).toMatchObject({ maxLength: 150 });
+    const r = await newRequest('abc-finance', 'ro.priya', 'INR');
+    await http().put(`/api/credit-requests/${r.id}/data`).set(await as('abc-finance', 'ro.priya')).send({ expectedVersion: r.rowVersion,
+      record: { [key]: 'G'.repeat(61) } }).expect(422);
+    const xyz = (await http().get(`/api/fields/${key}/attributes`).set(await as('xyz-bank', 'admin.fatima')).expect(200)).body;
+    expect(xyz).toMatchObject({ market: 'gcc', effective: { maxLength: 150 } }); // the other bank is unaffected
+    await http().delete(`/api/fields/${key}/attributes`).set(admin).expect(200);
+    expect((await http().get(`/api/fields/${key}/attributes`).set(admin).expect(200)).body.effective.maxLength).toBe(150);
+    // the market is a setting, checked against the installed market profiles
+    expect((await http().get('/api/fields/markets').set(admin).expect(200)).body).toEqual(['gcc', 'in']);
+    await http().put('/api/config/parameters/market.profile').set(admin).send({ value: 'mars' }).expect(422);
+  });
+});
+
 describe('release configuration for existing tenants', () => {
   it('adds new parameters to an existing tenant without overwriting its own values', async () => {
     const abc = await ds.getRepository(Tenant).findOneByOrFail({ code: 'abc-finance' });
