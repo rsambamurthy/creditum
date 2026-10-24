@@ -87,9 +87,29 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
     const p = new URLSearchParams(params); p.set('module', code); setParams(p, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const goSection = (code: string) => {
-    document.getElementById(sectionDomId(code))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Module navigation: any module's section list can be opened or closed, the active one included.
+  const [expanded, setExpanded] = useState<Set<string> | null>(null);
+  const open = expanded ?? new Set(active ? [active] : []);
+  const toggleModule = (code: string) => setExpanded(() => {
+    const n = new Set(open); if (n.has(code)) n.delete(code); else n.add(code); return n;
+  });
+  const setAll = (on: boolean) => setExpanded(new Set(on ? modules.map(m => m.code) : []));
+  const openModule = (code: string) => {
+    if (code === active) { toggleModule(code); return; }
+    setExpanded(new Set([...open, code]));
+    selectTab(code);
+  };
+  const goSection = (module: string, code: string) => {
+    if (module !== active) selectTab(module);
     setCurrentSection(code);
+    // A section of another module exists only after the module renders: wait for it.
+    const started = Date.now();
+    const attempt = () => {
+      const el = document.getElementById(sectionDomId(code));
+      if (!el && Date.now() - started < 1500) { window.requestAnimationFrame(attempt); return; }
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    window.requestAnimationFrame(attempt);
   };
   // Scroll-spy: highlight the section in view in the module navigation.
   useEffect(() => {
@@ -233,6 +253,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
       <nav className="req-nav" aria-label="Credit request modules">
         <div className="rn-head">
           <span>Modules</span>
+          <button type="button" className="rn-all" onClick={() => setAll(open.size === 0)}>{open.size === 0 ? 'Expand all' : 'Collapse all'}</button>
           <span className="rn-total mono-num" title={data.completeness.mode !== 'off' ? `At submission missing fields ${data.completeness.mode === 'block' ? 'block the step' : 'are reported as warnings'}` : undefined}>
             {totals.f}/{totals.n} mandatory
           </span>
@@ -244,18 +265,20 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
             const state = !c || c.mandatory === 0 ? 'none' : c.filled >= c.mandatory ? 'done' : c.filled > 0 ? 'part' : 'empty';
             return (
               <li key={m.code}>
-                <button type="button" className={`rn-item ${selected ? 'active' : ''}`} aria-current={selected ? 'page' : undefined} onClick={() => selectTab(m.code)}>
+                <button type="button" className={`rn-item ${selected ? 'active' : ''}`} aria-current={selected ? 'page' : undefined}
+                  aria-expanded={open.has(m.code)} aria-controls={`rn-sec-${m.code}`} onClick={() => openModule(m.code)}>
                   <span className="tab-letter" aria-hidden="true">{m.letter.toUpperCase()}</span>
-                  <span className="rn-title">{m.title}</span>
+                  <span className="rn-title" title={m.title}>{m.title}</span>
                   {dirtyTabs.has(m.code) && <span className="dirty-dot" aria-label="unsaved changes" title="Unsaved changes" />}
                   {c && c.mandatory > 0 && <span className={`rn-count ${state}`} aria-label={`${c.filled} of ${c.mandatory} mandatory fields filled`}>{c.filled}/{c.mandatory}</span>}
+                  <span className={`rn-chev ${open.has(m.code) ? 'open' : ''}`} aria-hidden="true" />
                 </button>
-                {selected && (
-                  <ul className="rn-sections">
+                {open.has(m.code) && (
+                  <ul className="rn-sections" id={`rn-sec-${m.code}`}>
                     {m.sections.map(sc => (
                       <li key={sc.code}>
-                        <button type="button" className={currentSection === sc.code ? 'current' : ''} aria-current={currentSection === sc.code ? 'location' : undefined}
-                          onClick={() => goSection(sc.code)}>{sc.title}</button>
+                        <button type="button" className={selected && currentSection === sc.code ? 'current' : ''} aria-current={selected && currentSection === sc.code ? 'location' : undefined}
+                          onClick={() => goSection(m.code, sc.code)}>{sc.title}</button>
                       </li>
                     ))}
                   </ul>
