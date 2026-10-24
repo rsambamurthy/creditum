@@ -1,13 +1,23 @@
 {
   "name": "creditum",
   "private": true,
-  "description": "Creditum — configuration-first corporate lending credit origination platform (Integratatech.ai Pvt Ltd)",
-  "workspaces": ["apps/api", "apps/web", "tools/guardrails"],
-  "engines": { "node": ">=22.13" },
+  "description": "Creditum \u2014 configuration-first corporate lending credit origination platform (Integratatech.ai Pvt Ltd)",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "tools/guardrails"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "guardrails": "node tools/guardrails/check.mjs",
     "build": "npm run build -w apps/api && npm run build -w apps/web",
     "test": "npm run guardrails && npm test -w apps/api",
     "typecheck": "npm run typecheck -w apps/api && npm run typecheck -w apps/web"
+  },
+  "overrides": {
+    "multer": "^2.5.0",
+    "@azure/msal-node": "^7.1.1"
   }
 }
