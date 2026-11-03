@@ -2,7 +2,7 @@
  "connector": "financial_statements",
  "label": "Company registry",
  "version": 1,
- "order": 5,
+ "order": 6,
  "note": "Filed financial statements from the company registry of the bank's market (e.g. MCA21 AOC-4 XBRL in India, SEC EDGAR in the USA), found by the company's registry identifier. Each registry tags figures with its own taxonomy; the taxonomies below map them to the statement lines.",
  "base": "v1/registries/{registry}",
  "identifier": {

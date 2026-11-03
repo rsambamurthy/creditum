@@ -1,0 +1,81 @@
+{
+ "connector": "spreading",
+ "label": "Spreading system",
+ "version": 1,
+ "order": 5,
+ "note": "Financial statements already spread by the bank's analysts in its spreading system (e.g. Moody's CreditLens), found by customer number. The template's line items are mapped to the statement lines below; a bank on another spreading tool keeps the connector and changes the mapping.",
+ "base": "v1/institutions/{institution_code}",
+ "identifier": {
+  "header": "borrowerRef",
+  "label": "customer number"
+ },
+ "required": "spreads",
+ "missing": "skip",
+ "sources": {
+  "spreads": "customers/{id}/spreads"
+ },
+ "record": {},
+ "grids": {
+  "e.financial_periods": {
+   "from": "spreads.statements",
+   "key": [
+    "periodEnd"
+   ],
+   "sortBy": "e.financial_statement_header.fiscal_year_financial_statement_date",
+   "columns": {
+    "e.financial_statement_header.borrower_name": "$.spreads.name",
+    "e.financial_statement_header.fiscal_year_financial_statement_date": "periodEnd",
+    "e.financial_statement_header.fiscal_year_basis_standalone_consolidated": "basis",
+    "e.financial_statement_header.auditor_name": "auditor",
+    "e.financial_statement_header.auditor_s_opinion": "opinion"
+   },
+   "columnsBy": {
+    "selector": "spreads.template",
+    "prefix": "lines.",
+    "maps": {
+     "creditlens": {
+      "e.income_statement.net_sales_revenues": "NetSales",
+      "e.income_statement.cost_of_sales_revenues": "CostOfSales",
+      "e.income_statement.gross_profit": "GrossProfit",
+      "e.income_statement.general_administrative_expense": "GeneralAndAdminExpenses",
+      "e.income_statement.depreciation": "Depreciation",
+      "e.income_statement.amortization": "Amortization",
+      "e.income_statement.net_operating_profit": "OperatingProfit",
+      "e.income_statement.interest_expense": "InterestExpense",
+      "e.income_statement.interest_income_income_from_subsidiaries_joint_ventures": "ShareOfAssociates",
+      "e.income_statement.profit_before_taxes": "ProfitBeforeTax",
+      "e.income_statement.current_income_tax": "TaxesAndLevies",
+      "e.income_statement.net_profit": "NetProfit",
+      "e.balance_sheet_assets.cash": "Cash",
+      "e.balance_sheet_assets.time_deposits": "TimeDeposits",
+      "e.balance_sheet_assets.accounts_receivable_net": "AccountsReceivableNet",
+      "e.balance_sheet_assets.total_inventory": "Inventory",
+      "e.balance_sheet_assets.prepaid_deferred_expenses_current": "PrepaidExpenses",
+      "e.balance_sheet_assets.total_current_assets": "TotalCurrentAssets",
+      "e.balance_sheet_assets.fixed_assets_net": "FixedAssetsNet",
+      "e.balance_sheet_assets.intangibles_net": "IntangiblesNet",
+      "e.balance_sheet_assets.investment_in_subsidiaries_associates": "InvestmentsInAssociates",
+      "e.balance_sheet_assets.total_non_current_assets": "TotalNonCurrentAssets",
+      "e.balance_sheet_assets.total_assets": "TotalAssets",
+      "e.balance_sheet_liabilities_net_worth.short_term_loans_payable_bank": "ShortTermBankDebt",
+      "e.balance_sheet_liabilities_net_worth.current_portion_of_long_term_debt_cpltd_bank": "CurrentPortionLongTermDebt",
+      "e.balance_sheet_liabilities_net_worth.accounts_payable_trade": "AccountsPayableTrade",
+      "e.balance_sheet_liabilities_net_worth.income_taxes_payable": "TaxesPayable",
+      "e.balance_sheet_liabilities_net_worth.total_current_liabilities": "TotalCurrentLiabilities",
+      "e.balance_sheet_liabilities_net_worth.long_term_debt_bank": "LongTermBankDebt",
+      "e.balance_sheet_liabilities_net_worth.accrued_post_retirement_benefits_long_term": "EndOfServiceBenefits",
+      "e.balance_sheet_liabilities_net_worth.total_non_current_liabilities": "TotalNonCurrentLiabilities",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities": "TotalLiabilities",
+      "e.balance_sheet_liabilities_net_worth.capital": "ShareCapital",
+      "e.balance_sheet_liabilities_net_worth.other_equity": "OtherReserves",
+      "e.balance_sheet_liabilities_net_worth.retained_earnings_losses": "RetainedEarnings",
+      "e.balance_sheet_liabilities_net_worth.total_net_worth": "TotalNetWorth",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities_net_worth": "TotalLiabilitiesAndNetWorth",
+      "e.contingent_liabilities_commitments.letters_of_guarantee_lg": "LettersOfGuarantee",
+      "e.contingent_liabilities_commitments.letters_of_credit_lc": "LettersOfCredit"
+     }
+    }
+   }
+  }
+ }
+}

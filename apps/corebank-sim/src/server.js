@@ -5,6 +5,7 @@
  *   /rating     internal rating system — current and previous ratings of the borrower and guarantors
  *   /warehouse  data warehouse / MIS — ROC, RAROC, RWA, relationship income, group ROC by company
  *   /bureau     credit bureau — the subject's limits and utilisation at other lenders
+ *   /spreading  spreading system (CreditLens-style) — financial statements spread by the bank's analysts
  *   /registry   company registries (MCA-style Ind AS, SEC EDGAR-style US-GAAP) — filed financial statements
  *
  * Core banking
@@ -20,6 +21,7 @@
  *   GET  /rating/v1/institutions/:institution/obligors/:cif/ratings
  *   GET  /warehouse/v1/institutions/:institution/customers/:cif/profitability
  *   GET  /bureau/v1/institutions/:institution/subjects/:idNumber/report
+ *   GET  /spreading/v1/institutions/:institution/customers/:cif/spreads
  *   GET  /registry/v1/registries/:registry/companies/:companyId/financial-statements
  *   POST /v1/institutions/:institution/bookings/limits                   book approved limits -> references
  *   POST /v1/institutions/:institution/bookings/collateral               book collateral -> collateral numbers
@@ -87,13 +89,17 @@ function otherSystem(system, parts, institutions, registries) {
     const w = inst.customers[id]?.warehouse;
     return w ? [200, { customer: id, ...w }] : [404, { error: 'customer_not_found', message: `No profitability data for ${id}` }];
   }
+  if (system === 'spreading' && kind === 'customers' && sub === 'spreads') {
+    const sp = inst.customers[id]?.spreads;
+    return sp ? [200, sp] : [404, { error: 'customer_not_found', message: `No spreads for ${id}` }];
+  }
   if (system === 'bureau' && kind === 'subjects' && sub === 'report') {
     const b = inst.bureau?.[id];
     return b ? [200, { subject: id, ...b }] : [404, { error: 'subject_not_found', message: `No bureau record for ${id}` }];
   }
   return [404, { error: 'not_found' }];
 }
-const OTHER_SYSTEMS = new Set(['rating', 'warehouse', 'bureau', 'registry']);
+const OTHER_SYSTEMS = new Set(['rating', 'warehouse', 'bureau', 'spreading', 'registry']);
 
 function reference(prefix, ...parts) {
   const h = createHash('sha256').update([prefix, ...parts].join('|')).digest('hex').toUpperCase();

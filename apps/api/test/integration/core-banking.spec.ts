@@ -30,7 +30,7 @@ async function as(tenantCode: string, loginName: string) {
 }
 const CF = 'b.credit_facilities';
 const GI = 'a.general_information.';
-const SYSTEMS: [string, string][] = [['CORE_BANKING', ''], ['RATING', '/rating'], ['DATA_WAREHOUSE', '/warehouse'], ['CREDIT_BUREAU', '/bureau'], ['FINANCIAL_STATEMENTS', '/registry']];
+const SYSTEMS: [string, string][] = [['CORE_BANKING', ''], ['RATING', '/rating'], ['DATA_WAREHOUSE', '/warehouse'], ['CREDIT_BUREAU', '/bureau'], ['SPREADING', '/spreading'], ['FINANCIAL_STATEMENTS', '/registry']];
 const SAVED_ENV = [...SYSTEMS.flatMap(([n]) => [`CONNECTOR_${n}_URL`, `CONNECTOR_${n}_KEY`]), 'CONNECTOR_TIMEOUT_MS'].map(k => [k, process.env[k]] as const);
 
 beforeAll(async () => {
@@ -111,8 +111,13 @@ describe('core banking connector', () => {
       'a.relationship_overview.total_deposit': '640000', 'a.relationship_overview.total_cash_limit_other_banks': '900000' });
     expect(d.grids['b.roc_raroc_by_company']).toHaveLength(2);
     expect(d.grids['c.dealings_with_other_banks']).toHaveLength(2);
-    expect(d.grids['e.financial_periods'] ?? []).toHaveLength(0); // no company registry in this market
-    expect(d.integration.sources.map((x: { label: string }) => x.label)).toEqual(['Core banking', 'Rating system', 'Data warehouse', 'Credit bureau']);
+    // no company registry in Kuwait: the statements come from the bank's spreading system (CreditLens-style), by customer number
+    const periods = d.grids['e.financial_periods'] as { rowKey: string; values: Record<string, unknown> }[];
+    expect(periods.map(p => p.values['e.financial_statement_header.fiscal_year_financial_statement_date'])).toEqual(['2023-12-31', '2024-12-31', '2025-12-31']);
+    expect(periods[2].values).toMatchObject({ 'e.income_statement.net_sales_revenues': '21250000', 'e.balance_sheet_assets.total_assets': '18006890',
+      'e.contingent_liabilities_commitments.letters_of_guarantee_lg': '129360' });
+    expect(d.integration.rows[periods[0].rowKey]).toMatchObject({ system: 'spreading', ref: '2023-12-31' });
+    expect(d.integration.sources.map((x: { label: string }) => x.label)).toEqual(['Core banking', 'Rating system', 'Data warehouse', 'Credit bureau', 'Spreading system']);
     version = d.rowVersion;
     const audit = (await http().get('/api/audit').set(await as('xyz-bank', 'auditor.hana')).expect(200)).body;
     expect(JSON.stringify(audit)).toContain('credit_request_data_pulled');
@@ -146,7 +151,7 @@ describe('core banking connector', () => {
   it('refreshes from core banking without touching what users entered', async () => {
     const h = await as('xyz-bank', 'analyst.sara');
     const r = (await http().post(`/api/credit-requests/${id}/integrations/pull`).set(h).expect(200)).body;
-    expect(r.systems.map((x: { label: string; status: string }) => `${x.label}: ${x.status}`)).toEqual(['Core banking: pulled', 'Rating system: pulled', 'Data warehouse: pulled', 'Credit bureau: pulled']);
+    expect(r.systems.map((x: { label: string; status: string }) => `${x.label}: ${x.status}`)).toEqual(['Core banking: pulled', 'Rating system: pulled', 'Data warehouse: pulled', 'Credit bureau: pulled', 'Spreading system: pulled']);
     for (const x of r.systems) { expect(x.changes).toEqual([]); expect(x.tables).toEqual([]); }
     const d = (await http().get(`/api/credit-requests/${id}/data`).set(h).expect(200)).body;
     expect(d.grids[CF]).toHaveLength(4);

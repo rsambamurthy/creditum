@@ -31,7 +31,7 @@ Project **Creditum** (production environment):
   data warehouse, credit bureau, company registries) for testing the connectors (`docs/integrations/bank-systems.md`); variables `PORT=4000`, `SIM_API_KEY=${{secret(48)}}`;
   private network only (no public domain). The API gets `CONNECTOR_CORE_BANKING_URL=http://creditum-corebank-sim.railway.internal:4000`,
   `CONNECTOR_CORE_BANKING_KEY=${{creditum-corebank-sim.SIM_API_KEY}}`, the same for `RATING` (`…:4000/rating`),
-  `DATA_WAREHOUSE` (`/warehouse`), `CREDIT_BUREAU` (`/bureau`) and `FINANCIAL_STATEMENTS` (`/registry`), and `CONNECTOR_TIMEOUT_MS`.
+  `DATA_WAREHOUSE` (`/warehouse`), `CREDIT_BUREAU` (`/bureau`), `SPREADING` (`/spreading`) and `FINANCIAL_STATEMENTS` (`/registry`), and `CONNECTOR_TIMEOUT_MS`.
 - `creditum-web` — Dockerfile `apps/web/Dockerfile`; `API_UPSTREAM=http://creditum-api.railway.internal:3000`;
   public domain.
 

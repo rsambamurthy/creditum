@@ -27,7 +27,7 @@ hierarchy, workflows, field labels and rules — never by changing code. The des
 
 - **Core banking connector** — fills a Credit Request from core banking (customer, group, partners, existing facilities,
   security package, guarantees, collateral), keeps those values read-only with their source, refreshes on demand, and
-  books approved limits and collateral back. Rating system, data warehouse, credit bureau and company registries (MCA, SEC EDGAR) work the same way. Contracts, settings and behaviour: `docs/integrations/bank-systems.md`.
+  books approved limits and collateral back. Rating system, data warehouse, credit bureau, spreading system (e.g. CreditLens) and company registries (MCA, SEC EDGAR) work the same way. Contracts, settings and behaviour: `docs/integrations/bank-systems.md`.
   Build/test environments run `apps/corebank-sim`.
 
 ## Non-negotiables (enforced by the build)

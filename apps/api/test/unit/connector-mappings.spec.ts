@@ -12,8 +12,8 @@ for (const m of layout.modules) for (const s of m.sections) {
 
 describe('connector mappings (seed/connectors)', () => {
   const defs = loadConnectorDefs();
-  it('has the five bank systems, core banking first', () => {
-    expect(defs.map(d => d.connector)).toEqual(['core_banking', 'rating', 'data_warehouse', 'credit_bureau', 'financial_statements']);
+  it('has the six bank systems, core banking first', () => {
+    expect(defs.map(d => d.connector)).toEqual(['core_banking', 'rating', 'data_warehouse', 'credit_bureau', 'spreading', 'financial_statements']);
   });
   it.each(defs.map(d => [d.connector, d] as const))('%s names only fields on the layout, at the right level', (_, d) => {
     for (const k of Object.keys(d.record)) expect([k, placed.get(k)]).toEqual([k, null]);
@@ -31,6 +31,8 @@ describe('connector mappings (seed/connectors)', () => {
     expect(Object.keys(maps)).toEqual(['ind-as', 'us-gaap']);
     expect(maps['ind-as']['e.income_statement.net_sales_revenues']).toBe('RevenueFromOperations');
     expect(maps['us-gaap']['e.income_statement.net_sales_revenues']).toBe('Revenues');
+    const sp = defs.find(d => d.connector === 'spreading')!.grids['e.financial_periods'].columnsBy!.maps;
+    expect(sp.creditlens['e.income_statement.net_sales_revenues']).toBe('NetSales');
   });
   it('reads nested values and list items by path', () => {
     const doc = { customer: { group: { id: 'G1' } }, packages: [{ items: [{ v: '2' }] }] };

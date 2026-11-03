@@ -242,6 +242,18 @@
       "valueType": "text",
       "value": "cin",
       "description": "Customer ID types that are registry identifiers (comma-separated codes of id_document_type)"
+    },
+    {
+      "key": "integration.spreading.enabled",
+      "valueType": "boolean",
+      "value": "false",
+      "description": "Pull financial statements spread by the bank's analysts in its spreading system (e.g. CreditLens)"
+    },
+    {
+      "key": "integration.spreading.institution_code",
+      "valueType": "text",
+      "value": "abc-finance",
+      "description": "This institution's code in the spreading system connector"
     }
   ],
   "valueLists": {

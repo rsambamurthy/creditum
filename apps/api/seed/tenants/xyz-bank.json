@@ -247,6 +247,18 @@
       "valueType": "boolean",
       "value": "false",
       "description": "Pull filed financial statements from the company registry of the market (none for this market: statements are entered or uploaded)"
+    },
+    {
+      "key": "integration.spreading.enabled",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Pull financial statements spread by the bank's analysts in its spreading system (e.g. CreditLens)"
+    },
+    {
+      "key": "integration.spreading.institution_code",
+      "valueType": "text",
+      "value": "xyz-bank",
+      "description": "This institution's code in the spreading system connector"
     }
   ],
   "valueLists": {

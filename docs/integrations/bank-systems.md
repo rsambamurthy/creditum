@@ -1,6 +1,6 @@
 # Bank system connectors
 
-Creditum fills a Credit Request from five bank systems, each through its own connector. All of them work the same way
+Creditum fills a Credit Request from six bank systems, each through its own connector. All of them work the same way
 (below, with core banking as the example): the endpoint and key come from the deployment, a workspace switches a
 connector on with `integration.<connector>.enabled`, the field mapping is data in `apps/api/seed/connectors/`, every
 value is checked like a user's entry, pulled values are read-only with their source, and every pull is audited.
@@ -11,22 +11,29 @@ value is checked like a user's entry, pulled values are read-only with their sou
 | `rating` — Rating system | `CONNECTOR_RATING_URL` / `_KEY` | `institution_code` | Internal ratings (current, previous, dates) of the borrower, personal and corporate guarantor | customer number |
 | `data_warehouse` — Data warehouse | `CONNECTOR_DATA_WAREHOUSE_URL` / `_KEY` | `institution_code` | Existing ROC, RAROC, RWA; relationship income; profitability; relationship history; group ROC / RAROC by company | customer number |
 | `credit_bureau` — Credit bureau | `CONNECTOR_CREDIT_BUREAU_URL` / `_KEY` | `institution_code` (member code) | Limits and utilisation at other banks; dealings with other banks | identification number |
+| `spreading` — Spreading system | `CONNECTOR_SPREADING_URL` / `_KEY` | `institution_code` | Financial statements already spread by the bank's analysts (e.g. Moody's CreditLens, as in Kuwait): header, income statement, balance sheet, contingent liabilities, by period | customer number |
 | `financial_statements` — Company registry | `CONNECTOR_FINANCIAL_STATEMENTS_URL` / `_KEY` | `registry` (`mca`, `sec`), `identifier_types` (e.g. `cin`) | Filed financial statements by period: header, income statement, balance sheet | registry identifier (CIN, CIK) when the customer's ID type is one of `identifier_types` |
 
 Connectors run in that order on **create** and on **Refresh from bank systems** (later ones may use values core banking
 filled, e.g. the identification number). A system without a record for the customer is skipped; one that cannot be
 reached is reported and the others still run.
 
+**Spreading system.** Where there is no public registry for private companies (e.g. Kuwait), banks spread the
+audited statements in their spreading system — commonly Moody's CreditLens — and Creditum pulls the spread periods.
+The response names its template (`creditlens`) and `spreading.json` maps the template's line items to the statement
+lines. A bank on another spreading tool keeps the connector and adds a mapping for its template. Use either the
+spreading system or the company registry for a workspace: both fill the same periods.
+
 **Company registries.** Each registry tags figures with its own taxonomy; the response names it (`ind-as` for MCA21
 AOC-4 XBRL, `us-gaap` for SEC EDGAR) and `financial-statements.json` maps each taxonomy's concepts to the statement
 lines. Periods are matched by period end and kept oldest first; ratios are calculated from the pulled lines. A market
-without a registry for private companies (e.g. Kuwait) leaves the connector off: statements are entered by hand (or,
-later, uploaded and read).
+without a registry for private companies (e.g. Kuwait) uses the spreading system instead.
 
 Contracts of the other systems (all `GET`, `x-api-key`):
 - Rating: `v1/institutions/{institution_code}/obligors/{cif}/ratings` → `{ borrower, personalGuarantor, corporateGuarantor }`, each `{ current: { rating, asOf }, previous: { rating, asOf } }` or null
 - Data warehouse: `v1/institutions/{institution_code}/customers/{cif}/profitability` → `{ asOf, capital: { roc, raroc, rwa }, income: { interest, retail, fx, lcLg, fees }, profitability, relationshipHistory, group: { totalExisting, companies: [{ company, limit, weight, roc, weightedRoc, raroc, weightedRaroc }] } }`
 - Credit bureau: `v1/institutions/{institution_code}/subjects/{idNumber}/report` → `{ name, asOf, otherBanks: { cashLimit, cashUtilization, nonCashLimit, nonCashUtilization }, lenders: [{ lender, cash, nonCash, fx, collateral }] }`
+- Spreading system: `v1/institutions/{institution_code}/customers/{cif}/spreads` → `{ customer, name, template, statements: [{ periodEnd, basis, currency, months, auditor, opinion, spreadBy, spreadOn, source, lines: { <line item>: "<decimal>" } }] }`
 - Company registry: `v1/registries/{registry}/companies/{id}/financial-statements` → `{ registry, taxonomy, companyId, name, statements: [{ periodEnd, basis, currency, auditor, opinion, filedOn, form, facts: { <concept>: "<decimal>" } }] }`
 - Core banking also: `GET customers/{cif}/relationship-summary` → `{ freeFunds, deposits, investments, cashLimit, cashOutstanding, nonCashLimit, nonCashOutstanding, creditCardLimit, cardOutstanding }`
 
@@ -87,11 +94,12 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 
 ## Simulator (build and test only)
 
-`apps/corebank-sim` — all five systems in one service (core banking at the root, then `/rating`, `/warehouse`, `/bureau`, `/registry`); no dependencies; `PORT` and `SIM_API_KEY` (≥ 24 characters) are required. Customers:
+`apps/corebank-sim` — all five systems in one service (core banking at the root, then `/rating`, `/warehouse`, `/bureau`, `/spreading`, `/registry`); no dependencies; `PORT` and `SIM_API_KEY` (≥ 24 characters) are required. Customers:
 XYZ Bank `CIF00418823` (three facilities, a security package, a guarantee, unpledged collateral), `CIF00377104`,
 `CIF00502231` (new, no facilities); ABC Finance `C10045821` (two facilities, a package, a guarantee), `C10051307`.
 All names, identifiers and accounts are invented.
 
 Rating, data warehouse and bureau data exist for the main customers; the registry holds MCA filings (Ind AS) for
 `U34300MH2009PTC193245` (Tarvenna, three years), `U45200TN2008PTC068904`, `U27100MH2004PTC150318`, and a SEC EDGAR-style
-filer (US-GAAP) `0001999001`. ABC Finance customers carry their CIN as the customer ID; XYZ Bank has no registry.
+filer (US-GAAP) `0001999001`. ABC Finance customers carry their CIN as the customer ID; XYZ Bank has no registry and uses the spreading system:
+`CIF00418823` has FY2023–FY2025 spread from the specimen audited statements (KD).
