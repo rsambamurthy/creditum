@@ -1,0 +1,91 @@
+{
+ "registry": "sec",
+ "name": "SEC EDGAR — simulated",
+ "taxonomy": "us-gaap",
+ "note": "Fictional filings for build and test.",
+ "companies": {
+  "0001999001": {
+   "name": "Brightwater Components Inc.",
+   "statements": [
+    {
+     "periodEnd": "2023-12-31",
+     "basis": "consolidated",
+     "currency": "USD",
+     "auditor": "Hollis Ward LLP",
+     "opinion": "Unqualified opinion",
+     "filedOn": "2024-02-27",
+     "form": "10-K",
+     "facts": {
+      "Revenues": "412000000",
+      "CostOfRevenue": "263680000",
+      "GeneralAndAdministrativeExpense": "49440000",
+      "Depreciation": "16480000",
+      "AmortizationOfIntangibleAssets": "2472000",
+      "OperatingIncomeLoss": "79928000",
+      "InterestExpense": "6180000",
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest": "73748000",
+      "CurrentIncomeTaxExpenseBenefit": "15487080",
+      "NetIncomeLoss": "58260920",
+      "CashAndCashEquivalentsAtCarryingValue": "37080000",
+      "ShortTermInvestments": "12360000",
+      "AccountsReceivableNetCurrent": "61800000",
+      "InventoryNet": "49440000",
+      "AssetsCurrent": "164800000",
+      "PropertyPlantAndEquipmentNet": "173040000",
+      "IntangibleAssetsNetExcludingGoodwill": "20600000",
+      "Assets": "370800000",
+      "ShortTermBorrowings": "16480000",
+      "LongTermDebtCurrent": "8240000",
+      "AccountsPayableCurrent": "37080000",
+      "LiabilitiesCurrent": "74160000",
+      "LongTermDebtNoncurrent": "74160000",
+      "Liabilities": "156560000",
+      "CommonStockValue": "4120000",
+      "RetainedEarningsAccumulatedDeficit": "185400000",
+      "StockholdersEquity": "214240000",
+      "LiabilitiesAndStockholdersEquity": "370800000"
+     }
+    },
+    {
+     "periodEnd": "2024-12-31",
+     "basis": "consolidated",
+     "currency": "USD",
+     "auditor": "Hollis Ward LLP",
+     "opinion": "Unqualified opinion",
+     "filedOn": "2025-02-27",
+     "form": "10-K",
+     "facts": {
+      "Revenues": "446000000",
+      "CostOfRevenue": "285440000",
+      "GeneralAndAdministrativeExpense": "53520000",
+      "Depreciation": "17840000",
+      "AmortizationOfIntangibleAssets": "2676000",
+      "OperatingIncomeLoss": "86524000",
+      "InterestExpense": "6690000",
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest": "79834000",
+      "CurrentIncomeTaxExpenseBenefit": "16765140",
+      "NetIncomeLoss": "63068860",
+      "CashAndCashEquivalentsAtCarryingValue": "40140000",
+      "ShortTermInvestments": "13380000",
+      "AccountsReceivableNetCurrent": "66900000",
+      "InventoryNet": "53520000",
+      "AssetsCurrent": "178400000",
+      "PropertyPlantAndEquipmentNet": "187320000",
+      "IntangibleAssetsNetExcludingGoodwill": "22300000",
+      "Assets": "401400000",
+      "ShortTermBorrowings": "17840000",
+      "LongTermDebtCurrent": "8920000",
+      "AccountsPayableCurrent": "40140000",
+      "LiabilitiesCurrent": "80280000",
+      "LongTermDebtNoncurrent": "80280000",
+      "Liabilities": "169480000",
+      "CommonStockValue": "4460000",
+      "RetainedEarningsAccumulatedDeficit": "200700000",
+      "StockholdersEquity": "231920000",
+      "LiabilitiesAndStockholdersEquity": "401400000"
+     }
+    }
+   ]
+  }
+ }
+}

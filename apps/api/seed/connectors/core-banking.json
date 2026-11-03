@@ -2,13 +2,22 @@
  "connector": "core_banking",
  "label": "Core banking",
  "version": 1,
+ "order": 1,
  "note": "Product mapping between the Creditum core banking connector contract (docs/integrations/core-banking-connector.md) and Credit Request fields. Paths read the documents the connector fetches; values are checked against the bank's value lists and field attributes before they are stored.",
+ "base": "v1/institutions/{institution_code}",
+ "identifier": {
+  "header": "borrowerRef",
+  "label": "customer number"
+ },
+ "required": "customer",
+ "missing": "error",
  "sources": {
-  "customer": "customers/{cif}",
-  "facilities": "customers/{cif}/facilities",
-  "securityPackages": "customers/{cif}/security-packages",
-  "guarantees": "customers/{cif}/guarantees",
-  "collateral": "customers/{cif}/collateral"
+  "customer": "customers/{id}",
+  "facilities": "customers/{id}/facilities",
+  "securityPackages": "customers/{id}/security-packages",
+  "guarantees": "customers/{id}/guarantees",
+  "collateral": "customers/{id}/collateral",
+  "relationship": "customers/{id}/relationship-summary"
  },
  "header": {
   "borrowerName": "customer.name"
@@ -55,7 +64,16 @@
   "f.esg_classification_transitional_rating.industry": "customer.sector",
   "b.pricing.client_name": "customer.name",
   "b.credit_facilities.borrower_customer_id": "customer.cif",
-  "b.pricing_header.borrower_customer_id": "customer.cif"
+  "b.pricing_header.borrower_customer_id": "customer.cif",
+  "a.relationship_overview.total_free_funds": "relationship.freeFunds",
+  "a.relationship_overview.total_deposit": "relationship.deposits",
+  "a.relationship_overview.total_investments": "relationship.investments",
+  "a.relationship_overview.total_cash_limit": "relationship.cashLimit",
+  "a.relationship_overview.total_cash_outstanding": "relationship.cashOutstanding",
+  "a.relationship_overview.total_non_cash_limit": "relationship.nonCashLimit",
+  "a.relationship_overview.total_non_cash_outstanding": "relationship.nonCashOutstanding",
+  "a.relationship_overview.total_credit_card_limit": "relationship.creditCardLimit",
+  "a.relationship_overview.total_card_outstanding_balance": "relationship.cardOutstanding"
  },
  "grids": {
   "a.partners": {

@@ -209,7 +209,90 @@
      "value": "95000",
      "status": "pending_perfection"
     }
-   ]
+   ],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "4",
+      "asOf": "2025-11-20"
+     },
+     "previous": {
+      "rating": "5",
+      "asOf": "2024-11-18"
+     }
+    },
+    "personalGuarantor": {
+     "current": {
+      "rating": "3",
+      "asOf": "2025-09-30"
+     },
+     "previous": {
+      "rating": "3",
+      "asOf": "2024-09-30"
+     }
+    },
+    "corporateGuarantor": {
+     "current": {
+      "rating": "4",
+      "asOf": "2025-10-15"
+     },
+     "previous": {
+      "rating": "4",
+      "asOf": "2024-10-10"
+     }
+    }
+   },
+   "warehouse": {
+    "asOf": "2025-12-31",
+    "capital": {
+     "roc": "14.2",
+     "raroc": "18.6",
+     "rwa": "2015000"
+    },
+    "income": {
+     "interest": "128400",
+     "retail": "8250",
+     "fx": "21300",
+     "lcLg": "9600",
+     "fees": "6150"
+    },
+    "profitability": "152300",
+    "relationshipHistory": "Customer since 2011. Working-capital and term facilities renewed annually; no past dues in the last 36 months; two limit increases (2019, 2023).",
+    "group": {
+     "totalExisting": "2200000",
+     "companies": [
+      {
+       "company": "Zelvaro Marine Logistics W.L.L.",
+       "limit": "1700000",
+       "weight": "77.27",
+       "roc": "14.2",
+       "weightedRoc": "10.97",
+       "raroc": "18.6",
+       "weightedRaroc": "14.37"
+      },
+      {
+       "company": "Zelvaro Port Services Co.",
+       "limit": "500000",
+       "weight": "22.73",
+       "roc": "11.8",
+       "weightedRoc": "2.68",
+       "raroc": "15.1",
+       "weightedRaroc": "3.43"
+      }
+     ]
+    }
+   },
+   "relationshipSummary": {
+    "freeFunds": "185000",
+    "deposits": "640000",
+    "investments": "95000",
+    "cashLimit": "1700000",
+    "cashOutstanding": "1172450.250",
+    "nonCashLimit": "750000",
+    "nonCashOutstanding": "420000",
+    "creditCardLimit": "20000",
+    "cardOutstanding": "4380"
+   }
   },
   "CIF00377104": {
    "customer": {
@@ -286,7 +369,63 @@
    ],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "6",
+      "asOf": "2025-08-11"
+     },
+     "previous": {
+      "rating": "5",
+      "asOf": "2024-08-01"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   },
+   "warehouse": {
+    "asOf": "2025-12-31",
+    "capital": {
+     "roc": "9.4",
+     "raroc": "11.2",
+     "rwa": "1820000"
+    },
+    "income": {
+     "interest": "42000",
+     "retail": "1900",
+     "fx": "3100",
+     "lcLg": "48200",
+     "fees": "7300"
+    },
+    "profitability": "61800",
+    "relationshipHistory": "Contracting customer since 2005; guarantee-heavy relationship; account on watch since 2024 after delayed project receivables.",
+    "group": {
+     "totalExisting": "2000000",
+     "companies": [
+      {
+       "company": "Ambertide Contracting Co. K.S.C.C.",
+       "limit": "2000000",
+       "weight": "100",
+       "roc": "9.4",
+       "weightedRoc": "9.4",
+       "raroc": "11.2",
+       "weightedRaroc": "11.2"
+      }
+     ]
+    }
+   },
+   "relationshipSummary": {
+    "freeFunds": "40000",
+    "deposits": "215000",
+    "investments": "0",
+    "cashLimit": "0",
+    "cashOutstanding": "0",
+    "nonCashLimit": "2000000",
+    "nonCashOutstanding": "1740000",
+    "creditCardLimit": "10000",
+    "cardOutstanding": "1200"
+   }
   },
   "CIF00502231": {
    "customer": {
@@ -354,7 +493,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "3",
+      "asOf": "2025-12-01"
+     },
+     "previous": {
+      "rating": "3",
+      "asOf": "2024-12-02"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "CIF00344019": {
    "customer": {
@@ -388,7 +541,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "5",
+      "asOf": "2025-07-07"
+     },
+     "previous": {
+      "rating": "4",
+      "asOf": "2024-07-05"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "CIF00388712": {
    "customer": {
@@ -422,7 +589,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "6",
+      "asOf": "2025-05-15"
+     },
+     "previous": {
+      "rating": "6",
+      "asOf": "2024-05-20"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "CIF00456230": {
    "customer": {
@@ -456,7 +637,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "4",
+      "asOf": "2025-10-01"
+     },
+     "previous": {
+      "rating": "4",
+      "asOf": "2024-09-29"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "CIF00477781": {
    "customer": {
@@ -490,7 +685,68 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "5",
+      "asOf": "2025-06-30"
+     },
+     "previous": {
+      "rating": "6",
+      "asOf": "2024-06-28"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
+  }
+ },
+ "bureau": {
+  "4521873": {
+   "asOf": "2025-12-31",
+   "otherBanks": {
+    "cashLimit": "900000",
+    "cashUtilization": "610000",
+    "nonCashLimit": "400000",
+    "nonCashUtilization": "215000"
+   },
+   "lenders": [
+    {
+     "lender": "Lender A (anonymised)",
+     "cash": "600000",
+     "nonCash": "250000",
+     "fx": "0",
+     "collateral": "Assignment of contract proceeds"
+    },
+    {
+     "lender": "Lender B (anonymised)",
+     "cash": "300000",
+     "nonCash": "150000",
+     "fx": "50000",
+     "collateral": "Unsecured"
+    }
+   ],
+   "name": "Zelvaro Marine Logistics W.L.L."
+  },
+  "2290417": {
+   "asOf": "2025-12-31",
+   "otherBanks": {
+    "cashLimit": "350000",
+    "cashUtilization": "345000",
+    "nonCashLimit": "3500000",
+    "nonCashUtilization": "3120000"
+   },
+   "lenders": [
+    {
+     "lender": "Lender C (anonymised)",
+     "cash": "350000",
+     "nonCash": "3500000",
+     "fx": "0",
+     "collateral": "Cash margin 10%"
+    }
+   ],
+   "name": "Ambertide Contracting Co. K.S.C.C."
   }
  }
 }

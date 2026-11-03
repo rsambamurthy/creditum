@@ -1,8 +1,14 @@
 'use strict';
 /**
- * Core banking simulator — build and test only, fictional data only.
+ * Bank systems simulator — build and test only, fictional data only. One service, one system per path:
+ *   (root)      core banking — customers, facilities, packages, guarantees, collateral, account totals, booking
+ *   /rating     internal rating system — current and previous ratings of the borrower and guarantors
+ *   /warehouse  data warehouse / MIS — ROC, RAROC, RWA, relationship income, group ROC by company
+ *   /bureau     credit bureau — the subject's limits and utilisation at other lenders
+ *   /registry   company registries (MCA-style Ind AS, SEC EDGAR-style US-GAAP) — filed financial statements
  *
- * Implements the Creditum core banking connector contract (docs/integrations/core-banking-connector.md):
+ * Core banking
+ * Implements the Creditum core banking connector contract (docs/integrations/bank-systems.md):
  *   GET  /health
  *   GET  /v1/institutions/:institution/customers?q=&limit=               search by customer number or name (list of values)
  *   GET  /v1/institutions/:institution/customers/:cif                    customer master, group, partners
@@ -10,6 +16,11 @@
  *   GET  /v1/institutions/:institution/customers/:cif/security-packages  packages with their facilities and collateral
  *   GET  /v1/institutions/:institution/customers/:cif/guarantees
  *   GET  /v1/institutions/:institution/customers/:cif/collateral         collateral not in a package
+ *   GET  /v1/institutions/:institution/customers/:cif/relationship-summary  own-bank deposits, investments, limits, cards
+ *   GET  /rating/v1/institutions/:institution/obligors/:cif/ratings
+ *   GET  /warehouse/v1/institutions/:institution/customers/:cif/profitability
+ *   GET  /bureau/v1/institutions/:institution/subjects/:idNumber/report
+ *   GET  /registry/v1/registries/:registry/companies/:companyId/financial-statements
  *   POST /v1/institutions/:institution/bookings/limits                   book approved limits -> references
  *   POST /v1/institutions/:institution/bookings/collateral               book collateral -> collateral numbers
  *
@@ -43,6 +54,46 @@ function loadInstitutions(dir = DATA_DIR) {
   }
   return out;
 }
+
+function loadRegistries(dir = join(DATA_DIR, 'registries')) {
+  const out = new Map();
+  for (const f of readdirSync(dir).filter(n => n.endsWith('.json')).sort()) {
+    const doc = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+    out.set(doc.registry, doc);
+  }
+  return out;
+}
+
+/** The other bank systems: [status, body] for a GET, or null when the path is not theirs. */
+function otherSystem(system, parts, institutions, registries) {
+  if (system === 'registry') {
+    // v1/registries/:registry/companies/:id/financial-statements
+    if (parts[0] !== 'v1' || parts[1] !== 'registries' || parts[3] !== 'companies' || parts[5] !== 'financial-statements' || parts.length !== 6) return [404, { error: 'not_found' }];
+    const reg = registries.get(parts[2]);
+    if (!reg) return [404, { error: 'registry_not_found', message: `No registry ${parts[2]}` }];
+    const co = reg.companies[parts[4]];
+    if (!co) return [404, { error: 'company_not_found', message: `No filings for ${parts[4]} in ${reg.name}` }];
+    return [200, { registry: reg.registry, taxonomy: reg.taxonomy, companyId: parts[4], name: co.name, statements: co.statements }];
+  }
+  if (parts[0] !== 'v1' || parts[1] !== 'institutions' || parts.length !== 6) return [404, { error: 'not_found' }];
+  const inst = institutions.get(parts[2]);
+  if (!inst) return [404, { error: 'institution_not_found', message: `No institution ${parts[2]}` }];
+  const [, , , kind, id, sub] = parts;
+  if (system === 'rating' && kind === 'obligors' && sub === 'ratings') {
+    const r = inst.customers[id]?.ratings;
+    return r ? [200, { obligor: id, ...r }] : [404, { error: 'obligor_not_found', message: `No ratings for ${id}` }];
+  }
+  if (system === 'warehouse' && kind === 'customers' && sub === 'profitability') {
+    const w = inst.customers[id]?.warehouse;
+    return w ? [200, { customer: id, ...w }] : [404, { error: 'customer_not_found', message: `No profitability data for ${id}` }];
+  }
+  if (system === 'bureau' && kind === 'subjects' && sub === 'report') {
+    const b = inst.bureau?.[id];
+    return b ? [200, { subject: id, ...b }] : [404, { error: 'subject_not_found', message: `No bureau record for ${id}` }];
+  }
+  return [404, { error: 'not_found' }];
+}
+const OTHER_SYSTEMS = new Set(['rating', 'warehouse', 'bureau', 'registry']);
 
 function reference(prefix, ...parts) {
   const h = createHash('sha256').update([prefix, ...parts].join('|')).digest('hex').toUpperCase();
@@ -116,13 +167,21 @@ function bookCollateral(inst, body) {
   return [200, { bookedAt: new Date().toISOString(), creditRequestNumber: body.creditRequestNumber, items }];
 }
 
-function createSimulator({ apiKey, institutions = loadInstitutions(), log = () => {} }) {
+function createSimulator({ apiKey, institutions = loadInstitutions(), registries = loadRegistries(), log = () => {} }) {
   if (!apiKey || apiKey.length < 24) throw new Error('The simulator needs an API key of at least 24 characters (SIM_API_KEY)');
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://simulator');
     const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
     try {
-      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok', institutions: [...institutions.keys()] });
+      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok', institutions: [...institutions.keys()], registries: [...registries.keys()] });
+      if (req.method === 'GET' && OTHER_SYSTEMS.has(parts[0]) && parts[1] === 'health' && parts.length === 2) return send(res, 200, { status: 'ok', system: parts[0] });
+      if (OTHER_SYSTEMS.has(parts[0])) {
+        if (!sameKey(req.headers['x-api-key'], apiKey)) return send(res, 401, { error: 'unauthorized', message: 'A valid x-api-key header is required' });
+        if (req.method !== 'GET') return send(res, 405, { error: 'method_not_allowed' });
+        log(`${req.method} ${url.pathname}`);
+        const [status, body] = otherSystem(parts[0], parts.slice(1), institutions, registries);
+        return send(res, status, body);
+      }
       if (parts[0] !== 'v1' || parts[1] !== 'institutions' || parts.length < 4) return send(res, 404, { error: 'not_found' });
       if (!sameKey(req.headers['x-api-key'], apiKey)) return send(res, 401, { error: 'unauthorized', message: 'A valid x-api-key header is required' });
       const inst = institutions.get(parts[2]);
@@ -136,7 +195,8 @@ function createSimulator({ apiKey, institutions = loadInstitutions(), log = () =
         if (!c) return send(res, 404, { error: 'customer_not_found', message: `No customer ${parts[4]}` });
         const sub = parts[5];
         if (!sub) return send(res, 200, c.customer);
-        const lists = { facilities: c.facilities, 'security-packages': c.securityPackages, guarantees: c.guarantees, collateral: c.collateral };
+        const lists = { facilities: c.facilities, 'security-packages': c.securityPackages, guarantees: c.guarantees, collateral: c.collateral,
+          'relationship-summary': c.relationshipSummary ?? {} };
         if (!(sub in lists) || parts.length > 6) return send(res, 404, { error: 'not_found' });
         return send(res, 200, lists[sub] ?? []);
       }
@@ -152,7 +212,7 @@ function createSimulator({ apiKey, institutions = loadInstitutions(), log = () =
   });
 }
 
-module.exports = { createSimulator, loadInstitutions };
+module.exports = { createSimulator, loadInstitutions, loadRegistries };
 
 if (require.main === module) {
   const port = Number(process.env.PORT);

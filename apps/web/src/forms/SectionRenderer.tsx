@@ -202,7 +202,8 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
                   <th scope="col" key={p.id} className="num matrix-period">
                     <div className="period-head">
                       <span>{name(p, i)}</span>{name(p, i) !== `${label} ${i + 1}` && <span className="muted small">{label} {i + 1}</span>}
-                      {!ctx.disabled && (
+                      {ctx.sourcedRow?.(p.rowKey) && <span className="calc-badge src" title={`Filed statement from ${ctx.sourcedRow(p.rowKey)!.toLowerCase()} — read-only`}>{ctx.sourcedRow(p.rowKey)}</span>}
+                      {!ctx.disabled && !ctx.sourcedRow?.(p.rowKey) && (
                         <span className="row-tools">
                           <button type="button" className="icon-btn" onClick={() => setRows(move(periods, i, -1))} disabled={i === 0} aria-label={`Move ${label} ${i + 1} earlier`}><span className="rtl-flip">←</span></button>
                           <button type="button" className="icon-btn" onClick={() => setRows(move(periods, i, 1))} disabled={i === periods.length - 1} aria-label={`Move ${label} ${i + 1} later`}><span className="rtl-flip">→</span></button>
@@ -228,7 +229,8 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
                     <td key={p.id} className="num">
                       <FieldInput cell meta={c} values={p.values} onChange={(k, v) => setCell(i, k, v)} layout={ctx.layout} header={ctx.header}
                         disabled={ctx.disabled} cellLabel={`${c.label}, ${label} ${i + 1}`} domId={p.rowKey ? fieldDomId(c.key, p.rowKey) : undefined}
-                        missing={!!p.rowKey && ctx.missing.has(`${c.key}@${p.rowKey}`)} message={p.rowKey ? ctx.messages?.get(`${c.key}@${p.rowKey}`) : undefined} />
+                        missing={!!p.rowKey && ctx.missing.has(`${c.key}@${p.rowKey}`)} message={p.rowKey ? ctx.messages?.get(`${c.key}@${p.rowKey}`) : undefined}
+                        source={ctx.sourceOf?.(c.key, p.rowKey ?? null)} />
                     </td>
                   ))}
                   {periods.length === 0 && <td />}

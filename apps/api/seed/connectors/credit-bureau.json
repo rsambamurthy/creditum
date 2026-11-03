@@ -1,0 +1,38 @@
+{
+ "connector": "credit_bureau",
+ "label": "Credit bureau",
+ "version": 1,
+ "order": 4,
+ "note": "The borrower's limits and utilisation at other lenders, from the credit bureau, found by the borrower's identification number.",
+ "base": "v1/institutions/{institution_code}",
+ "identifier": {
+  "record": "a.general_information.customer_id_number",
+  "label": "identification number"
+ },
+ "required": "report",
+ "missing": "skip",
+ "sources": {
+  "report": "subjects/{id}/report"
+ },
+ "record": {
+  "a.relationship_overview.total_cash_limit_other_banks": "report.otherBanks.cashLimit",
+  "a.relationship_overview.total_cash_utilization_other_banks": "report.otherBanks.cashUtilization",
+  "a.relationship_overview.total_non_cash_limit_other_banks": "report.otherBanks.nonCashLimit",
+  "a.relationship_overview.total_non_cash_utilization_other_banks": "report.otherBanks.nonCashUtilization"
+ },
+ "grids": {
+  "c.dealings_with_other_banks": {
+   "from": "report.lenders",
+   "key": [
+    "lender"
+   ],
+   "columns": {
+    "c.dealings_with_other_banks.bank_name": "lender",
+    "c.dealings_with_other_banks.cash_facilities": "cash",
+    "c.dealings_with_other_banks.non_cash_facilities": "nonCash",
+    "c.dealings_with_other_banks.fx_facilities": "fx",
+    "c.dealings_with_other_banks.collateral_provided": "collateral"
+   }
+  }
+ }
+}

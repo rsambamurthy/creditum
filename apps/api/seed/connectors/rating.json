@@ -1,0 +1,32 @@
+{
+ "connector": "rating",
+ "label": "Rating system",
+ "version": 1,
+ "order": 2,
+ "note": "Internal ratings of the borrower and its guarantors from the bank's rating system.",
+ "base": "v1/institutions/{institution_code}",
+ "identifier": {
+  "header": "borrowerRef",
+  "label": "customer number"
+ },
+ "required": "ratings",
+ "missing": "skip",
+ "sources": {
+  "ratings": "obligors/{id}/ratings"
+ },
+ "record": {
+  "a.risk_ratings_borrower.internal_rating_current": "ratings.borrower.current.rating",
+  "a.risk_ratings_borrower.internal_rating_as_of_date_current": "ratings.borrower.current.asOf",
+  "a.risk_ratings_borrower.internal_rating_previous": "ratings.borrower.previous.rating",
+  "a.risk_ratings_borrower.internal_rating_as_of_date_previous": "ratings.borrower.previous.asOf",
+  "a.risk_ratings_personal_guarantor.internal_rating_current": "ratings.personalGuarantor.current.rating",
+  "a.risk_ratings_personal_guarantor.internal_rating_as_of_date_current": "ratings.personalGuarantor.current.asOf",
+  "a.risk_ratings_personal_guarantor.internal_rating_previous": "ratings.personalGuarantor.previous.rating",
+  "a.risk_ratings_personal_guarantor.internal_rating_as_of_date_previous": "ratings.personalGuarantor.previous.asOf",
+  "a.risk_ratings_corporate_guarantor.internal_rating_current": "ratings.corporateGuarantor.current.rating",
+  "a.risk_ratings_corporate_guarantor.internal_rating_as_of_date_current": "ratings.corporateGuarantor.current.asOf",
+  "a.risk_ratings_corporate_guarantor.internal_rating_previous": "ratings.corporateGuarantor.previous.rating",
+  "a.risk_ratings_corporate_guarantor.internal_rating_as_of_date_previous": "ratings.corporateGuarantor.previous.asOf"
+ },
+ "grids": {}
+}

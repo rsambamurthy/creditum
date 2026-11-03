@@ -91,7 +91,7 @@ export interface RuleMessage { rule: string; message: string }
 export interface Outcome {
   blocks: RuleMessage[]; warnings: RuleMessage[]; required: MissingField[]; hidden: string[]; fired: string[];
 }
-export interface SaveResult { request: CreditRequestDetail; warnings: RuleMessage[]; integration?: { pulled: boolean; warnings: string[]; changes?: number } }
+export interface SaveResult { request: CreditRequestDetail; warnings: RuleMessage[]; integration?: { pulled: boolean; warnings: string[]; changes?: number; systems?: string[] } }
 export interface CreditRequestInput {
   borrowerName: string; borrowerRef: string; requestType: string; requestedAmount: string; currencyCode: string; fields?: Record<string, unknown>;
 }
@@ -179,17 +179,20 @@ export interface RequestData {
   /** Values that came from an external system and are read-only here; null when the workspace has no connector. */
   integration: RequestIntegration | null;
 }
+export interface IntegrationSource { system: string; label: string; pulledAt: string | null; record: string[]; columns: Record<string, string[]> }
 export interface RequestIntegration {
   label: string | null; pulledAt: string | null; bookedAt: string | null;
-  record: string[]; columns: Record<string, string[]>; rows: Record<string, { system: string; ref: string | null }>;
+  sources: IntegrationSource[]; rows: Record<string, { system: string; ref: string | null }>;
 }
-export interface CoreBankingStatus { label: string; configured: boolean; enabled: boolean; institution: string | null; reachable: boolean; bookingStates: string[] }
+export interface ConnectorState { code: string; label: string; configured: boolean; enabled: boolean; reachable: boolean }
+export interface CoreBankingStatus { label: string; configured: boolean; enabled: boolean; institution: string | null; reachable: boolean; bookingStates: string[]; systems: ConnectorState[] }
 export interface CoreBankingCustomer { cif: string; name: string | null; segment: string | null; newOrExisting: string | null; idType: string | null; idNumber: string | null }
-export interface PullResult {
-  pulledAt: string; warnings: string[];
+export interface SystemPull {
+  system: string; label: string; status: 'pulled' | 'skipped' | 'failed'; message?: string; warnings: string[];
   changes: { field: string; label: string; section: string; before: FormValue; after: FormValue }[];
   tables: { grid: string; label: string; added: number; updated: number; removed: number }[];
 }
+export interface PullResult { pulledAt: string; systems: SystemPull[] }
 export interface BookingResult { bookedAt: string; limits: string[]; collateral: string[]; warnings: string[] }
 export interface RequestDataInput {
   expectedVersion: number; record?: Record<string, FormValue>; grids?: Record<string, GridRowData[]>;
@@ -257,7 +260,7 @@ export const api = {
   coreBankingStatus: () => request<CoreBankingStatus>('GET', '/integrations/core-banking/status'),
   coreBankingCustomer: (cif: string) => request<CoreBankingCustomer>('GET', `/integrations/core-banking/customers/${enc(cif)}`),
   coreBankingCustomers: (q: string) => request<{ items: CoreBankingCustomer[]; total: number }>('GET', `/integrations/core-banking/customers?q=${encodeURIComponent(q)}`),
-  pullCoreBanking: (id: string) => request<PullResult>('POST', `/credit-requests/${enc(id)}/core-banking/pull`),
+  pullBankData: (id: string) => request<PullResult>('POST', `/credit-requests/${enc(id)}/integrations/pull`),
   bookCoreBanking: (id: string) => request<BookingResult>('POST', `/credit-requests/${enc(id)}/core-banking/booking`),
 
   fields: () => request<EffectiveField[]>('GET', '/fields'),

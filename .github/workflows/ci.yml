@@ -178,6 +178,9 @@ jobs:
           docker run -d --name corebank --network host -e PORT=4000 -e SIM_API_KEY=$SIM_KEY creditum-corebank-sim:ci
           for i in $(seq 1 15); do curl -fsS http://127.0.0.1:4000/health && break; sleep 1; done
           ENVS="$ENVS -e CONNECTOR_CORE_BANKING_URL=http://127.0.0.1:4000 -e CONNECTOR_CORE_BANKING_KEY=$SIM_KEY -e CONNECTOR_TIMEOUT_MS=5000"
+          for s in RATING:rating DATA_WAREHOUSE:warehouse CREDIT_BUREAU:bureau FINANCIAL_STATEMENTS:registry; do
+            ENVS="$ENVS -e CONNECTOR_${s%%:*}_URL=http://127.0.0.1:4000/${s##*:} -e CONNECTOR_${s%%:*}_KEY=$SIM_KEY"
+          done
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js migrate
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js seed
           docker run -d --name api --network host $ENVS creditum-api:ci
@@ -187,7 +190,7 @@ jobs:
           # a new request is filled from the core banking simulator through the connector
           TOKEN=$(curl -fsS -X POST http://127.0.0.1:3000/api/auth/dev-login -H 'content-type: application/json' -d '{"tenantCode":"xyz-bank","loginName":"ro.ahmed"}' | jq -r .token)
           curl -fsS -X POST http://127.0.0.1:3000/api/credit-requests -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-            -d '{"borrowerName":"Smoke","borrowerRef":"CIF00418823","requestType":"new","requestedAmount":"1000","currencyCode":"KWD"}' | jq -e '.integration.pulled == true' > /dev/null
+            -d '{"borrowerName":"Smoke","borrowerRef":"CIF00418823","requestType":"new","requestedAmount":"1000","currencyCode":"KWD"}' | jq -e '.integration.pulled == true and (.integration.systems | length) == 4' > /dev/null
           # start the web tier before checking it, and prove it starts even if the upstream name is unknown
           docker run -d --name web-early --network host -e API_UPSTREAM=http://not-yet-deployed.invalid:3000 creditum-web:ci
           sleep 3; docker ps --filter name=web-early --format '{{.Status}}' | grep -q Up

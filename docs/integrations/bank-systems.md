@@ -1,3 +1,35 @@
+# Bank system connectors
+
+Creditum fills a Credit Request from five bank systems, each through its own connector. All of them work the same way
+(below, with core banking as the example): the endpoint and key come from the deployment, a workspace switches a
+connector on with `integration.<connector>.enabled`, the field mapping is data in `apps/api/seed/connectors/`, every
+value is checked like a user's entry, pulled values are read-only with their source, and every pull is audited.
+
+| Connector | Environment | Workspace settings | Fills | Found by |
+|---|---|---|---|---|
+| `core_banking` — Core banking | `CONNECTOR_CORE_BANKING_URL` / `_KEY` | `institution_code`, booking rules | Customer, group, partners, facilities, security package, guarantees, collateral, own-bank relationship totals; booking | customer number |
+| `rating` — Rating system | `CONNECTOR_RATING_URL` / `_KEY` | `institution_code` | Internal ratings (current, previous, dates) of the borrower, personal and corporate guarantor | customer number |
+| `data_warehouse` — Data warehouse | `CONNECTOR_DATA_WAREHOUSE_URL` / `_KEY` | `institution_code` | Existing ROC, RAROC, RWA; relationship income; profitability; relationship history; group ROC / RAROC by company | customer number |
+| `credit_bureau` — Credit bureau | `CONNECTOR_CREDIT_BUREAU_URL` / `_KEY` | `institution_code` (member code) | Limits and utilisation at other banks; dealings with other banks | identification number |
+| `financial_statements` — Company registry | `CONNECTOR_FINANCIAL_STATEMENTS_URL` / `_KEY` | `registry` (`mca`, `sec`), `identifier_types` (e.g. `cin`) | Filed financial statements by period: header, income statement, balance sheet | registry identifier (CIN, CIK) when the customer's ID type is one of `identifier_types` |
+
+Connectors run in that order on **create** and on **Refresh from bank systems** (later ones may use values core banking
+filled, e.g. the identification number). A system without a record for the customer is skipped; one that cannot be
+reached is reported and the others still run.
+
+**Company registries.** Each registry tags figures with its own taxonomy; the response names it (`ind-as` for MCA21
+AOC-4 XBRL, `us-gaap` for SEC EDGAR) and `financial-statements.json` maps each taxonomy's concepts to the statement
+lines. Periods are matched by period end and kept oldest first; ratios are calculated from the pulled lines. A market
+without a registry for private companies (e.g. Kuwait) leaves the connector off: statements are entered by hand (or,
+later, uploaded and read).
+
+Contracts of the other systems (all `GET`, `x-api-key`):
+- Rating: `v1/institutions/{institution_code}/obligors/{cif}/ratings` → `{ borrower, personalGuarantor, corporateGuarantor }`, each `{ current: { rating, asOf }, previous: { rating, asOf } }` or null
+- Data warehouse: `v1/institutions/{institution_code}/customers/{cif}/profitability` → `{ asOf, capital: { roc, raroc, rwa }, income: { interest, retail, fx, lcLg, fees }, profitability, relationshipHistory, group: { totalExisting, companies: [{ company, limit, weight, roc, weightedRoc, raroc, weightedRaroc }] } }`
+- Credit bureau: `v1/institutions/{institution_code}/subjects/{idNumber}/report` → `{ name, asOf, otherBanks: { cashLimit, cashUtilization, nonCashLimit, nonCashUtilization }, lenders: [{ lender, cash, nonCash, fx, collateral }] }`
+- Company registry: `v1/registries/{registry}/companies/{id}/financial-statements` → `{ registry, taxonomy, companyId, name, statements: [{ periodEnd, basis, currency, auditor, opinion, filedOn, form, facts: { <concept>: "<decimal>" } }] }`
+- Core banking also: `GET customers/{cif}/relationship-summary` → `{ freeFunds, deposits, investments, cashLimit, cashOutstanding, nonCashLimit, nonCashOutstanding, creditCardLimit, cardOutstanding }`
+
 # Core banking connector
 
 Creditum reads customer, facility and collateral data from core banking into a Credit Request, and books approved
@@ -48,14 +80,18 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 - `GET /api/integrations/core-banking/status` → `{ label, configured, enabled, institution, reachable, bookingStates }`
 - `GET /api/integrations/core-banking/customers?q=` → `{ items, total }` (customer number list of values; at least 2 characters)
 - `GET /api/integrations/core-banking/customers/:cif` → `{ cif, name, segment, newOrExisting, idType, idNumber }` (New Credit Request look-up)
-- `POST /api/credit-requests` → also `{ integration: { pulled, warnings, changes } }`
-- `POST /api/credit-requests/:id/core-banking/pull` → `{ pulledAt, changes: [{ field, label, section, before, after }], tables: [{ grid, label, added, updated, removed }], warnings }`
+- `POST /api/credit-requests` → also `{ integration: { pulled, systems, warnings, changes } }`
+- `POST /api/credit-requests/:id/integrations/pull` → `{ pulledAt, systems: [{ system, label, status: pulled|skipped|failed, message?, changes: [{ field, label, section, before, after }], tables: [{ grid, label, added, updated, removed }], warnings }] }` (all available systems)
 - `POST /api/credit-requests/:id/core-banking/booking` → `{ bookedAt, limits, collateral, warnings }`
-- `GET /api/credit-requests/:id/data` → also `integration: { label, pulledAt, bookedAt, record: [keys], columns: { grid: [keys] }, rows: { rowKey: { system, ref } } }`
+- `GET /api/credit-requests/:id/data` → also `integration: { pulledAt, bookedAt, sources: [{ system, label, pulledAt, record: [keys], columns: { grid: [keys] } }], rows: { rowKey: { system, ref } } }`
 
 ## Simulator (build and test only)
 
-`apps/corebank-sim` — no dependencies; `PORT` and `SIM_API_KEY` (≥ 24 characters) are required. Customers:
+`apps/corebank-sim` — all five systems in one service (core banking at the root, then `/rating`, `/warehouse`, `/bureau`, `/registry`); no dependencies; `PORT` and `SIM_API_KEY` (≥ 24 characters) are required. Customers:
 XYZ Bank `CIF00418823` (three facilities, a security package, a guarantee, unpledged collateral), `CIF00377104`,
 `CIF00502231` (new, no facilities); ABC Finance `C10045821` (two facilities, a package, a guarantee), `C10051307`.
 All names, identifiers and accounts are invented.
+
+Rating, data warehouse and bureau data exist for the main customers; the registry holds MCA filings (Ind AS) for
+`U34300MH2009PTC193245` (Tarvenna, three years), `U45200TN2008PTC068904`, `U27100MH2004PTC150318`, and a SEC EDGAR-style
+filer (US-GAAP) `0001999001`. ABC Finance customers carry their CIN as the customer ID; XYZ Bank has no registry.

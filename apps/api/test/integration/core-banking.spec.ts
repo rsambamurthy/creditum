@@ -30,14 +30,17 @@ async function as(tenantCode: string, loginName: string) {
 }
 const CF = 'b.credit_facilities';
 const GI = 'a.general_information.';
-const SAVED_ENV = ['CONNECTOR_CORE_BANKING_URL', 'CONNECTOR_CORE_BANKING_KEY', 'CONNECTOR_TIMEOUT_MS'].map(k => [k, process.env[k]] as const);
+const SYSTEMS: [string, string][] = [['CORE_BANKING', ''], ['RATING', '/rating'], ['DATA_WAREHOUSE', '/warehouse'], ['CREDIT_BUREAU', '/bureau'], ['FINANCIAL_STATEMENTS', '/registry']];
+const SAVED_ENV = [...SYSTEMS.flatMap(([n]) => [`CONNECTOR_${n}_URL`, `CONNECTOR_${n}_KEY`]), 'CONNECTOR_TIMEOUT_MS'].map(k => [k, process.env[k]] as const);
 
 beforeAll(async () => {
   const apiKey = randomBytes(24).toString('hex');
   sim = createSimulator({ apiKey });
   await new Promise<void>(resolve => sim.listen(0, '127.0.0.1', resolve));
-  process.env.CONNECTOR_CORE_BANKING_URL = `http://127.0.0.1:${(sim.address() as AddressInfo).port}`;
-  process.env.CONNECTOR_CORE_BANKING_KEY = apiKey;
+  for (const [name, path] of SYSTEMS) {
+    process.env[`CONNECTOR_${name}_URL`] = `http://127.0.0.1:${(sim.address() as AddressInfo).port}${path}`;
+    process.env[`CONNECTOR_${name}_KEY`] = apiKey;
+  }
   process.env.CONNECTOR_TIMEOUT_MS = '5000';
   const setup = createDataSource(loadDbEnv());
   await setup.initialize();
@@ -98,12 +101,21 @@ describe('core banking connector', () => {
     // provenance: what came from core banking is listed, and calculated fields use the pulled values
     expect(d.integration.label).toBe('Core banking');
     expect(d.integration.pulledAt).toBeTruthy();
-    expect(d.integration.record).toEqual(expect.arrayContaining([`${GI}customer_name`, `${GI}customer_segment`]));
+    expect(d.integration.sources[0].record).toEqual(expect.arrayContaining([`${GI}customer_name`, `${GI}customer_segment`]));
     expect(d.integration.rows[od.rowKey]).toEqual({ system: 'core_banking', ref: 'XYZ-OD-0418823-01' });
     expect(d.record['b.security_package.total_existing_facility_value_base_reporting_currency_existing_package']).toBe('1700000');
+    // the other bank systems: rating system, data warehouse, credit bureau; own-bank totals from core banking
+    expect(d.record).toMatchObject({ 'a.risk_ratings_borrower.internal_rating_current': '4', 'a.risk_ratings_borrower.internal_rating_previous': '5',
+      'a.risk_ratings_personal_guarantor.internal_rating_current': '3', 'a.capital_return_summary.existing_raroc': '18.6',
+      'a.deal_economics_relationship_profitability.interest_income': '128400', 'a.deal_economics_relationship_profitability.total_relationship_income': '173700',
+      'a.relationship_overview.total_deposit': '640000', 'a.relationship_overview.total_cash_limit_other_banks': '900000' });
+    expect(d.grids['b.roc_raroc_by_company']).toHaveLength(2);
+    expect(d.grids['c.dealings_with_other_banks']).toHaveLength(2);
+    expect(d.grids['e.financial_periods'] ?? []).toHaveLength(0); // no company registry in this market
+    expect(d.integration.sources.map((x: { label: string }) => x.label)).toEqual(['Core banking', 'Rating system', 'Data warehouse', 'Credit bureau']);
     version = d.rowVersion;
     const audit = (await http().get('/api/audit').set(await as('xyz-bank', 'auditor.hana')).expect(200)).body;
-    expect(JSON.stringify(audit)).toContain('credit_request_core_banking_pulled');
+    expect(JSON.stringify(audit)).toContain('credit_request_data_pulled');
   });
 
   it('keeps pulled values read-only and lets users work on their own columns and rows', async () => {
@@ -133,15 +145,15 @@ describe('core banking connector', () => {
 
   it('refreshes from core banking without touching what users entered', async () => {
     const h = await as('xyz-bank', 'analyst.sara');
-    const r = (await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(h).expect(200)).body;
-    expect(r.changes).toEqual([]);
-    expect(r.tables).toEqual([]);
+    const r = (await http().post(`/api/credit-requests/${id}/integrations/pull`).set(h).expect(200)).body;
+    expect(r.systems.map((x: { label: string; status: string }) => `${x.label}: ${x.status}`)).toEqual(['Core banking: pulled', 'Rating system: pulled', 'Data warehouse: pulled', 'Credit bureau: pulled']);
+    for (const x of r.systems) { expect(x.changes).toEqual([]); expect(x.tables).toEqual([]); }
     const d = (await http().get(`/api/credit-requests/${id}/data`).set(h).expect(200)).body;
     expect(d.grids[CF]).toHaveLength(4);
     const od = d.grids[CF].find((x: { values: Record<string, unknown> }) => x.values[`${CF}.facility_identifier_product_code_reference_number`] === 'XYZ-OD-0418823-01');
     expect(od.values[`${CF}.proposed_limit`]).toBe('650000');
     version = d.rowVersion;
-    await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(await as('xyz-bank', 'ops.zainab')).expect(403);
+    await http().post(`/api/credit-requests/${id}/integrations/pull`).set(await as('xyz-bank', 'ops.zainab')).expect(403);
   });
 
   it('books approved limits and collateral in core banking once, and only when approved', async () => {
@@ -152,7 +164,7 @@ describe('core banking connector', () => {
     };
     await step('ro.ahmed', 'submit');
     // pulling is for requests still being prepared
-    await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(await as('xyz-bank', 'analyst.sara')).expect(422);
+    await http().post(`/api/credit-requests/${id}/integrations/pull`).set(await as('xyz-bank', 'analyst.sara')).expect(422);
     await step('analyst.sara', 'recommend');
     await step('risk.omar', 'endorse');
     await step('committee.layla', 'approve');
@@ -183,7 +195,20 @@ describe('core banking connector', () => {
     const res = await create('abc-finance', 'ro.priya', 'C10045821', 'INR');
     expect(res.integration.pulled).toBe(true);
     const d = (await http().get(`/api/credit-requests/${res.request.id}/data`).set(await as('abc-finance', 'ro.priya')).expect(200)).body;
-    expect(d.record).toMatchObject({ [`${GI}customer_id_type`]: 'pan', [`${GI}customer_id_number`]: 'AAKCT4821M', [`${GI}risk_rating`]: 'ABC-3' });
+    expect(d.record).toMatchObject({ [`${GI}customer_id_type`]: 'cin', [`${GI}customer_id_number`]: 'U34300MH2009PTC193245', [`${GI}risk_rating`]: 'ABC-3' });
+    // filed statements from the company registry (MCA, Ind AS taxonomy), found by CIN, oldest period first and read-only
+    const periods = d.grids['e.financial_periods'] as { rowKey: string; values: Record<string, unknown> }[];
+    expect(periods.map(p => p.values['e.financial_statement_header.fiscal_year_financial_statement_date'])).toEqual(['2023-03-31', '2024-03-31', '2025-03-31']);
+    expect(periods[2].values).toMatchObject({ 'e.income_statement.net_sales_revenues': '1810000000', 'e.financial_statement_header.auditor_name': 'Ravel Mehta & Associates, Chartered Accountants' });
+    expect(d.integration.rows[periods[0].rowKey]).toMatchObject({ system: 'financial_statements', ref: '2023-03-31' });
+    expect(d.record['e.financial_ratios_summary.gross_profit']).toBeUndefined(); // the ratios are per period, calculated from the pulled lines
+    expect(periods[2].values['e.financial_ratios_summary.gross_profit']).toBe('398200000');
+    const rejected = await http().put(`/api/credit-requests/${res.request.id}/data`).set(await as('abc-finance', 'ro.priya')).send({ expectedVersion: d.rowVersion,
+      grids: { 'e.financial_periods': periods.map((p, i) => ({ rowKey: p.rowKey, values: i === 0 ? { 'e.income_statement.net_sales_revenues': '1' } : {} })) } }).expect(422);
+    expect(rejected.body.message).toMatch(/comes from company registry/);
+    // rating system, data warehouse and credit bureau for ABC
+    expect(d.record).toMatchObject({ 'a.risk_ratings_borrower.internal_rating_current': 'ABC-3', 'a.capital_return_summary.existing_roc': '15.8',
+      'a.relationship_overview.total_cash_limit_other_banks': '220000000' });
     expect(d.grids[CF].map((r: { values: Record<string, unknown> }) => r.values[`${CF}.settlement_account`])).toEqual(['502100045821', '502100045821']);
     // XYZ users never see ABC's customers
     await http().get(`/api/credit-requests/${res.request.id}/data`).set(await as('xyz-bank', 'ro.ahmed')).expect(404);

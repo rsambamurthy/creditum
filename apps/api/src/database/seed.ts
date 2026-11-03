@@ -97,6 +97,11 @@ export async function seedCoreFormulas(ds: DataSource): Promise<number> {
       changed += 1;
     }
   }
+  // a product formula withdrawn by a release (e.g. a value now supplied by a connector) is removed; tenant formulas stay
+  const shipped = new Set(formulas.map(f => f.field));
+  for (const cur of existing.values()) {
+    if (!shipped.has(cur.fieldKey)) { await repo.delete({ id: cur.id, ownerScope: CORE_SCOPE }); changed += 1; }
+  }
   return changed;
 }
 

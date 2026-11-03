@@ -32,7 +32,7 @@ export interface Env {
   rateLimit: { windowSeconds: number; max: number };
   migrateOnStart: boolean;
   /** Outbound connectors. Absent when the deployment has none configured (the tenant setting alone cannot enable one). */
-  connectors: { coreBanking?: { url: string; apiKey: string; timeoutMs: number } };
+  connectors: Record<string, { url: string; apiKey: string; timeoutMs: number }>;
 }
 
 export function loadEnv(): Env {
@@ -74,19 +74,26 @@ export function loadEnv(): Env {
 }
 
 /**
- * Core banking connector: its endpoint and credential belong to the deployment (the bank's network and secrets
- * store), never to tenant configuration — so a configuration change cannot point Creditum at another host.
+ * Outbound connectors (core banking, rating, data warehouse, credit bureau, financial statements …): each one's
+ * endpoint and credential belong to the deployment (the bank's network and secrets store), never to tenant
+ * configuration — so a configuration change cannot point Creditum at another host. CONNECTOR_<NAME>_URL turns a
+ * connector on for the deployment and then needs CONNECTOR_<NAME>_KEY; CONNECTOR_TIMEOUT_MS applies to all.
  */
 function loadConnectors(): Env['connectors'] {
-  const url = process.env.CONNECTOR_CORE_BANKING_URL?.trim();
-  if (!url) return {};
-  let parsed: URL;
-  try { parsed = new URL(url); } catch { throw new Error('CONNECTOR_CORE_BANKING_URL must be an absolute URL'); }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('CONNECTOR_CORE_BANKING_URL must use http or https');
-  const apiKey = required('CONNECTOR_CORE_BANKING_KEY');
-  // guardrail-allow: minimum credential length, a security rule rather than a business value
-  if (apiKey.length < 24) throw new Error('CONNECTOR_CORE_BANKING_KEY must be at least 24 characters');
-  return { coreBanking: { url: url.replace(/\/+$/, ''), apiKey, timeoutMs: requiredInt('CONNECTOR_TIMEOUT_MS') } };
+  const out: Env['connectors'] = {};
+  for (const name of Object.keys(process.env).sort()) {
+    const m = /^CONNECTOR_([A-Z][A-Z0-9_]*)_URL$/.exec(name);
+    const url = m ? process.env[name]?.trim() : undefined;
+    if (!m || !url) continue;
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { throw new Error(`${name} must be an absolute URL`); }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error(`${name} must use http or https`);
+    const apiKey = required(`CONNECTOR_${m[1]}_KEY`);
+    // guardrail-allow: minimum credential length, a security rule rather than a business value
+    if (apiKey.length < 24) throw new Error(`CONNECTOR_${m[1]}_KEY must be at least 24 characters`);
+    out[m[1].toLowerCase()] = { url: url.replace(/\/+$/, ''), apiKey, timeoutMs: requiredInt('CONNECTOR_TIMEOUT_MS') };
+  }
+  return out;
 }
 
 /** Database settings only — used by the migration / seed command line. */

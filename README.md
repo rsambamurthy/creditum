@@ -27,7 +27,7 @@ hierarchy, workflows, field labels and rules — never by changing code. The des
 
 - **Core banking connector** — fills a Credit Request from core banking (customer, group, partners, existing facilities,
   security package, guarantees, collateral), keeps those values read-only with their source, refreshes on demand, and
-  books approved limits and collateral back. Contract, settings and behaviour: `docs/integrations/core-banking-connector.md`.
+  books approved limits and collateral back. Rating system, data warehouse, credit bureau and company registries (MCA, SEC EDGAR) work the same way. Contracts, settings and behaviour: `docs/integrations/bank-systems.md`.
   Build/test environments run `apps/corebank-sim`.
 
 ## Non-negotiables (enforced by the build)
@@ -77,7 +77,7 @@ or on-premise. See `docs/deployment.md`.
 ```
 apps/api          NestJS + TypeORM API (TypeScript)
 apps/web          React console (Vite)
-apps/corebank-sim Core banking simulator for build/test (fictional data; docs/integrations/core-banking-connector.md)
+apps/corebank-sim Bank systems simulator for build/test (fictional data; docs/integrations/bank-systems.md)
 tools/guardrails  Static checks for SDD 25.4
 docs/             SDD, Core Field Library, design reference, ADRs, deployment notes
 .github/workflows CI: guardrails, build, integration on 3 databases, security scans, containers

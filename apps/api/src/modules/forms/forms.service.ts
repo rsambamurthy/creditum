@@ -73,10 +73,8 @@ export interface Model {
  * Values that came from an external system and are read-only on the request (e.g. core banking). Record fields are
  * listed by key; in rows that came from the system (form_rows.source_system), the listed columns of that grid.
  */
-export interface DataLocks {
-  system: string; label: string; pulledAt: string | null; bookedAt: string | null;
-  record: string[]; columns: Record<string, string[]>;
-}
+export interface LockSource { system: string; label: string; pulledAt: string | null; record: string[]; columns: Record<string, string[]> }
+export interface DataLocks { sources: LockSource[]; bookedAt: string | null }
 type LockProvider = (m: EntityManager, requestId: string) => Promise<DataLocks | null>;
 
 /** A change written by the platform on behalf of an external system (a pull or a booking), not typed by a user. */
@@ -93,6 +91,8 @@ export interface SystemContext {
   value: (key: string, raw: unknown, grid: string | null, row: Record<string, Value>, record: Record<string, Value>) => SystemValue;
   label: (key: string) => string;
   placed: (key: string) => PlacedField | undefined;
+  /** True for fields filled by a formula (active or pending): never written by an external system. */
+  calculated: (key: string) => boolean;
 }
 
 export interface SaveInput { expectedVersion: number; record?: Record<string, unknown>; grids?: Record<string, { rowKey?: string; values: Record<string, unknown> }[]> }
@@ -281,10 +281,11 @@ export class FormsService implements OnModuleInit {
     }
     const locks = await this.locks(m, r.id);
     const sourced = rows.filter(x => x.sourceSystem);
+    const sources = locks?.sources ?? [];
+    const pulled = sources.map(x => x.pulledAt).filter((x): x is string => !!x).sort();
     const integration = locks || sourced.length ? {
-      label: locks?.label ?? null, pulledAt: locks?.pulledAt ?? null, bookedAt: locks?.bookedAt ?? null,
-      record: locks?.record ?? [], columns: locks?.columns ?? {},
-      rows: Object.fromEntries(sourced.map(x => [x.id, { system: x.sourceSystem, ref: x.sourceRef ?? null }])),
+      label: sources[0]?.label ?? null, pulledAt: pulled[pulled.length - 1] ?? null, bookedAt: locks?.bookedAt ?? null,
+      sources, rows: Object.fromEntries(sourced.map(x => [x.id, { system: x.sourceSystem, ref: x.sourceRef ?? null }])),
     } : null;
     return { requestId: r.id, rowVersion: r.rowVersion, editable: !!def.states.find(s => s.code === r.status && s.editable),
       record, grids, completeness: { mode, ...this.completeness(model, data) }, integration };
@@ -504,24 +505,28 @@ export class FormsService implements OnModuleInit {
   private enforceLocks(model: Model, locks: DataLocks, before: FormData, next: FormData, rows: FormRow[], input: SaveInput) {
     const same = (a: Value | undefined, b: Value | undefined) => (isEmpty(a) && isEmpty(b)) || a === b;
     const label = (k: string) => model.fields.get(this.baseKey(k))?.label ?? k;
-    const refuse = (k: string, rowKey: string | null): never => {
-      throw new DomainError('read_only_field', `"${label(k)}" comes from ${locks.label.toLowerCase()} — change it there and refresh the request`, undefined, { field: k, rowKey });
+    const bySystem = new Map(locks.sources.map(x => [x.system, x]));
+    const refuse = (k: string, rowKey: string | null, system: string): never => {
+      throw new DomainError('read_only_field', `"${label(k)}" comes from ${(bySystem.get(system)?.label ?? system).toLowerCase()} — change it there and refresh the request`, undefined, { field: k, rowKey });
     };
-    const record = new Set(locks.record);
-    for (const k of Object.keys(input.record ?? {})) if (record.has(this.baseKey(k)) && !same(before.record[k], next.record[k])) refuse(k, null);
+    const record = new Map(locks.sources.flatMap(x => x.record.map(k => [k, x.system] as const)));
+    for (const k of Object.keys(input.record ?? {})) {
+      const sys = record.get(this.baseKey(k));
+      if (sys && !same(before.record[k], next.record[k])) refuse(k, null, sys);
+    }
     const sourced = new Map(rows.filter(r => r.sourceSystem).map(r => [r.id, r]));
     for (const grid of Object.keys(input.grids ?? {})) {
       const kept = new Set((next.grids[grid] ?? []).map(r => r.rowKey));
       for (const r of sourced.values()) {
         if (r.gridCode === grid && !kept.has(r.id)) {
-          throw new DomainError('read_only_row', `A ${(model.doc.grids[grid]?.rowLabel ?? 'row').toLowerCase()} from ${locks.label.toLowerCase()} cannot be removed here`, undefined, { grid, rowKey: r.id });
+          throw new DomainError('read_only_row', `A ${(model.doc.grids[grid]?.rowLabel ?? 'row').toLowerCase()} from ${(bySystem.get(r.sourceSystem!)?.label ?? r.sourceSystem!).toLowerCase()} cannot be removed here`, undefined, { grid, rowKey: r.id });
         }
       }
-      const cols = locks.columns[grid] ?? [];
       const prior = new Map((before.grids[grid] ?? []).map(g => [g.rowKey, g.values]));
       for (const row of next.grids[grid] ?? []) {
-        if (!sourced.has(row.rowKey)) continue;
-        for (const c of cols) if (!same(prior.get(row.rowKey)?.[c], row.values[c])) refuse(c, row.rowKey);
+        const sys = sourced.get(row.rowKey)?.sourceSystem;
+        if (!sys) continue;
+        for (const c of bySystem.get(sys)?.columns[grid] ?? []) if (!same(prior.get(row.rowKey)?.[c], row.values[c])) refuse(c, row.rowKey, sys);
       }
     }
   }
@@ -554,7 +559,8 @@ export class FormsService implements OnModuleInit {
         return { ok: false, reason: e instanceof Error ? e.message : String(e) };
       }
     };
-    const change = await build({ request: r, model, before, rows, value, label: k => model.fields.get(this.baseKey(k))?.label ?? k, placed: k => model.placed.get(k) });
+    const change = await build({ request: r, model, before, rows, value, label: k => model.fields.get(this.baseKey(k))?.label ?? k, placed: k => model.placed.get(k),
+      calculated: k => model.formulas.has(this.baseKey(k)) });
     const computed = evaluate(model.compiled, change.data, await this.formulaContext(m, model));
     const changes = await this.persist(m, id, model, before, computed, rows, values);
     const rowRepo = m.getRepository(FormRow);
@@ -562,6 +568,14 @@ export class FormsService implements OnModuleInit {
       await rowRepo.update(tenantWhere<FormRow>({ id: rowKey }), { sourceSystem: src?.system ?? null, sourceRef: src?.ref ?? null });
     }
     const header = change.header?.borrowerName && change.header.borrowerName !== r.borrowerName ? { borrowerName: change.header.borrowerName } : {};
+    const sourcesChanged = [...change.rowSources].some(([k, src]) => {
+      const row = rows.find(x => x.id === k);
+      return !row || (row.sourceSystem ?? null) !== (src?.system ?? null) || (row.sourceRef ?? null) !== (src?.ref ?? null);
+    });
+    // nothing new from the system: no new version, no audit entry
+    if (!Object.keys(changes.before).length && !Object.keys(changes.after).length && !('borrowerName' in header) && !sourcesChanged) {
+      return { request: r, before, after: computed, changed: changes };
+    }
     if ('borrowerName' in header) { changes.before.borrowerName = r.borrowerName; changes.after.borrowerName = header.borrowerName; }
     const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: r.rowVersion }), { ...header, rowVersion: r.rowVersion + 1, updatedAt: new Date() });
     if (res.affected === 0) throw new ConflictError('This credit request was changed by someone else — try again');

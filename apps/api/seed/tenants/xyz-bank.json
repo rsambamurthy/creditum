@@ -205,6 +205,48 @@
       "valueType": "text",
       "value": "add,substitute,revalue",
       "description": "Collateral request actions that are booked in core banking (comma-separated codes of collateral_action)"
+    },
+    {
+      "key": "integration.rating.enabled",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Pull internal ratings of the borrower and guarantors from the rating system"
+    },
+    {
+      "key": "integration.rating.institution_code",
+      "valueType": "text",
+      "value": "xyz-bank",
+      "description": "This institution's code in the rating system connector"
+    },
+    {
+      "key": "integration.data_warehouse.enabled",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Pull ROC, RAROC, RWA and relationship income from the data warehouse"
+    },
+    {
+      "key": "integration.data_warehouse.institution_code",
+      "valueType": "text",
+      "value": "xyz-bank",
+      "description": "This institution's code in the data warehouse connector"
+    },
+    {
+      "key": "integration.credit_bureau.enabled",
+      "valueType": "boolean",
+      "value": "true",
+      "description": "Pull the borrower's limits at other lenders from the credit bureau"
+    },
+    {
+      "key": "integration.credit_bureau.institution_code",
+      "valueType": "text",
+      "value": "xyz-bank",
+      "description": "This institution's member code at the credit bureau"
+    },
+    {
+      "key": "integration.financial_statements.enabled",
+      "valueType": "boolean",
+      "value": "false",
+      "description": "Pull filed financial statements from the company registry of the market (none for this market: statements are entered or uploaded)"
     }
   ],
   "valueLists": {

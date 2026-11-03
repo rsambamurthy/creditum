@@ -185,12 +185,18 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   if (!layout || !data || !cur || !idx) return <Spinner label="Loading request modules…" />;
 
   const integ = data.integration;
-  const lockedRecord = new Set(integ?.record ?? []);
-  const lockedColumns = new Set(Object.values(integ?.columns ?? {}).flat());
-  const sourceLabel = integ?.label ?? 'Core banking';
-  const sourcedRow = (rowKey?: string | null) => (rowKey && integ?.rows[rowKey] ? sourceLabel : undefined);
-  const sourceOf = (key: string, rowKey?: string | null) =>
-    rowKey === undefined ? (lockedRecord.has(key) ? sourceLabel : undefined) : (sourcedRow(rowKey) && lockedColumns.has(key) ? sourceLabel : undefined);
+  const systems = new Map((integ?.sources ?? []).map(x => [x.system, x]));
+  const lockedRecord = new Map((integ?.sources ?? []).flatMap(x => x.record.map(k => [k, x.label] as const)));
+  const sourcedRow = (rowKey?: string | null) => {
+    const sys = rowKey ? integ?.rows[rowKey]?.system : undefined;
+    return sys ? systems.get(sys)?.label ?? sys : undefined;
+  };
+  const sourceOf = (key: string, rowKey?: string | null) => {
+    if (rowKey === undefined) return lockedRecord.get(key);
+    const sys = rowKey ? integ?.rows[rowKey]?.system : undefined;
+    const src = sys ? systems.get(sys) : undefined;
+    return src && Object.values(src.columns).some(cols => cols.includes(key)) ? src.label : undefined;
+  };
   const ctx: FormCtx = { layout, record: cur.record, grids: cur.grids, setRecord, setGrid, header, disabled: !editable || saving, missing, messages: serverMessages,
     sourceOf, sourcedRow };
   const activeModule = modules.find(m => m.code === active);

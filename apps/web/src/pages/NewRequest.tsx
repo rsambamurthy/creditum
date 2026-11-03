@@ -16,7 +16,7 @@ export function NewRequestPage() {
         onSubmit={async input => {
           const res = await api.createRequest(input as CreditRequestInput);
           toast.show(`${res.request.requestNumber} saved as ${res.request.statusLabel}`, 'ok');
-          if (res.integration?.pulled) toast.show('Filled from core banking: customer, facilities and collateral', 'ok');
+          if (res.integration?.pulled) toast.show(`Filled from ${(res.integration.systems ?? []).join(', ').toLowerCase()}`, 'ok');
           for (const w of res.integration?.warnings ?? []) toast.show(w, 'info');
           navigate(`/requests/${res.request.id}`, { state: { warnings: res.warnings } });
           return res.warnings;

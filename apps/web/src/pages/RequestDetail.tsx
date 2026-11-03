@@ -49,22 +49,32 @@ function MissingFieldsModal({ missing, layout, onGo, onClose }: {
 
 const show = (v: FormValue | undefined) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
 
-/** What a refresh from core banking changed. */
-function PullResultModal({ result, label, onClose }: { result: PullResult; label: string; onClose: () => void }) {
-  const nothing = !result.changes.length && !result.tables.length;
+/** What a refresh from the bank systems changed, system by system. */
+function PullResultModal({ result, onClose }: { result: PullResult; onClose: () => void }) {
+  const STATUS: Record<string, string> = { pulled: 'Updated', skipped: 'Nothing to take over', failed: 'Not reached' };
   return (
-    <Modal wide title={`Refreshed from ${label.toLowerCase()}`} onClose={onClose} footer={<button type="button" className="btn btn-primary" onClick={onClose}>Close</button>}>
-      <p style={{ marginTop: 0 }}>{nothing ? `Everything already matched ${label.toLowerCase()} — nothing changed.` : `Values from ${label.toLowerCase()} as of ${formatDateTime(result.pulledAt)}. Values entered by users were kept.`}</p>
-      {result.changes.length > 0 && (
-        <table className="cb-changes"><thead><tr><th>Field</th><th>Section</th><th>Before</th><th>Now</th></tr></thead>
-          <tbody>{result.changes.map(c => <tr key={c.field}><td>{c.label}</td><td className="muted">{c.section}</td><td className="muted">{show(c.before)}</td><td><strong>{show(c.after)}</strong></td></tr>)}</tbody></table>
-      )}
-      {result.tables.length > 0 && (
-        <ul style={{ margin: '12px 0 0', paddingInlineStart: 18 }}>
-          {result.tables.map(t => <li key={t.grid}>{t.label} rows: {[t.added && `${t.added} added`, t.updated && `${t.updated} updated`, t.removed && `${t.removed} no longer in ${label.toLowerCase()}`].filter(Boolean).join(', ')}</li>)}
-        </ul>
-      )}
-      {result.warnings.length > 0 && <Alert tone="warning"><strong>Not taken over</strong><ul>{result.warnings.map(w => <li key={w}>{w}</li>)}</ul></Alert>}
+    <Modal wide title="Refreshed from bank systems" onClose={onClose} footer={<button type="button" className="btn btn-primary" onClick={onClose}>Close</button>}>
+      <p style={{ marginTop: 0 }}>As of {formatDateTime(result.pulledAt)}. Values entered by users were kept.</p>
+      {result.systems.length === 0 && <p className="muted">No bank system is connected for this workspace.</p>}
+      {result.systems.map(sys => {
+        const nothing = sys.status === 'pulled' && !sys.changes.length && !sys.tables.length;
+        return (
+          <section key={sys.system} className="cb-system">
+            <h3 className="sub-head">{sys.label} <span className={`badge sm ${sys.status === 'failed' ? 'badge-warn' : 'badge-neutral'}`}>{nothing ? 'No changes' : STATUS[sys.status]}</span></h3>
+            {sys.message && <p className="muted small" style={{ margin: '0 0 6px' }}>{sys.message}</p>}
+            {sys.changes.length > 0 && (
+              <table className="cb-changes"><thead><tr><th>Field</th><th>Section</th><th>Before</th><th>Now</th></tr></thead>
+                <tbody>{sys.changes.map(c => <tr key={c.field}><td>{c.label}</td><td className="muted">{c.section}</td><td className="muted">{show(c.before)}</td><td><strong>{show(c.after)}</strong></td></tr>)}</tbody></table>
+            )}
+            {sys.tables.length > 0 && (
+              <ul style={{ margin: '8px 0 0', paddingInlineStart: 18 }}>
+                {sys.tables.map(t => <li key={t.grid}>{t.label} rows: {[t.added && `${t.added} added`, t.updated && `${t.updated} updated`, t.removed && `${t.removed} no longer in ${sys.label.toLowerCase()}`].filter(Boolean).join(', ')}</li>)}
+              </ul>
+            )}
+            {sys.warnings.length > 0 && <Alert tone="warning"><strong>Not taken over</strong><ul>{sys.warnings.map(w => <li key={w}>{w}</li>)}</ul></Alert>}
+          </section>
+        );
+      })}
     </Modal>
   );
 }
@@ -174,15 +184,17 @@ export function RequestDetailPage() {
   const base = ref.baseCurrency?.code;
   const formExtra = formFields(layout);
   const canEdit = req.editable && hasRole('relationship_officer', 'credit_analyst');
-  const cbLabel = cb?.label ?? integ?.label ?? 'Core banking';
+  const cbLabel = cb?.label ?? 'Core banking';
   const cbReady = !!cb?.configured && cb.enabled;
-  const canPull = cbReady && canEdit;
+  const connected = (cb?.systems ?? []).filter(x => x.configured && x.enabled);
+  const canPull = connected.length > 0 && canEdit;
+  const pulledFrom = (integ?.sources ?? []).filter(x => x.pulledAt).map(x => `${x.label}: ${formatDateTime(x.pulledAt!)}`).join('\n');
   const canBook = cbReady && hasRole('credit_admin') && cb!.bookingStates.includes(req.status) && !integ?.bookedAt;
   const doPull = async () => {
     if (dataDirty) { toast.show('Save or discard your changes before refreshing', 'info'); return; }
     setPulling(true); setActionError(null);
     try {
-      const res = await api.pullCoreBanking(req.id);
+      const res = await api.pullBankData(req.id);
       setPullResult(res);
       await load();
       await modulesRef.current?.reload();
@@ -255,7 +267,7 @@ export function RequestDetailPage() {
             <summary className="btn btn-sm btn-secondary" aria-label="More actions">More <span aria-hidden="true">▾</span></summary>
             <div className="menu-list" role="menu">
               <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowDetails(true); }}>{canEdit ? 'Edit request details' : 'Request details'}</button>
-              {canPull && <button type="button" role="menuitem" onClick={() => { closeMenu(); void doPull(); }} disabled={pulling}>Refresh from {cbLabel.toLowerCase()}</button>}
+              {canPull && <button type="button" role="menuitem" onClick={() => { closeMenu(); void doPull(); }} disabled={pulling}>Refresh from bank systems</button>}
               <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowHistory(true); }}>Workflow history ({history.length})</button>
               {hasRole('auditor', 'config_admin') && <button type="button" role="menuitem" onClick={() => { closeMenu(); navigate('/admin/audit'); }}>Audit trail</button>}
             </div>
@@ -269,8 +281,8 @@ export function RequestDetailPage() {
           </>}
           <div><dt>Authority</dt><dd>{ref.levelName(req.requiredLevel)} <span className="rb-muted">({req.requiredLevel})</span></dd></div>
           {(integ?.pulledAt || integ?.bookedAt || canPull) && (
-            <div><dt>{cbLabel}</dt><dd className="rb-cb">
-              {pulling ? 'Refreshing…' : integ?.pulledAt ? <span title="Values from core banking are read-only on the request">Pulled {formatDateTime(integ.pulledAt)}</span> : <span className="rb-muted">Not pulled</span>}
+            <div><dt>Bank data</dt><dd className="rb-cb">
+              {pulling ? 'Refreshing…' : integ?.pulledAt ? <span title={`Read-only on the request. Pulled from\n${pulledFrom}`}>Pulled {formatDateTime(integ.pulledAt)} · {(integ.sources ?? []).filter(x => x.pulledAt).length} systems</span> : <span className="rb-muted">Not pulled</span>}
               {integ?.bookedAt && <span>· Booked {formatDateTime(integ.bookedAt)}</span>}
               {canPull && !pulling && <button type="button" className="link-btn small" onClick={doPull}>Refresh</button>}
             </dd></div>
@@ -350,7 +362,7 @@ export function RequestDetailPage() {
       )}
       {mandatory && <MissingFieldsModal missing={mandatory} layout={layout} onClose={() => setMandatory(null)}
         onGo={m => { setMandatory(null); modulesRef.current?.focusField(m); }} />}
-      {pullResult && <PullResultModal result={pullResult} label={cbLabel} onClose={() => setPullResult(null)} />}
+      {pullResult && <PullResultModal result={pullResult} onClose={() => setPullResult(null)} />}
       {booking && <BookingModal label={cbLabel} requestNumber={req.requestNumber} result={booking.result} onConfirm={doBook} onClose={() => setBooking(null)} />}
       {pending && <TransitionModal action={pending} onCancel={() => setPending(null)} onConfirm={r => doTransition(pending, r)} />}
     </div>

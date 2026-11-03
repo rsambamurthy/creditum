@@ -1,0 +1,103 @@
+{
+ "connector": "financial_statements",
+ "label": "Company registry",
+ "version": 1,
+ "order": 5,
+ "note": "Filed financial statements from the company registry of the bank's market (e.g. MCA21 AOC-4 XBRL in India, SEC EDGAR in the USA), found by the company's registry identifier. Each registry tags figures with its own taxonomy; the taxonomies below map them to the statement lines.",
+ "base": "v1/registries/{registry}",
+ "identifier": {
+  "record": "a.general_information.customer_id_number",
+  "whenField": "a.general_information.customer_id_type",
+  "whenParam": "integration.financial_statements.identifier_types",
+  "label": "registry identifier"
+ },
+ "required": "filings",
+ "missing": "skip",
+ "sources": {
+  "filings": "companies/{id}/financial-statements"
+ },
+ "record": {},
+ "grids": {
+  "e.financial_periods": {
+   "from": "filings.statements",
+   "key": [
+    "periodEnd"
+   ],
+   "sortBy": "e.financial_statement_header.fiscal_year_financial_statement_date",
+   "columns": {
+    "e.financial_statement_header.borrower_name": "$.filings.name",
+    "e.financial_statement_header.fiscal_year_financial_statement_date": "periodEnd",
+    "e.financial_statement_header.fiscal_year_basis_standalone_consolidated": "basis",
+    "e.financial_statement_header.auditor_name": "auditor",
+    "e.financial_statement_header.auditor_s_opinion": "opinion"
+   },
+   "columnsBy": {
+    "selector": "filings.taxonomy",
+    "prefix": "facts.",
+    "maps": {
+     "ind-as": {
+      "e.income_statement.net_sales_revenues": "RevenueFromOperations",
+      "e.income_statement.cost_of_sales_revenues": "CostOfMaterialsConsumed",
+      "e.income_statement.general_administrative_expense": "OtherExpenses",
+      "e.income_statement.depreciation": "DepreciationDepletionAndAmortisationExpense",
+      "e.income_statement.interest_expense": "FinanceCosts",
+      "e.income_statement.profit_before_taxes": "ProfitBeforeTax",
+      "e.income_statement.current_income_tax": "CurrentTax",
+      "e.income_statement.net_profit": "ProfitLossForPeriod",
+      "e.balance_sheet_assets.cash": "CashAndCashEquivalents",
+      "e.balance_sheet_assets.time_deposits": "BankBalanceOtherThanCashAndCashEquivalents",
+      "e.balance_sheet_assets.accounts_receivable_net": "TradeReceivablesCurrent",
+      "e.balance_sheet_assets.total_inventory": "Inventories",
+      "e.balance_sheet_assets.total_current_assets": "CurrentAssets",
+      "e.balance_sheet_assets.fixed_assets_net": "PropertyPlantAndEquipment",
+      "e.balance_sheet_assets.intangibles_net": "OtherIntangibleAssets",
+      "e.balance_sheet_assets.other_investments": "NoncurrentInvestments",
+      "e.balance_sheet_assets.total_non_current_assets": "NoncurrentAssets",
+      "e.balance_sheet_assets.total_assets": "Assets",
+      "e.balance_sheet_liabilities_net_worth.short_term_loans_payable_bank": "BorrowingsCurrent",
+      "e.balance_sheet_liabilities_net_worth.accounts_payable_trade": "TradePayablesCurrent",
+      "e.balance_sheet_liabilities_net_worth.income_taxes_payable": "CurrentTaxLiabilities",
+      "e.balance_sheet_liabilities_net_worth.total_current_liabilities": "CurrentLiabilities",
+      "e.balance_sheet_liabilities_net_worth.long_term_debt_bank": "BorrowingsNoncurrent",
+      "e.balance_sheet_liabilities_net_worth.total_non_current_liabilities": "NoncurrentLiabilities",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities": "Liabilities",
+      "e.balance_sheet_liabilities_net_worth.capital": "EquityShareCapital",
+      "e.balance_sheet_liabilities_net_worth.other_equity": "OtherEquity",
+      "e.balance_sheet_liabilities_net_worth.total_net_worth": "Equity",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities_net_worth": "EquityAndLiabilities"
+     },
+     "us-gaap": {
+      "e.income_statement.net_sales_revenues": "Revenues",
+      "e.income_statement.cost_of_sales_revenues": "CostOfRevenue",
+      "e.income_statement.general_administrative_expense": "GeneralAndAdministrativeExpense",
+      "e.income_statement.depreciation": "Depreciation",
+      "e.income_statement.amortization": "AmortizationOfIntangibleAssets",
+      "e.income_statement.net_operating_profit": "OperatingIncomeLoss",
+      "e.income_statement.interest_expense": "InterestExpense",
+      "e.income_statement.profit_before_taxes": "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+      "e.income_statement.current_income_tax": "CurrentIncomeTaxExpenseBenefit",
+      "e.income_statement.net_profit": "NetIncomeLoss",
+      "e.balance_sheet_assets.cash": "CashAndCashEquivalentsAtCarryingValue",
+      "e.balance_sheet_assets.marketable_securities": "ShortTermInvestments",
+      "e.balance_sheet_assets.accounts_receivable_net": "AccountsReceivableNetCurrent",
+      "e.balance_sheet_assets.total_inventory": "InventoryNet",
+      "e.balance_sheet_assets.total_current_assets": "AssetsCurrent",
+      "e.balance_sheet_assets.fixed_assets_net": "PropertyPlantAndEquipmentNet",
+      "e.balance_sheet_assets.intangibles_net": "IntangibleAssetsNetExcludingGoodwill",
+      "e.balance_sheet_assets.total_assets": "Assets",
+      "e.balance_sheet_liabilities_net_worth.short_term_loans_payable_bank": "ShortTermBorrowings",
+      "e.balance_sheet_liabilities_net_worth.current_portion_of_long_term_debt_cpltd_bank": "LongTermDebtCurrent",
+      "e.balance_sheet_liabilities_net_worth.accounts_payable_trade": "AccountsPayableCurrent",
+      "e.balance_sheet_liabilities_net_worth.total_current_liabilities": "LiabilitiesCurrent",
+      "e.balance_sheet_liabilities_net_worth.long_term_debt_bank": "LongTermDebtNoncurrent",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities": "Liabilities",
+      "e.balance_sheet_liabilities_net_worth.capital": "CommonStockValue",
+      "e.balance_sheet_liabilities_net_worth.retained_earnings_losses": "RetainedEarningsAccumulatedDeficit",
+      "e.balance_sheet_liabilities_net_worth.total_net_worth": "StockholdersEquity",
+      "e.balance_sheet_liabilities_net_worth.total_liabilities_net_worth": "LiabilitiesAndStockholdersEquity"
+     }
+    }
+   }
+  }
+ }
+}

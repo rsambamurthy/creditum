@@ -265,15 +265,8 @@ def pending(key, description, note):
 formula('a.deal_economics_relationship_profitability.total_relationship_income',
         add(*[f('a.deal_economics_relationship_profitability.' + s) for s in ['interest_income', 'retail_income', 'fx_income', 'lc_lg_commissions', 'fees_other_income']]),
         'Interest income + retail income + FX income + LC/LG commissions + fees and other income.')
-for s, what in [('total_free_funds', 'free funds'), ('total_deposit', 'deposits'), ('total_investments', 'investments'), ('total_cash_limit', 'cash limits'),
-                ('total_cash_limit_other_banks', 'cash limits at other banks'), ('total_cash_outstanding', 'cash outstanding'),
-                ('total_cash_utilization_other_banks', 'cash utilisation at other banks'), ('total_non_cash_limit', 'non-cash limits'),
-                ('total_non_cash_limit_other_banks', 'non-cash limits at other banks'), ('total_non_cash_outstanding', 'non-cash outstanding'),
-                ('total_non_cash_utilization_other_banks', 'non-cash utilisation at other banks'), ('total_credit_card_limit', 'credit card limits'),
-                ('total_card_outstanding_balance', 'card outstanding balances')]:
-    pending('a.relationship_overview.' + s, f'Sum of the customer\'s {what}, in the base currency.',
-            'Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). '
-            'Calculated by the adapter when it is connected; shown as pending until then.')
+# Relationship Overview totals come from core banking (own bank) and the credit bureau (other banks) through the
+# connectors (seed/connectors) — they are integrated values, not formulas.
 formula('a.comments.serial_no', {'row_no': True}, 'Running number of the comment (1, 2, 3 …) in the order shown.')
 for s in ['transitional_risk_mitigation_score_pre_overlay', 'transitional_risk_mitigation_score_post_overlay', 'internal_esg_score_pre_overlay',
           'internal_esg_score_post_overlay', 'internal_esg_rating_pre_overlay', 'internal_esg_rating_post_overlay']:

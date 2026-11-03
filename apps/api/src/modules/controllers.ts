@@ -10,6 +10,7 @@ import { ConfigurationService, GovernanceService } from './configuration/configu
 import { FieldRegistryService } from './field-registry/field-registry.service';
 import { FieldAttributesService } from './field-registry/field-attributes.service';
 import { CoreBankingService } from './integrations/core-banking.service';
+import { ConnectorsService } from './integrations/connectors.service';
 import { RulesService } from './rules/rules.service';
 import { WorkflowService } from './workflow/workflow.service';
 import { CreditRequestService } from './credit-request/credit-request.service';
@@ -176,7 +177,7 @@ export class FormulasController {
 @Controller('credit-requests')
 export class CreditRequestController {
   constructor(private readonly svc: CreditRequestService, private readonly wf: WorkflowService, private readonly forms: FormsService,
-              private readonly coreBanking: CoreBankingService) {}
+              private readonly coreBanking: CoreBankingService, private readonly connectors: ConnectorsService) {}
   @Get(':id/data') @Roles(...CREDIT_ROLES) data(@Param('id') id: string) { return this.forms.data(id); }
   @Put(':id/data') @Roles(ROLE.relationshipOfficer, ROLE.creditAnalyst) saveData(@Param('id') id: string, @Body() b: ModuleDataDto) { return this.forms.save(id, b); }
   @Get() @Roles(...CREDIT_ROLES) list() { return this.svc.list(); }
@@ -185,10 +186,10 @@ export class CreditRequestController {
   @Post() @Roles(ROLE.relationshipOfficer) async create(@Body() b: CreateRequestDto) {
     const created = await this.svc.create(b);
     // fill the request from core banking when the connector is available (a failure is reported, the request stays)
-    const integration = await this.coreBanking.afterCreate(created.request.id);
+    const integration = await this.connectors.afterCreate(created.request.id);
     return { ...created, request: integration.pulled ? await this.svc.get(created.request.id) : created.request, integration };
   }
-  @Post(':id/core-banking/pull') @Roles(ROLE.relationshipOfficer, ROLE.creditAnalyst) @HttpCode(200) pull(@Param('id') id: string) { return this.coreBanking.pull(id, 'refresh'); }
+  @Post(':id/integrations/pull') @Roles(ROLE.relationshipOfficer, ROLE.creditAnalyst) @HttpCode(200) pull(@Param('id') id: string) { return this.connectors.pullAll(id, 'refresh'); }
   @Post(':id/core-banking/booking') @Roles(ROLE.creditAdmin) @HttpCode(200) book(@Param('id') id: string) { return this.coreBanking.book(id); }
   @Put(':id') @Roles(ROLE.relationshipOfficer, ROLE.creditAnalyst) update(@Param('id') id: string, @Body() b: UpdateRequestDto) {
     const { expectedVersion, ...rest } = b; return this.svc.update(id, expectedVersion, rest);

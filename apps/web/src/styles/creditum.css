@@ -1124,3 +1124,6 @@ td.num, th.num { text-align: end }
 .lov-spin { position: absolute; inset-inline-end: 10px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border: 2px solid #cbd5e1; border-top-color: var(--title-blue, #1d4ed8); border-radius: 50%; animation: lov-spin .7s linear infinite }
 @keyframes lov-spin { to { transform: rotate(360deg) } }
 @media (max-width: 760px) { .lov-list { min-width: 0 } .lov-head, .lov-row { grid-template-columns: 1fr } }
+.cb-system { padding: 10px 0; border-top: 1px solid var(--line-2, #f1f5f9) }
+.cb-system:first-of-type { border-top: 0 }
+.cb-system .sub-head { display: flex; gap: 8px; align-items: center; margin: 0 0 6px }

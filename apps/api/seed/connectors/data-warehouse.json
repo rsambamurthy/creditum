@@ -1,0 +1,48 @@
+{
+ "connector": "data_warehouse",
+ "label": "Data warehouse",
+ "version": 1,
+ "order": 3,
+ "note": "Return on capital, risk-weighted assets, relationship income and group ROC / RAROC from the bank's data warehouse (MIS).",
+ "base": "v1/institutions/{institution_code}",
+ "identifier": {
+  "header": "borrowerRef",
+  "label": "customer number"
+ },
+ "required": "profitability",
+ "missing": "skip",
+ "sources": {
+  "profitability": "customers/{id}/profitability"
+ },
+ "record": {
+  "a.capital_return_summary.existing_roc": "profitability.capital.roc",
+  "a.capital_return_summary.existing_raroc": "profitability.capital.raroc",
+  "a.capital_return_summary.existing_risk_weighted_assets_rwa": "profitability.capital.rwa",
+  "a.deal_economics_relationship_profitability.relationship_profitability_as_of_date": "profitability.asOf",
+  "a.deal_economics_relationship_profitability.interest_income": "profitability.income.interest",
+  "a.deal_economics_relationship_profitability.retail_income": "profitability.income.retail",
+  "a.deal_economics_relationship_profitability.fx_income": "profitability.income.fx",
+  "a.deal_economics_relationship_profitability.lc_lg_commissions": "profitability.income.lcLg",
+  "a.deal_economics_relationship_profitability.fees_other_income": "profitability.income.fees",
+  "c.relationship_profitability.profitability": "profitability.profitability",
+  "d.relationship_history.relationship_history": "profitability.relationshipHistory",
+  "b.roc_raroc_by_company.total_group_existing": "profitability.group.totalExisting"
+ },
+ "grids": {
+  "b.roc_raroc_by_company": {
+   "from": "profitability.group.companies",
+   "key": [
+    "company"
+   ],
+   "columns": {
+    "b.roc_raroc_by_company.company_existing": "company",
+    "b.roc_raroc_by_company.limit_existing": "limit",
+    "b.roc_raroc_by_company.weight_existing": "weight",
+    "b.roc_raroc_by_company.roc_existing": "roc",
+    "b.roc_raroc_by_company.weighted_roc_existing": "weightedRoc",
+    "b.roc_raroc_by_company.raroc_existing": "raroc",
+    "b.roc_raroc_by_company.weighted_raroc_existing": "weightedRaroc"
+   }
+  }
+ }
+}

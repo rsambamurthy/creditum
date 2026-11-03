@@ -19,8 +19,8 @@
     "segment": "mid_corporate",
     "customerType": "corporate",
     "legalStatus": "active",
-    "idType": "pan",
-    "idNumber": "AAKCT4821M",
+    "idType": "cin",
+    "idNumber": "U34300MH2009PTC193245",
     "idExpiry": null,
     "nationality": "IN",
     "legalEntity": "abc_finance",
@@ -177,7 +177,72 @@
      "packageNumber": "PKG-45821-1"
     }
    ],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "ABC-3",
+      "asOf": "2025-10-02"
+     },
+     "previous": {
+      "rating": "ABC-4",
+      "asOf": "2024-09-27"
+     }
+    },
+    "personalGuarantor": {
+     "current": {
+      "rating": "ABC-3",
+      "asOf": "2025-09-30"
+     },
+     "previous": {
+      "rating": "ABC-3",
+      "asOf": "2024-09-30"
+     }
+    },
+    "corporateGuarantor": null
+   },
+   "warehouse": {
+    "asOf": "2025-12-31",
+    "capital": {
+     "roc": "15.8",
+     "raroc": "19.9",
+     "rwa": "312000000"
+    },
+    "income": {
+     "interest": "38500000",
+     "retail": "620000",
+     "fx": "2140000",
+     "lcLg": "1850000",
+     "fees": "1270000"
+    },
+    "profitability": "41900000",
+    "relationshipHistory": "Relationship since 2016; cash credit renewed annually, term loan for the Pune plant disbursed in three tranches (2021–2022); conduct satisfactory.",
+    "group": {
+     "totalExisting": "400000000",
+     "companies": [
+      {
+       "company": "Tarvenna Auto Components Pvt Ltd",
+       "limit": "400000000",
+       "weight": "100",
+       "roc": "15.8",
+       "weightedRoc": "15.8",
+       "raroc": "19.9",
+       "weightedRaroc": "19.9"
+      }
+     ]
+    }
+   },
+   "relationshipSummary": {
+    "freeFunds": "8500000",
+    "deposits": "26000000",
+    "investments": "15000000",
+    "cashLimit": "400000000",
+    "cashOutstanding": "278500000.75",
+    "nonCashLimit": "0",
+    "nonCashOutstanding": "0",
+    "creditCardLimit": "1000000",
+    "cardOutstanding": "185000"
+   }
   },
   "C10051307": {
    "customer": {
@@ -188,8 +253,8 @@
     "segment": "msme",
     "customerType": "sme",
     "legalStatus": "active",
-    "idType": "pan",
-    "idNumber": "AAFCN6604B",
+    "idType": "cin",
+    "idNumber": "U17120GJ2017PTC099812",
     "idExpiry": null,
     "nationality": "IN",
     "legalEntity": "abc_finance",
@@ -222,8 +287,8 @@
     "segment": "mid_corporate",
     "customerType": "corporate",
     "legalStatus": "active",
-    "idType": "pan",
-    "idNumber": "AAFCV2190K",
+    "idType": "cin",
+    "idNumber": "U27100MH2004PTC150318",
     "idExpiry": null,
     "nationality": "IN",
     "legalEntity": "abc_finance",
@@ -245,7 +310,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "ABC-4",
+      "asOf": "2025-08-14"
+     },
+     "previous": {
+      "rating": "ABC-4",
+      "asOf": "2024-08-12"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "C10049952": {
    "customer": {
@@ -256,8 +335,8 @@
     "segment": "emerging_corporate",
     "customerType": "sme",
     "legalStatus": "active",
-    "idType": "pan",
-    "idNumber": "AAOFS8812D",
+    "idType": "cin",
+    "idNumber": "U01400KA2015PTC081127",
     "idExpiry": null,
     "nationality": "IN",
     "legalEntity": "abc_finance",
@@ -279,7 +358,21 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "ABC-5",
+      "asOf": "2025-07-21"
+     },
+     "previous": {
+      "rating": "ABC-5",
+      "asOf": "2024-07-19"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
   },
   "C10055104": {
    "customer": {
@@ -290,8 +383,8 @@
     "segment": "mid_corporate",
     "customerType": "corporate",
     "legalStatus": "active",
-    "idType": "pan",
-    "idNumber": "AAKCP5531R",
+    "idType": "cin",
+    "idNumber": "U45200TN2008PTC068904",
     "idExpiry": null,
     "nationality": "IN",
     "legalEntity": "abc_finance",
@@ -313,7 +406,49 @@
    "facilities": [],
    "securityPackages": [],
    "guarantees": [],
-   "collateral": []
+   "collateral": [],
+   "ratings": {
+    "borrower": {
+     "current": {
+      "rating": "ABC-4",
+      "asOf": "2025-11-05"
+     },
+     "previous": {
+      "rating": "ABC-3",
+      "asOf": "2024-11-01"
+     }
+    },
+    "personalGuarantor": null,
+    "corporateGuarantor": null
+   }
+  }
+ },
+ "bureau": {
+  "U34300MH2009PTC193245": {
+   "asOf": "2025-12-31",
+   "otherBanks": {
+    "cashLimit": "220000000",
+    "cashUtilization": "171000000",
+    "nonCashLimit": "45000000",
+    "nonCashUtilization": "22000000"
+   },
+   "lenders": [
+    {
+     "lender": "Lender D (anonymised)",
+     "cash": "150000000",
+     "nonCash": "30000000",
+     "fx": "0",
+     "collateral": "Pari passu charge on current assets"
+    },
+    {
+     "lender": "Lender E (anonymised)",
+     "cash": "70000000",
+     "nonCash": "15000000",
+     "fx": "5000000",
+     "collateral": "Second charge on fixed assets"
+    }
+   ],
+   "name": "Tarvenna Auto Components Pvt Ltd"
   }
  }
 }

@@ -7,6 +7,19 @@
   "calculation.rounding_mode"
  ],
  "calculatedWithoutFormula": [
+  "a.relationship_overview.total_card_outstanding_balance",
+  "a.relationship_overview.total_cash_limit",
+  "a.relationship_overview.total_cash_limit_other_banks",
+  "a.relationship_overview.total_cash_outstanding",
+  "a.relationship_overview.total_cash_utilization_other_banks",
+  "a.relationship_overview.total_credit_card_limit",
+  "a.relationship_overview.total_deposit",
+  "a.relationship_overview.total_free_funds",
+  "a.relationship_overview.total_investments",
+  "a.relationship_overview.total_non_cash_limit",
+  "a.relationship_overview.total_non_cash_limit_other_banks",
+  "a.relationship_overview.total_non_cash_outstanding",
+  "a.relationship_overview.total_non_cash_utilization_other_banks",
   "e.financial_ratios_summary.comments"
  ],
  "formulas": [
@@ -33,97 +46,6 @@
     ]
    },
    "description": "Interest income + retail income + FX income + LC/LG commissions + fees and other income."
-  },
-  {
-   "field": "a.relationship_overview.total_free_funds",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's free funds, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_deposit",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's deposits, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_investments",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's investments, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_cash_limit",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's cash limits, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_cash_limit_other_banks",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's cash limits at other banks, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_cash_outstanding",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's cash outstanding, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_cash_utilization_other_banks",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's cash utilisation at other banks, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_non_cash_limit",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's non-cash limits, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_non_cash_limit_other_banks",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's non-cash limits at other banks, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_non_cash_outstanding",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's non-cash outstanding, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_non_cash_utilization_other_banks",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's non-cash utilisation at other banks, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_credit_card_limit",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's credit card limits, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
-  },
-  {
-   "field": "a.relationship_overview.total_card_outstanding_balance",
-   "status": "pending",
-   "expression": null,
-   "description": "Sum of the customer's card outstanding balances, in the base currency.",
-   "note": "Needs the account-level data from the core banking / credit bureau adapters (not part of the field library). Calculated by the adapter when it is connected; shown as pending until then."
   },
   {
    "field": "a.comments.serial_no",

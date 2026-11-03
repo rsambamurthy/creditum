@@ -13,6 +13,7 @@ import { AuthGuard, AuthService } from './modules/auth/auth';
 import { FormsService } from './modules/forms/forms.service';
 import { FieldAttributesService } from './modules/field-registry/field-attributes.service';
 import { CoreBankingService } from './modules/integrations/core-banking.service';
+import { ConnectorsService } from './modules/integrations/connectors.service';
 import { ErrorFilter } from './common/errors';
 import { runWithContext } from './common/request-context';
 import {
@@ -25,7 +26,7 @@ import {
   controllers: [HealthController, AuthController, ConfigController, FieldsController, RulesController, WorkflowController, CreditRequestController, AuditController,
     LayoutController, FormulasController, IntegrationsController],
   providers: [
-    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, FieldAttributesService, CoreBankingService, AuthService,
+    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, FieldAttributesService, ConnectorsService, CoreBankingService, AuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },
   ],
