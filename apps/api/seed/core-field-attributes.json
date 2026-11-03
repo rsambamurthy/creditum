@@ -1,6 +1,6 @@
 {
  "attributes": "credit_request",
- "version": 1,
+ "version": 2,
  "note": "Product defaults per field. Market profiles (seed/markets) and banks override individual attributes.",
  "fields": {
   "a.general_information.customer_number": {
@@ -14,7 +14,7 @@
    "width": "m"
   },
   "a.general_information.customer_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "a.general_information.customer_segment": {
@@ -30,7 +30,7 @@
    "width": "m"
   },
   "a.general_information.customer_id_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "a.general_information.customer_id_expiry_date": {
@@ -46,7 +46,7 @@
    "width": "m"
   },
   "a.general_information.name_of_borrower": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "a.general_information.legal_entity": {
@@ -68,7 +68,7 @@
    "width": "m"
   },
   "a.general_information.major_owner_group": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "a.general_information.addresses_mailing_work_home": {
@@ -259,19 +259,19 @@
    "width": "s"
   },
   "a.group_information.primary_group_name_and_id": {
-   "maxLength": 50,
-   "width": "s"
-  },
-  "a.group_information.sub_group_account_numbers": {
-   "maxLength": 50,
-   "width": "s"
-  },
-  "a.group_information.sub_group_names": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
+  "a.group_information.sub_group_account_numbers": {
+   "maxLength": 500,
+   "width": "l"
+  },
+  "a.group_information.sub_group_names": {
+   "maxLength": 500,
+   "width": "l"
+  },
   "a.group_information.change_of_ownership_management": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -304,14 +304,14 @@
    "width": "s"
   },
   "a.partners.partner_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "a.partners.partner_id_type": {
    "width": "m"
   },
   "a.partners.partner_id_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "a.partners.partner_id_expiry_date": {
@@ -321,7 +321,7 @@
    "width": "m"
   },
   "a.partners.partner_designation": {
-   "maxLength": 250,
+   "maxLength": 100,
    "width": "m"
   },
   "a.partners.partner_ownership": {
@@ -337,7 +337,7 @@
    "width": "s"
   },
   "a.partners.partner_details_and_comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -381,7 +381,7 @@
    "width": "s"
   },
   "a.shareholders.shareholders_comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -389,7 +389,7 @@
    "width": "m"
   },
   "a.shareholders.shareholder_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "a.shareholders.ownership": {
@@ -399,7 +399,7 @@
    "maxValue": "100"
   },
   "a.client_request.client_request_details": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
@@ -415,26 +415,26 @@
    "maxDecimals": 0
   },
   "a.legal_clauses.legal_clause_reference": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "a.legal_clauses.legal_clause_as_stated_in_contract": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "a.legal_clauses.client_request": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "a.legal_clauses.bank_legal_feedback": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "a.legal_clauses.description": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -446,7 +446,7 @@
    "maxDecimals": 0
   },
   "a.comments.comment": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -454,7 +454,7 @@
    "width": "s"
   },
   "a.comments.created_by": {
-   "maxLength": 150,
+   "maxLength": 100,
    "width": "m"
   },
   "b.credit_facilities.exposure_as_of_date": {
@@ -472,11 +472,11 @@
    "width": "m"
   },
   "b.credit_facilities.facility_identifier_product_code_reference_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.credit_facilities.settlement_account": {
-   "maxLength": 50,
+   "maxLength": 34,
    "width": "s"
   },
   "b.credit_facilities.limit_currency": {
@@ -507,7 +507,7 @@
    "width": "s"
   },
   "b.credit_facilities.own_package_number_if_secured": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.credit_facilities.request_action": {
@@ -545,12 +545,12 @@
    "width": "m"
   },
   "b.credit_facilities.notes_terms_conditions": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "b.security_package.package_number_existing_package": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.security_package.minimum_contractual_coverage_ratio_existing_package": {
@@ -624,7 +624,7 @@
    "width": "s"
   },
   "b.security_package.package_number_amended_package": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.security_package.minimum_contractual_coverage_ratio_amended_package": {
@@ -665,7 +665,7 @@
    "width": "m"
   },
   "b.security_package.facility_request_comments_amended_package": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -703,7 +703,7 @@
    "width": "m"
   },
   "b.security_package.collateral_request_comments_amended_package": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -730,7 +730,7 @@
    "width": "xs"
   },
   "b.security_package.package_number_new_package": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.security_package.minimum_contractual_coverage_ratio_new_package": {
@@ -771,7 +771,7 @@
    "width": "m"
   },
   "b.security_package.facility_request_comments_new_package": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -809,7 +809,7 @@
    "width": "m"
   },
   "b.security_package.collateral_request_comments_new_package": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -842,7 +842,7 @@
    "width": "m"
   },
   "b.guarantees.guarantor_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.guarantees.guarantor_type": {
@@ -861,11 +861,11 @@
    "width": "m"
   },
   "b.guarantees.other_identification_document_type": {
-   "maxLength": 250,
+   "maxLength": 100,
    "width": "m"
   },
   "b.guarantees.id_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.guarantees.guarantee_coverage_amount": {
@@ -878,11 +878,11 @@
    "maxValue": "100"
   },
   "b.guarantees.package_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.guarantees.comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -896,14 +896,14 @@
    "width": "s"
   },
   "b.covenants.input_metric": {
-   "maxLength": 250,
+   "maxLength": 100,
    "width": "m"
   },
   "b.covenants.covenant_test_value_year_adjusted_input_metric": {
    "width": "s"
   },
   "b.covenants.financial_year_of_metric_from_fact_sheet_and_actual_value": {
-   "maxLength": 250,
+   "maxLength": 100,
    "width": "m"
   },
   "b.covenants.covenant_check_result": {
@@ -913,12 +913,12 @@
    "width": "m"
   },
   "b.covenants.proposed_covenant": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "b.covenants.comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -927,7 +927,7 @@
    "maxDecimals": 0
   },
   "b.collateral_not_in_a_package.collateral_number": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "b.collateral_not_in_a_package.collateral_type": {
@@ -950,7 +950,7 @@
    "width": "m"
   },
   "b.pricing.client_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.pricing.credit_request_number": {
@@ -1018,12 +1018,12 @@
    "maxDecimals": 4
   },
   "b.pricing.justification_if_proposed_rates_are_below_existing": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "b.roc_raroc_by_company.company_existing": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.roc_raroc_by_company.limit_existing": {
@@ -1055,7 +1055,7 @@
    "width": "s"
   },
   "b.roc_raroc_by_company.company_proposed": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.roc_raroc_by_company.limit_proposed": {
@@ -1097,7 +1097,7 @@
    "width": "m"
   },
   "b.commissions_fees.justification_for_fee_waiver": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -1106,11 +1106,11 @@
    "maxDecimals": 0
   },
   "b.interest_tiering_applicability.name_of_group": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.interest_tiering_applicability.account_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "b.interest_tiering_applicability.borrower_customer_id": {
@@ -1133,7 +1133,7 @@
    "width": "m"
   },
   "c.client_group_exposure.company_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.client_group_exposure.existing_cash_limit": {
@@ -1172,52 +1172,52 @@
    "width": "s"
   },
   "c.client_group_exposure.collateral": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "c.client_group_exposure.relationship_officer_recommendation": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "c.client_group_exposure.credit_risk_recommendation": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "c.client_group_exposure.collateral_recommendation": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.swot_analysis.strengths": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.swot_analysis.weaknesses": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.swot_analysis.opportunities": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.swot_analysis.threats": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.swot_analysis.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "c.cross_bank_exposure_borrower_group.company_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.cross_bank_exposure_borrower_group.cash_limit_period_1_latest": {
@@ -1266,12 +1266,12 @@
    "width": "s"
   },
   "c.cross_bank_exposure_borrower_group.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "c.cross_bank_exposure_guarantors.company_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.cross_bank_exposure_guarantors.cash_limit_period_1_latest": {
@@ -1320,7 +1320,7 @@
    "width": "s"
   },
   "c.cross_bank_exposure_guarantors.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -1328,7 +1328,7 @@
    "width": "s"
   },
   "c.dealings_with_other_banks.bank_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.dealings_with_other_banks.cash_facilities": {
@@ -1341,12 +1341,12 @@
    "width": "s"
   },
   "c.dealings_with_other_banks.collateral_provided": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "c.dealings_with_other_banks.comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
@@ -1366,132 +1366,132 @@
    "width": "s"
   },
   "c.personal_net_worth_analysis.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.company_background": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.management": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.brief_on_shareholders_structure": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.meeting_highlights": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.resources_plants_and_heavy_equipment": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.main_clients_and_payment_terms_if_available": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.main_suppliers_and_payment_terms_if_available": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.company_overview.listed_company_performance_if_publicly_traded": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.performance_history_executed_projects.performance_history_executed_projects": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.ongoing_projects.ongoing_projects": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.projects_pipeline.list_of_projects_in_pipeline": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.projects_financing.projects_financing": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.relationship_history.relationship_history": {
-   "maxLength": 20000,
+   "maxLength": 8000,
    "width": "full",
    "rows": 6
   },
   "d.market_analysis.demand_supply": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.market_analysis.market_share_main_competitors": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.strategic_threats": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.growth_potential": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.competition": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.barriers_to_entry": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.regulatory_framework": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.cyclicality": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_business_considerations.key_success_factors": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_credit_risks_mitigation.key_credit_risk": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "d.key_credit_risks_mitigation.mitigation": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "e.financial_statement_header.borrower_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "e.financial_statement_header.fiscal_year_financial_statement_date": {
@@ -1501,11 +1501,11 @@
    "width": "m"
   },
   "e.financial_statement_header.auditor_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "e.financial_statement_header.auditor_s_opinion": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -1516,11 +1516,11 @@
    "width": "m"
   },
   "e.financial_statement_header.auditor_preparer_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.guarantor_personal_net_worth_position.guarantor_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "c.guarantor_personal_net_worth_position.cash": {
@@ -1581,12 +1581,12 @@
    "width": "s"
   },
   "c.guarantor_personal_net_worth_position.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "c.guarantor_personal_net_worth_position.comments_on_financial_position": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -1781,7 +1781,7 @@
    "width": "xs"
   },
   "e.financial_ratios_summary.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -1864,12 +1864,12 @@
    "width": "s"
   },
   "e.income_statement.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "e.cash_flow_analysis.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -1928,7 +1928,7 @@
    "width": "s"
   },
   "e.balance_sheet_assets.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -2005,12 +2005,12 @@
    "width": "s"
   },
   "e.balance_sheet_liabilities_net_worth.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "e.sources_uses.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -2024,7 +2024,7 @@
    "width": "s"
   },
   "e.contingent_liabilities_commitments.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -2041,12 +2041,12 @@
    "width": "m"
   },
   "e.project_cash_flow.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
   "e.financial_appendix.comments": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -2055,7 +2055,7 @@
    "width": "s"
   },
   "f.esg_classification_transitional_rating.client": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "f.esg_classification_transitional_rating.segment": {
@@ -2071,7 +2071,7 @@
    "width": "m"
   },
   "f.esg_classification_transitional_rating.client_name": {
-   "maxLength": 150,
+   "maxLength": 140,
    "width": "m"
   },
   "f.esg_classification_transitional_rating.industry": {
@@ -2081,7 +2081,7 @@
    "width": "m"
   },
   "f.esg_classification_transitional_rating.reason_for_overlay": {
-   "maxLength": 20000,
+   "maxLength": 4000,
    "width": "full",
    "rows": 6
   },
@@ -2191,7 +2191,7 @@
    "width": "m"
   },
   "g.facility_booking_maintenance.limit_reference": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "g.facility_booking_maintenance.limit_type": {
@@ -2207,7 +2207,7 @@
    "width": "s"
   },
   "g.facility_booking_maintenance.account_number": {
-   "maxLength": 50,
+   "maxLength": 34,
    "width": "s"
   },
   "g.facility_booking_maintenance.maturity_date": {
@@ -2245,7 +2245,7 @@
    "width": "s"
   },
   "g.facility_booking_maintenance.contract_reference": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "g.facility_booking_maintenance.contract_type": {
@@ -2261,12 +2261,12 @@
    "width": "m"
   },
   "g.facility_booking_maintenance.comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },
   "g.collateral_booking_maintenance.collateral_no": {
-   "maxLength": 50,
+   "maxLength": 35,
    "width": "s"
   },
   "g.collateral_booking_maintenance.collateral_type": {
@@ -2286,14 +2286,14 @@
    "width": "xs"
   },
   "g.collateral_booking_maintenance.linked_limits": {
-   "maxLength": 50,
-   "width": "s"
+   "maxLength": 500,
+   "width": "l"
   },
   "g.collateral_booking_maintenance.action": {
    "width": "m"
   },
   "g.collateral_booking_maintenance.comments": {
-   "maxLength": 20000,
+   "maxLength": 2000,
    "width": "full",
    "rows": 6
   },

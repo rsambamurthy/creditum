@@ -502,10 +502,13 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------ core field attributes (product defaults; markets and banks override)
+# Lengths follow banking standards where one exists (ISO 20022 Max140Text names and Max35Text identifiers, ISO 13616
+# IBAN, RFC 5321 email) and, for narratives, the length of a credit paper: a table-row comment about half a page, a
+# section narrative about one page, a long narrative about two. Markets and banks override any field.
 ATTR_BY_TYPE = {
     'Text': {'maxLength': 250, 'width': 'm'},
-    'Text (identifier)': {'maxLength': 50, 'width': 's'},
-    'Rich Text': {'maxLength': 20000, 'width': 'full', 'rows': 6},
+    'Text (identifier)': {'maxLength': 35, 'width': 's'},
+    'Rich Text': {'maxLength': 4000, 'width': 'full', 'rows': 6},
     'Address (structured)': {'maxLength': 500, 'width': 'full', 'rows': 3},
     'Dropdown': {'width': 'm'}, 'Currency Code': {'width': 'xs'}, 'Date': {'width': 's'}, 'Boolean (Yes/No)': {'width': 's'},
     'Currency Amount': {'width': 's'}, 'Percentage': {'width': 'xs', 'maxDecimals': 4}, 'Ratio (decimal)': {'width': 'xs'},
@@ -513,18 +516,43 @@ ATTR_BY_TYPE = {
 }
 NAME_SLUGS = {'customer_name', 'name_of_borrower', 'partner_name', 'shareholder_name', 'guarantor_name', 'company_name', 'client_name', 'client',
               'bank_name', 'auditor_name', 'auditor_preparer_name', 'borrower_name', 'account_name', 'name_of_group', 'major_owner_group',
-              'company_existing', 'company_proposed', 'sub_group_names', 'created_by'}
+              'company_existing', 'company_proposed', 'primary_group_name_and_id'}
+SHORT_TEXT_SLUGS = {'partner_designation', 'other_identification_document_type', 'input_metric',
+                    'financial_year_of_metric_from_fact_sheet_and_actual_value', 'created_by'}
+MULTI_VALUE_SLUGS = {'sub_group_names', 'sub_group_account_numbers', 'linked_limits'}
+ACCOUNT_SLUGS = {'settlement_account', 'account_number'}
+LONG_NARRATIVE_SLUGS = {'client_request_details', 'legal_clause_as_stated_in_contract', 'notes_terms_conditions', 'company_background',
+                        'management', 'meeting_highlights', 'performance_history_executed_projects', 'ongoing_projects',
+                        'list_of_projects_in_pipeline', 'projects_financing', 'relationship_history'}
 SHARE_SLUGS = {'partner_ownership', 'ownership', 'of_asset_covered', 'weight_existing', 'weight_proposed'}
+NAME_LENGTH, IDENTIFIER_LENGTH, ACCOUNT_LENGTH, SHORT_TEXT_LENGTH, MULTI_VALUE_LENGTH = 140, 35, 34, 100, 500
+ROW_COMMENT_LENGTH, SECTION_NARRATIVE_LENGTH, LONG_NARRATIVE_LENGTH = 2000, 4000, 8000
+
+
+def grid_columns():
+    """Keys of fields entered once per table row (grid sections, not financial periods)."""
+    return {c['key'] for m in build_layout()['modules'] for sc in m['sections'] if sc.get('kind') == 'grid' for c in sc.get('columns', [])}
 
 
 def core_attributes():
     out = OrderedDict()
+    row_fields = grid_columns()
     for f in FIELDS:
         k = f['field_key']
-        a = dict(ATTR_BY_TYPE.get(f['data_type'], {}))
+        t = f['data_type']
+        a = dict(ATTR_BY_TYPE.get(t, {}))
         s = slug(k)
-        if s in NAME_SLUGS and f['data_type'] == 'Text':
-            a.update(maxLength=150)
+        if t == 'Rich Text':
+            a.update(maxLength=LONG_NARRATIVE_LENGTH if s in LONG_NARRATIVE_SLUGS
+                     else ROW_COMMENT_LENGTH if k in row_fields else SECTION_NARRATIVE_LENGTH)
+        if s in NAME_SLUGS and t in ('Text', 'Text (identifier)'):
+            a.update(maxLength=NAME_LENGTH, width='m')
+        if s in SHORT_TEXT_SLUGS and t == 'Text':
+            a.update(maxLength=SHORT_TEXT_LENGTH)
+        if s in MULTI_VALUE_SLUGS:
+            a.update(maxLength=MULTI_VALUE_LENGTH, width='l')
+        if s in ACCOUNT_SLUGS and t == 'Text (identifier)':
+            a.update(maxLength=ACCOUNT_LENGTH)
         if s == 'official_email_address':
             a.update(maxLength=254, transform='lower', pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$', patternHint='name@company.com')
         if s == 'company_website':
@@ -537,7 +565,7 @@ def core_attributes():
             a.update(minValue='0', maxValue='100')
         if a:
             out[k] = a
-    return OrderedDict(attributes='credit_request', version=1,
+    return OrderedDict(attributes='credit_request', version=2,
                        note='Product defaults per field. Market profiles (seed/markets) and banks override individual attributes.',
                        fields=out)
 

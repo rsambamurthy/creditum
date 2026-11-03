@@ -1090,3 +1090,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]),
 .rn-chev.open { transform: rotate(45deg) translate(-2px, -2px) }
 @media (max-width: 1100px) { .rn-chev, .rn-all { display: none } }
 .rn-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+/* Field Library — length source chips */
+.len-from { display: inline-block; margin-inline-start: 6px; font-size: 10px; font-weight: 600; line-height: 16px; padding: 0 6px; border-radius: 99px; background: #f1f5f9; color: #475569; text-transform: uppercase; letter-spacing: .03em }
+.len-from.bank { background: #e0e7ff; color: #3730a3 }
+td.num, th.num { text-align: end }

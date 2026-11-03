@@ -155,7 +155,7 @@ attributes it changes; `null` removes an inherited one. The bank's market is the
 
 | attribute | applies to | meaning |
 |---|---|---|
-| `maxLength`, `minLength` | text | characters |
+| `maxLength`, `minLength` | text | characters. Product defaults: party names 140 and identifiers 35 (ISO 20022), account numbers 34 (IBAN), short text 100, table-row comments 2,000, section narratives 4,000, long narratives 8,000 |
 | `pattern` (`^…$`), `patternHint` | text | format and a plain example; nested repetition, back-references and look-arounds are refused |
 | `transform` | text | `upper` / `lower`, applied before storing |
 | `maxDecimals`, `minValue`, `maxValue` | numbers | decimal places; range (decimal text) |
@@ -165,5 +165,6 @@ attributes it changes; `null` removes an inherited one. The bank's market is the
 - `GET /api/layout`: every `FieldMeta` carries `attrs` (effective). Inputs size and limit themselves from them.
 - The server applies them on every save (module data, the New/Edit Credit Request form, and the header fields bound to
   library fields: borrower name ← Name of Borrower, borrower reference ← Customer Number). 422 `invalid_value` names the field.
+- `GET /api/fields/attributes` → per field `{ maxLength, width, lengthFrom: product|market|bank, variesBy }` (Field Library list columns).
 - `GET /api/fields/markets` · `GET /api/fields/:key/attributes` → `{ market, core, marketLayer, tenant, tenantVersion, effective }`
 - `PUT /api/fields/:key/attributes {attributes, expectedVersion?}` (maker-checker) · `DELETE /api/fields/:key/attributes` (back to market/product).

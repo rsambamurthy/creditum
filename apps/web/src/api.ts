@@ -136,6 +136,8 @@ export interface VerifyResult { valid: boolean; checked: number; brokenAtSeq?: n
 // ---------------------------------------------------------------- Credit Request modules (Phase 2 contract: docs/api/credit-request-modules.md)
 export type FormValue = string | boolean | null;
 export type ValueKind = 'text' | 'decimal' | 'date' | 'bool' | 'composite' | 'none';
+/** Length and width of a field as the Field Library lists them; lengthFrom names the layer that set the length. */
+export interface FieldLengthSummary { maxLength: number | null; width: string | null; lengthFrom: 'product' | 'market' | 'bank' | null; variesBy: string | null }
 export interface CalcMeta { status: 'active' | 'pending'; description?: string; note?: string }
 export interface FieldMeta {
   key: string; label: string; helpText?: string | null; dataType: string; valueKind: ValueKind; parts?: string[];
@@ -241,6 +243,7 @@ export const api = {
 
   fields: () => request<EffectiveField[]>('GET', '/fields'),
   fieldMarkets: () => request<string[]>('GET', '/fields/markets'),
+  fieldAttributeSummary: () => request<Record<string, FieldLengthSummary>>('GET', '/fields/attributes'),
   fieldAttributes: (key: string) => request<FieldAttributeLayers>('GET', `/fields/${enc(key)}/attributes`),
   saveFieldAttributes: (key: string, attributes: FieldAttributes, expectedVersion?: number | null) =>
     request<WriteResult>('PUT', `/fields/${enc(key)}/attributes`, { attributes, ...(expectedVersion != null ? { expectedVersion } : {}) }),

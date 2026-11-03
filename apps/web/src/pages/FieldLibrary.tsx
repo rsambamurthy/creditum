@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { api, ApiError, type EffectiveField } from '../api';
+import { api, ApiError, type EffectiveField, type FieldLengthSummary } from '../api';
 import { useAuth } from '../auth';
 import { useReference } from '../reference';
 import { useDebounced } from '../hooks';
@@ -22,7 +22,7 @@ const CUSTOM_TYPES = ['Text', 'Rich Text', 'Text (identifier)', 'Dropdown', 'Cur
 
 function uniq(xs: string[]) { return [...new Set(xs)].sort((a, b) => a.localeCompare(b)); }
 
-function FieldDetail({ f, canEdit, onClose, onSaved }: { f: EffectiveField; canEdit: boolean; onClose: () => void; onSaved: () => void }) {
+function FieldDetail({ f, canEdit, onClose, onSaved, onAttributes }: { f: EffectiveField; canEdit: boolean; onClose: () => void; onSaved: () => void; onAttributes: () => void }) {
   const toast = useToast();
   const [label, setLabel] = useState(f.label !== f.coreLabel ? f.label : '');
   const [requirement, setRequirement] = useState(f.requirement !== f.coreRequirement ? f.requirement : '');
@@ -89,7 +89,7 @@ function FieldDetail({ f, canEdit, onClose, onSaved }: { f: EffectiveField; canE
           )}
         </div>
       </div>
-      <AttributesPanel field={f} canEdit={canEdit} />
+      <AttributesPanel field={f} canEdit={canEdit} onChanged={onAttributes} />
     </Modal>
   );
 }
@@ -150,6 +150,8 @@ function CustomFieldModal({ modules, groups, onClose, onSaved }: { modules: stri
   );
 }
 
+const WIDTH_LABEL: Record<string, string> = { xs: 'Extra small', s: 'Small', m: 'Medium', l: 'Large', full: 'Full row' };
+
 export function FieldLibraryPage() {
   useCrumbs([{ label: 'Administration' }, { label: 'Field Library' }]);
   const { hasRole } = useAuth();
@@ -161,6 +163,8 @@ export function FieldLibraryPage() {
   const [requirement, setRequirement] = useState('');
   const [origin, setOrigin] = useState('');
   const [scope, setScope] = useState('');
+  const [lengthFrom, setLengthFrom] = useState('');
+  const [lengths, setLengths] = useState<Record<string, FieldLengthSummary>>({});
   const [qRaw, setQ] = useState('');
   const q = useDebounced(qRaw.trim().toLowerCase(), 200);
   const [page, setPage] = useState(0);
@@ -169,18 +173,21 @@ export function FieldLibraryPage() {
 
   const load = async (force = false) => {
     try { setFields(await ref.loadFields(force)); setError(null); } catch (e) { setError(e); }
+    void loadLengths();
   };
+  const loadLengths = async () => { try { setLengths(await api.fieldAttributeSummary()); } catch { /* the list still works without the length columns */ } };
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(0); }, [module, requirement, origin, scope, q]);
+  useEffect(() => { setPage(0); }, [module, requirement, origin, scope, lengthFrom, q]);
 
   const all = useMemo(() => fields ?? [], [fields]);
   const modules = useMemo(() => uniq(all.map(f => f.module)), [all]);
   const origins = useMemo(() => uniq(all.map(f => f.origin)), [all]);
   const groups = useMemo(() => uniq(all.map(f => f.group)), [all]);
+  const labelOf = (key: string) => all.find(f => f.fieldKey === key)?.label ?? key;
   const filtered = useMemo(() => all.filter(f =>
     (!module || f.module === module) && (!requirement || f.requirement === requirement) && (!origin || f.origin === origin) &&
-    (!scope || f.scope === scope) &&
-    (!q || [f.label, f.coreLabel, f.fieldKey, f.libraryId, f.group].some(v => v.toLowerCase().includes(q)))), [all, module, requirement, origin, scope, q]);
+    (!scope || f.scope === scope) && (!lengthFrom || lengths[f.fieldKey]?.lengthFrom === lengthFrom) &&
+    (!q || [f.label, f.coreLabel, f.fieldKey, f.libraryId, f.group].some(v => v.toLowerCase().includes(q)))), [all, module, requirement, origin, scope, lengthFrom, lengths, q]);
 
   const tiles = useMemo(() => [{ key: '', label: 'All fields', count: all.length, tone: 'brand' as const },
     ...modules.map(m => ({ key: m, label: m, count: all.filter(f => f.module === m).length, tone: 'accent' as const }))], [all, modules]);
@@ -192,6 +199,15 @@ export function FieldLibraryPage() {
       <div className="muted small mono break">{f.fieldKey}</div></> },
     { key: 'group', header: 'Group / module', hideSm: true, className: 'col-group', cell: f => <><div>{f.group}</div><div className="muted small">{f.module}</div></> },
     { key: 'type', header: 'Data type', hideSm: true, cell: f => f.dataType },
+    { key: 'len', header: 'Max length', className: 'num', cell: f => {
+      const l = lengths[f.fieldKey];
+      if (!l || l.maxLength == null) return l?.variesBy ? <span className="muted small">By {labelOf(l.variesBy)}</span> : <span className="muted">—</span>;
+      return <span className="nowrap"><span className="mono-num">{l.maxLength.toLocaleString()}</span>
+        {l.lengthFrom === 'bank' && <span className="len-from bank" title="Set by this workspace">Bank</span>}
+        {l.lengthFrom === 'market' && <span className="len-from" title="Set by the market profile">Market</span>}
+        {l.variesBy && <span className="muted small" title={`Format varies by ${labelOf(l.variesBy)}`}> · varies</span>}</span>;
+    } },
+    { key: 'width', header: 'Width', hideSm: true, cell: f => { const w = lengths[f.fieldKey]?.width; return w ? WIDTH_LABEL[w] ?? w : <span className="muted">—</span>; } },
     { key: 'req', header: 'Requirement', cell: f => <RequirementBadge value={f.requirement} /> },
     { key: 'src', header: 'Source / adapter', hideSm: true, cell: f => <><div>{f.source}</div>{f.adapter && <div className="muted small">{f.adapter}</div>}</> },
     { key: 'origin', header: 'Origin', hideSm: true, cell: f => <OriginChip origin={f.origin} /> },
@@ -209,6 +225,7 @@ export function FieldLibraryPage() {
               <Field label="Module"><select value={module} onChange={e => setModule(e.target.value)}><option value="">All modules</option>{modules.map(m => <option key={m}>{m}</option>)}</select></Field>
               <Field label="Requirement"><select value={requirement} onChange={e => setRequirement(e.target.value)}><option value="">Any</option>{REQUIREMENTS.map(r => <option key={r}>{r}</option>)}</select></Field>
               <Field label="Origin"><select value={origin} onChange={e => setOrigin(e.target.value)}><option value="">Any</option>{origins.map(o => <option key={o}>{o}</option>)}</select></Field>
+              <Field label="Length set by"><select value={lengthFrom} onChange={e => setLengthFrom(e.target.value)}><option value="">Any</option><option value="product">Product default</option><option value="market">Market profile</option><option value="bank">This workspace</option></select></Field>
               <Field label="Scope"><select value={scope} onChange={e => setScope(e.target.value)}><option value="">Core and workspace</option><option value="core">Core</option><option value="tenant">Workspace</option></select></Field>
               <div className="field"><span className="field-label">Matches</span><div className="ro-value mono-num" style={{ minHeight: 36, padding: '6px 10px' }} aria-live="polite">{filtered.length}</div></div>
               <Field label="Search"><input type="search" value={qRaw} onChange={e => setQ(e.target.value)} placeholder="Label, key, ID or group…" /></Field>
@@ -219,7 +236,7 @@ export function FieldLibraryPage() {
           </section>
         </>
       )}
-      {selected && <FieldDetail f={selected} canEdit={canEdit} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); void load(true); }} />}
+      {selected && <FieldDetail f={selected} canEdit={canEdit} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); void load(true); }} onAttributes={() => void loadLengths()} />}
       {creating && <CustomFieldModal modules={modules} groups={groups} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); void load(true); }} />}
     </div>
   );

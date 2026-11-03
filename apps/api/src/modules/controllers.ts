@@ -120,6 +120,7 @@ export class FieldsController {
   @Get() list() { return this.registry.effective(); }
   @Put(':key/override') @Roles(ROLE.configAdmin) override(@Param('key') key: string, @Body() b: OverrideDto) { return this.gov.submit('field_override', key, { ...b }); }
   @Get('markets') markets() { return this.attributes.markets(); }
+  @Get('attributes') attributeSummary() { return this.attributes.summary(); }
   @Get(':key/attributes') attributesOf(@Param('key') key: string) { return this.attributes.layers(key); }
   @Put(':key/attributes') @Roles(ROLE.configAdmin) setAttributes(@Param('key') key: string, @Body() b: FieldAttributesDto) { return this.gov.submit('field_attributes', key, { ...b }); }
   @Delete(':key/attributes') @Roles(ROLE.configAdmin) revertAttributes(@Param('key') key: string) { return this.gov.submit('field_attributes', key, { revert: true }); }

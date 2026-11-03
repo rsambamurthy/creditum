@@ -43,7 +43,7 @@ const canon = (v: unknown): string => (v === null || typeof v !== 'object' ? JSO
 
 interface CaseDraft { code: string; pattern: string; patternHint: string; maxLength: string; transform: string; removed: boolean; isNew: boolean }
 
-export function AttributesPanel({ field, canEdit }: { field: EffectiveField; canEdit: boolean }) {
+export function AttributesPanel({ field, canEdit, onChanged }: { field: EffectiveField; canEdit: boolean; onChanged?: () => void }) {
   const ref = useReference();
   const toast = useToast();
   const [layers, setLayers] = useState<FieldAttributeLayers | null>(null);
@@ -129,7 +129,7 @@ export function AttributesPanel({ field, canEdit }: { field: EffectiveField; can
     try {
       const r = await api.saveFieldAttributes(field.fieldKey, bankLayer, layers.tenantVersion);
       if (r.status === 'applied') { ref.reload(); await load(); }
-      setResult(r); toast.configResult(r, `Attributes of ${field.label} saved`);
+      setResult(r); toast.configResult(r, `Attributes of ${field.label} saved`); onChanged?.();
     } catch (e) { setError(e); } finally { setBusy(false); }
   };
   const reset = async () => {
@@ -138,7 +138,7 @@ export function AttributesPanel({ field, canEdit }: { field: EffectiveField; can
     try {
       const r = await api.revertFieldAttributes(field.fieldKey);
       if (r.status === 'applied') { ref.reload(); await load(); }
-      setResult(r); toast.configResult(r, 'Attributes reset to the market profile');
+      setResult(r); toast.configResult(r, 'Attributes reset to the market profile'); onChanged?.();
     } catch (e) { setError(e); } finally { setBusy(false); }
   };
 

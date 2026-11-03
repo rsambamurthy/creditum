@@ -62,6 +62,26 @@ export class FieldAttributesService implements OnModuleInit {
     return new Map([...keys].map(k => [k, mergeAttributes(core.get(k), mk.get(k), own.get(k))]));
   }
 
+  /**
+   * Length and width of every field for the Field Library list, with the layer that set the length
+   * (product, market or bank) and whether the format varies by another field (e.g. ID number by ID type).
+   */
+  async summary(): Promise<Record<string, { maxLength: number | null; width: string | null; lengthFrom: 'product' | 'market' | 'bank' | null; variesBy: string | null }>> {
+    const m = this.ds.manager;
+    const { market, rows } = await this.layerRows(m);
+    const tenant = requireTenant();
+    const by = (scope: string) => new Map(rows.filter(r => r.ownerScope === scope).map(r => [r.fieldKey, JSON.parse(r.attributesJson) as FieldAttributes]));
+    const layers: ['product' | 'market' | 'bank', Map<string, FieldAttributes>][] = [['product', by(CORE_SCOPE)], ['market', market ? by(marketScope(market)) : new Map()], ['bank', by(tenant)]];
+    const keys = new Set(layers.flatMap(([, l]) => [...l.keys()]));
+    const out: Awaited<ReturnType<FieldAttributesService['summary']>> = {};
+    for (const k of keys) {
+      const eff = mergeAttributes(...layers.map(([, l]) => l.get(k)));
+      const from = [...layers].reverse().find(([, l]) => l.get(k) && 'maxLength' in (l.get(k) as object));
+      out[k] = { maxLength: eff.maxLength ?? null, width: eff.width ?? null, lengthFrom: eff.maxLength != null && from ? from[0] : null, variesBy: eff.variants?.dependsOn ?? null };
+    }
+    return out;
+  }
+
   /** The three layers of one field, for the Field Library. */
   async layers(fieldKey: string) {
     const m = this.ds.manager;
