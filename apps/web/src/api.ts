@@ -256,6 +256,7 @@ export const api = {
   saveRequestData: (id: string, body: RequestDataInput) => request<RequestData>('PUT', `/credit-requests/${enc(id)}/data`, body),
   coreBankingStatus: () => request<CoreBankingStatus>('GET', '/integrations/core-banking/status'),
   coreBankingCustomer: (cif: string) => request<CoreBankingCustomer>('GET', `/integrations/core-banking/customers/${enc(cif)}`),
+  coreBankingCustomers: (q: string) => request<{ items: CoreBankingCustomer[]; total: number }>('GET', `/integrations/core-banking/customers?q=${encodeURIComponent(q)}`),
   pullCoreBanking: (id: string) => request<PullResult>('POST', `/credit-requests/${enc(id)}/core-banking/pull`),
   bookCoreBanking: (id: string) => request<BookingResult>('POST', `/credit-requests/${enc(id)}/core-banking/booking`),
 

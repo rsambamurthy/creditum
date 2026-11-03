@@ -3,14 +3,13 @@ import { api, ApiError, errorMessage, type CoreBankingCustomer, type CoreBanking
 import { useReference } from '../reference';
 import { isNonZeroDecimal, isUnsignedDecimalText, scaleOf, trimDecimal } from '../format';
 import { Field, Group } from './Field';
+import { CustomerLov } from './CustomerLov';
 import { Alert, ErrorAlert, Spinner } from './Feedback';
 import { FieldInput } from '../forms/FieldInput';
 import { isDecimalText } from '../forms/formState';
 import { checkValue, ruleFor, transformText, type FieldAttributes } from '../forms/attributes';
 
 /** Attributes of the library field a header input is bound to (borrower name ← Name of Borrower, reference ← Customer Number). */
-const humanizeCode = (c: string) => c.replace(/_/g, ' ').replace(/^./, x => x.toUpperCase());
-
 function boundField(layout: Layout | null, bind: 'borrowerName' | 'borrowerRef'): { key?: string; attrs?: FieldAttributes } {
   for (const m of layout?.modules ?? []) for (const s of m.sections) for (const f of s.fields) if (f.bind === bind) return { key: f.key, attrs: f.attrs };
   return {};
@@ -87,7 +86,7 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     const e: Errors = {};
     if (!borrowerName.trim()) e.borrowerName = 'Enter the borrower name';
     else { const why = checkValue(borrowerName.trim(), nameAttrs, 'text', undefined); if (why) e.borrowerName = why; }
-    if (!borrowerRef.trim()) e.borrowerRef = 'Enter the borrower reference';
+    if (!borrowerRef.trim()) e.borrowerRef = 'Enter the customer number';
     else { const why = checkValue(borrowerRef.trim(), refAttrs, 'text', undefined); if (why) e.borrowerRef = why; }
     if (!requestType) e.requestType = 'Choose a request type';
     if (!currencyCode) e.currencyCode = 'Choose a currency';
@@ -170,18 +169,28 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
               <input value={borrowerName} onChange={e => setBorrowerName(transformText(e.target.value, nameRule))} maxLength={nameRule.maxLength ?? 250}
                 placeholder={nameRule.placeholder ?? undefined} autoComplete="off" />
             </Field>
-            <Field label="Borrower reference" required error={errors.borrowerRef}
-              help={`Customer or CIF reference in the core banking system${refRule.patternHint ? ` · Format: ${refRule.patternHint}` : ''}${refRule.maxLength ? ` · up to ${refRule.maxLength} characters` : ''}`}>
-              <div className={canLookup ? 'input-action' : undefined}>
-                <input value={borrowerRef} onChange={e => { setBorrowerRef(transformText(e.target.value, refRule)); setFound(null); setLookupMsg(null); }} maxLength={refRule.maxLength ?? 80}
-                  placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr"
-                  onKeyDown={e => { if (canLookup && e.key === 'Enter') { e.preventDefault(); void lookup(); } }} />
-                {canLookup && <button type="button" className="btn btn-secondary btn-sm" onClick={lookup} disabled={looking}>{looking ? 'Finding…' : `Find in ${cb!.label.toLowerCase()}`}</button>}
-              </div>
+            <Field label="Customer number" required error={errors.borrowerRef}
+              help={`${canLookup ? 'Type part of the name or number and pick the customer from the list' : 'Customer or CIF reference in the core banking system'}${refRule.patternHint ? ` · Format: ${refRule.patternHint}` : ''}${refRule.maxLength ? ` · up to ${refRule.maxLength} characters` : ''}`}>
+              {canLookup ? (
+                <div className="input-action">
+                  <CustomerLov value={borrowerRef} source={cb!.label} maxLength={refRule.maxLength ?? 80} invalid={!!errors.borrowerRef}
+                    onType={text => { setBorrowerRef(transformText(text, refRule)); setFound(null); setLookupMsg(null); }}
+                    onPick={c => {
+                      setBorrowerRef(transformText(c.cif, refRule)); setFound(c); setLookupMsg(null);
+                      if (c.name) setBorrowerName(transformText(c.name, nameRule));
+                      setErrors(e => ({ ...e, borrowerName: undefined, borrowerRef: undefined }));
+                    }} />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={lookup} disabled={looking || !borrowerRef.trim()}
+                    title="Check this customer number in core banking">{looking ? 'Checking…' : 'Check'}</button>
+                </div>
+              ) : (
+                <input value={borrowerRef} onChange={e => setBorrowerRef(transformText(e.target.value, refRule))} maxLength={refRule.maxLength ?? 80}
+                  placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr" />
+              )}
             </Field>
             {(found || lookupMsg) && (
               <div className={`lookup-note${found ? ' ok' : ''}`} role="status">
-                {found ? <>Found in {cb!.label.toLowerCase()}: <strong>{found.name}</strong>{found.segment && <> · {humanizeCode(found.segment)}</>}.
+                {found ? <>Found in {cb!.label.toLowerCase()}: <strong>{found.name}</strong> ({found.cif}).
                   {' '}When you save, the request is filled with the customer, facilities and collateral from {cb!.label.toLowerCase()}.</> : lookupMsg}
               </div>
             )}

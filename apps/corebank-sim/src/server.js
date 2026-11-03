@@ -4,6 +4,7 @@
  *
  * Implements the Creditum core banking connector contract (docs/integrations/core-banking-connector.md):
  *   GET  /health
+ *   GET  /v1/institutions/:institution/customers?q=&limit=               search by customer number or name (list of values)
  *   GET  /v1/institutions/:institution/customers/:cif                    customer master, group, partners
  *   GET  /v1/institutions/:institution/customers/:cif/facilities         existing credit facilities
  *   GET  /v1/institutions/:institution/customers/:cif/security-packages  packages with their facilities and collateral
@@ -23,6 +24,16 @@ const { join } = require('node:path');
 
 const DATA_DIR = join(__dirname, '..', 'data');
 const MAX_BODY_BYTES = 64 * 1024; // guardrail-allow: request size limit of the simulator, not a business value
+const SEARCH_LIMIT = { default: 20, max: 50 };
+
+function searchCustomers(inst, q, limit) {
+  const needle = q.trim().toLowerCase();
+  const all = Object.values(inst.customers).map(c => c.customer)
+    .filter(c => !needle || c.cif.toLowerCase().includes(needle) || (c.name ?? '').toLowerCase().includes(needle))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  const n = Math.min(Math.max(Number.isInteger(limit) && limit > 0 ? limit : SEARCH_LIMIT.default, 1), SEARCH_LIMIT.max);
+  return { total: all.length, items: all.slice(0, n).map(c => ({ cif: c.cif, name: c.name, segment: c.segment, newOrExisting: c.newOrExisting, idType: c.idType, idNumber: c.idNumber })) };
+}
 
 function loadInstitutions(dir = DATA_DIR) {
   const out = new Map();
@@ -117,6 +128,9 @@ function createSimulator({ apiKey, institutions = loadInstitutions(), log = () =
       const inst = institutions.get(parts[2]);
       if (!inst) return send(res, 404, { error: 'institution_not_found', message: `No institution ${parts[2]}` });
       log(`${req.method} ${url.pathname}`);
+      if (req.method === 'GET' && parts[3] === 'customers' && parts.length === 4) {
+        return send(res, 200, searchCustomers(inst, url.searchParams.get('q') ?? '', Number(url.searchParams.get('limit'))));
+      }
       if (req.method === 'GET' && parts[3] === 'customers' && parts[4]) {
         const c = inst.customers[parts[4]];
         if (!c) return send(res, 404, { error: 'customer_not_found', message: `No customer ${parts[4]}` });

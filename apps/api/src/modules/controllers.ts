@@ -213,5 +213,6 @@ export class AuditController {
 export class IntegrationsController {
   constructor(private readonly coreBanking: CoreBankingService) {}
   @Get('status') @Roles(...CREDIT_ROLES, ROLE.configAdmin) status() { return this.coreBanking.status(); }
+  @Get('customers') @Roles(ROLE.relationshipOfficer) customers(@Query('q') q: string) { return this.coreBanking.search(q); }
   @Get('customers/:cif') @Roles(ROLE.relationshipOfficer) customer(@Param('cif') cif: string) { return this.coreBanking.lookup(cif); }
 }

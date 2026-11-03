@@ -70,6 +70,13 @@ describe('core banking connector', () => {
     const c = (await http().get('/api/integrations/core-banking/customers/CIF00418823').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
     expect(c).toMatchObject({ name: 'Zelvaro Marine Logistics W.L.L.', segment: 'mid_corporate' });
     await http().get('/api/integrations/core-banking/customers/CIF-UNKNOWN').set(await as('xyz-bank', 'ro.ahmed')).expect(404);
+    // list of values: by part of the name or the number, this institution's customers only
+    const byName = (await http().get('/api/integrations/core-banking/customers').query({ q: 'zelv' }).set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
+    expect(byName.items).toEqual([expect.objectContaining({ cif: 'CIF00418823', name: 'Zelvaro Marine Logistics W.L.L.' })]);
+    const byNumber = (await http().get('/api/integrations/core-banking/customers').query({ q: 'CIF004' }).set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
+    expect(byNumber.items.map((c: { cif: string }) => c.cif)).toEqual(expect.arrayContaining(['CIF00418823', 'CIF00456230', 'CIF00477781']));
+    expect((await http().get('/api/integrations/core-banking/customers').query({ q: 'tarvenna' }).set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body.items).toEqual([]);
+    await http().get('/api/integrations/core-banking/customers').query({ q: 'z' }).set(await as('xyz-bank', 'ro.ahmed')).expect(422);
   });
 
   it('fills a new request from core banking: customer, group, facilities, package, guarantees, collateral', async () => {

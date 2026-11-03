@@ -38,6 +38,8 @@ const MAX_RESPONSE_CHARS = 2_000_000;
 const HTTP_UNAVAILABLE = 502;
 const HTTP_NOT_CONFIGURED = 503;
 const HTTP_NOT_FOUND = 404;
+// guardrail-allow: list-of-values paging and input bounds (operational), not business values
+const SEARCH = { page: 20, minChars: 2, maxChars: 100 };
 
 interface GridMap { from: string; key: string[]; columns: Record<string, string> }
 interface BookingMap {
@@ -147,6 +149,21 @@ export class CoreBankingService implements OnModuleInit {
     const institution = await text(PARAM.institution);
     const bookingStates = csv((await text(PARAM.bookingStates)) ?? '');
     return { label: this.mapping.label, configured: !!conn, enabled, institution, reachable, bookingStates };
+  }
+
+  /**
+   * List of values for the customer number: customers whose number or name contains the text, as core banking
+   * returns them (name and number, segment). Untrusted input: only strings are passed on.
+   */
+  async search(q: string) {
+    const text = (q ?? '').trim();
+    if (text.length < SEARCH.minChars) throw new DomainError('invalid_value', `Type at least ${SEARCH.minChars} characters of the name or customer number`);
+    const res = await this.call<{ total?: unknown; items?: unknown }>('GET', `customers?q=${encodeURIComponent(text.slice(0, SEARCH.maxChars))}&limit=${SEARCH.page}`);
+    const str = (v: unknown) => (typeof v === 'string' ? v : null);
+    const items = (Array.isArray(res?.items) ? res!.items : []).filter((x): x is Doc => !!x && typeof x === 'object' && typeof (x as Doc).cif === 'string')
+      .slice(0, SEARCH.page)
+      .map(c => ({ cif: c.cif as string, name: str(c.name), segment: str(c.segment), newOrExisting: str(c.newOrExisting), idType: str(c.idType), idNumber: str(c.idNumber) }));
+    return { items, total: typeof res?.total === 'number' ? res.total : items.length };
   }
 
   /** Look a customer up by customer number (New Credit Request form). */

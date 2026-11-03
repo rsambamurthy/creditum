@@ -34,6 +34,7 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 
 | Call | Returns |
 |---|---|
+| `GET customers?q=&limit=` | `{ total, items: [{ cif, name, segment, newOrExisting, idType, idNumber }] }` — customers whose number or name contains `q` (list of values) |
 | `GET customers/{cif}` | `{ cif, name, newOrExisting, partyType, segment, customerType, legalStatus, idType, idNumber, idExpiry, nationality, legalEntity, establishedOn, customerSince, lastReviewOn, sector, accountConduct, ownerGroup, email, website, relationshipSince, internalRating, riskGrade, boardMember, group: { id, nameAndId, subGroupAccounts, subGroupNames }, partners: [{ cif, existingCustomer, name, idType, idNumber, idExpiry, nationality, designation, ownershipPct, boardMember, boardRelated }] }` — 404 if unknown |
 | `GET customers/{cif}/facilities` | `[{ facilityId, type, legalEntity, settlementAccount, limitCurrency, utilizationCurrency, structure, disbursement, repayment, interestFrequency, limit, utilization, secured, packageNumber, extensions, originalMaturity, maturity, purpose, commodity, esgLinked, bookingBranch }]` |
 | `GET customers/{cif}/security-packages` | `[{ packageNumber, committeeDecisionDate, reviewDate, internallyAcceptedCoverageRatio, creditRequestNumber, valueDate, facilities: [{ type, currency, value, coverageMethod }], collateral: [{ type, currency, currentValue, chargeNature, assignedPct, assignedValue, ownership }] }]` |
@@ -45,6 +46,7 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 ## Creditum API
 
 - `GET /api/integrations/core-banking/status` → `{ label, configured, enabled, institution, reachable, bookingStates }`
+- `GET /api/integrations/core-banking/customers?q=` → `{ items, total }` (customer number list of values; at least 2 characters)
 - `GET /api/integrations/core-banking/customers/:cif` → `{ cif, name, segment, newOrExisting, idType, idNumber }` (New Credit Request look-up)
 - `POST /api/credit-requests` → also `{ integration: { pulled, warnings, changes } }`
 - `POST /api/credit-requests/:id/core-banking/pull` → `{ pulledAt, changes: [{ field, label, section, before, after }], tables: [{ grid, label, added, updated, removed }], warnings }`
