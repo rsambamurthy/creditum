@@ -29,6 +29,8 @@ export interface FieldInputProps {
   message?: string;
   /** Show the value only (read-only view of an ordinary field, without the "Calculated" badge). */
   view?: boolean;
+  /** The external system the value came from (e.g. "Core banking"): shown read-only with that tag. */
+  source?: string;
 }
 
 const PART_LABEL: Record<string, string> = { from: 'From', to: 'To', rate: 'Rate %' };
@@ -118,7 +120,10 @@ export function FieldInput(p: FieldInputProps) {
   }
 
   let control: ReactNode;
-  if (p.view && !meta.calc) {
+  if (p.source && !meta.calc) {
+    control = <div className={`ro-value src${cell ? ' cell' : ''}`} id={id} title={`From ${p.source.toLowerCase()} — read-only`}>
+      {displayValue(meta, v, layout)}{!cell && <span className="calc-badge src">{p.source}</span>}</div>;
+  } else if (p.view && !meta.calc) {
     control = <div className="ro-value" id={id}>{displayValue(meta, v, layout)}</div>;
   } else if (meta.bind) {
     control = <div className="ro-value" id={id}>{header[meta.bind] || <span className="muted">—</span>}<span className="calc-badge">From request</span></div>;

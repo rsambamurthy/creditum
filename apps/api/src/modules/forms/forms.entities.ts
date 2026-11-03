@@ -11,6 +11,9 @@ export class FormRow {
   @Column({ ...T.id(), name: 'entity_id' }) entityId: string;
   @Column({ ...T.str(80), name: 'grid_code' }) gridCode: string;
   @Column({ ...T.int(), name: 'order_no' }) orderNo: number;
+  /** The system the row came from (e.g. core_banking) and that system's key for it; null for rows entered by users. */
+  @Column({ ...T.str(40, { nullable: true }), name: 'source_system' }) sourceSystem?: string | null;
+  @Column({ ...T.str(120, { nullable: true }), name: 'source_ref' }) sourceRef?: string | null;
 }
 
 /**

@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type ReactNode, type Ref } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api, ApiError, errorMessage, type FormValue, type Layout, type MissingEntry, type RequestData } from '../api';
+import { api, ApiError, errorMessage, type FormValue, type Layout, type MissingEntry, type RequestData, type RequestIntegration } from '../api';
 import { useReference } from '../reference';
 import { Alert, ErrorAlert, Spinner } from '../components/Feedback';
 import { useToast } from '../components/Toast';
@@ -20,7 +20,7 @@ export interface ModulesHandle {
   reload: () => Promise<void>;
 }
 
-export function CreditRequestModules({ requestId, header, headerVersion, canEdit, onVersion, onDirtyChange, handle, navFooter }: {
+export function CreditRequestModules({ requestId, header, headerVersion, canEdit, onVersion, onDirtyChange, handle, navFooter, onIntegration }: {
   requestId: string;
   header: Header;
   /** The request's current rowVersion as the page knows it (header edits and transitions change it). */
@@ -32,6 +32,8 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   handle?: Ref<ModulesHandle>;
   /** Extra entries at the bottom of the module navigation (history, audit). */
   navFooter?: ReactNode;
+  /** What came from an external system (core banking), reported whenever the data is (re)loaded. */
+  onIntegration?: (i: RequestIntegration | null) => void;
 }) {
   const ref = useReference();
   const toast = useToast();
@@ -52,6 +54,7 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
     const s = fromData(d);
     setData(d); setOrig(s); setCur(s); setServerKeys(new Set()); setServerMessages(new Map());
   }, []);
+  useEffect(() => { if (data) onIntegration?.(data.integration ?? null); }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -181,7 +184,15 @@ export function CreditRequestModules({ requestId, header, headerVersion, canEdit
   if (loadError && !data) return <ErrorAlert error={loadError} onReload={load} />;
   if (!layout || !data || !cur || !idx) return <Spinner label="Loading request modules…" />;
 
-  const ctx: FormCtx = { layout, record: cur.record, grids: cur.grids, setRecord, setGrid, header, disabled: !editable || saving, missing, messages: serverMessages };
+  const integ = data.integration;
+  const lockedRecord = new Set(integ?.record ?? []);
+  const lockedColumns = new Set(Object.values(integ?.columns ?? {}).flat());
+  const sourceLabel = integ?.label ?? 'Core banking';
+  const sourcedRow = (rowKey?: string | null) => (rowKey && integ?.rows[rowKey] ? sourceLabel : undefined);
+  const sourceOf = (key: string, rowKey?: string | null) =>
+    rowKey === undefined ? (lockedRecord.has(key) ? sourceLabel : undefined) : (sourcedRow(rowKey) && lockedColumns.has(key) ? sourceLabel : undefined);
+  const ctx: FormCtx = { layout, record: cur.record, grids: cur.grids, setRecord, setGrid, header, disabled: !editable || saving, missing, messages: serverMessages,
+    sourceOf, sourcedRow };
   const activeModule = modules.find(m => m.code === active);
   const totals = Object.values(data.completeness.modules).reduce((a, m) => ({ f: a.f + m.filled, n: a.n + m.mandatory }), { f: 0, n: 0 });
   const moduleMissing = data.completeness.missing.filter(m => m.module === active);

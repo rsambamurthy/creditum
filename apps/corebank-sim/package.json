@@ -1,0 +1,13 @@
+{
+  "name": "@creditum/corebank-sim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core banking simulator for build and test: fictional customers, facilities, collateral and limit booking behind the Creditum core banking connector contract.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

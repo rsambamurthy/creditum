@@ -1094,3 +1094,19 @@ input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]),
 .len-from { display: inline-block; margin-inline-start: 6px; font-size: 10px; font-weight: 600; line-height: 16px; padding: 0 6px; border-radius: 99px; background: #f1f5f9; color: #475569; text-transform: uppercase; letter-spacing: .03em }
 .len-from.bank { background: #e0e7ff; color: #3730a3 }
 td.num, th.num { text-align: end }
+
+/* Core banking connector */
+.input-action { display: flex; gap: 8px; align-items: center }
+.input-action > input { flex: 1; min-width: 0 }
+.input-action > .btn { flex: none; white-space: nowrap }
+.lookup-note { grid-column: 1 / -1; font-size: 12.5px; padding: 8px 12px; border-radius: 6px; background: var(--warn-bg, #fffbeb); color: #6b4600; border: 1px solid #f3dfae }
+.lookup-note.ok { background: #ecfdf5; color: #065f46; border-color: #a7f3d0 }
+.ro-value.src { background: #f8fafc }
+.ro-value.src.cell { border: 0; padding: 4px 6px; min-height: 0; background: transparent }
+.calc-badge.src { background: #e0f2fe; color: #075985 }
+.src-dot { display: inline-block; width: 7px; height: 7px; margin-inline-start: 5px; border-radius: 50%; background: #0284c7; vertical-align: middle }
+.icon-btn.placeholder { visibility: hidden }
+.rb-cb { display: inline-flex; align-items: baseline; gap: 6px }
+.cb-changes { width: 100%; border-collapse: collapse; font-size: 12.5px }
+.cb-changes th, .cb-changes td { text-align: start; padding: 5px 8px; border-bottom: 1px solid var(--line, #e2e8f0); vertical-align: top }
+.cb-changes th { font-weight: 600; color: #475569; background: #f8fafc }

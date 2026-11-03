@@ -60,13 +60,39 @@ export interface FieldMeta {
   attrs?: FieldAttributes;
 }
 
-interface Model {
+export interface Model {
   doc: LayoutDocument;
   placed: Map<string, PlacedField>;
   fields: Map<string, EffectiveField>;
   formulas: Map<string, FieldFormula>;
   compiled: CompiledFormula[];
   attrs: Map<string, FieldAttributes>;
+}
+
+/**
+ * Values that came from an external system and are read-only on the request (e.g. core banking). Record fields are
+ * listed by key; in rows that came from the system (form_rows.source_system), the listed columns of that grid.
+ */
+export interface DataLocks {
+  system: string; label: string; pulledAt: string | null; bookedAt: string | null;
+  record: string[]; columns: Record<string, string[]>;
+}
+type LockProvider = (m: EntityManager, requestId: string) => Promise<DataLocks | null>;
+
+/** A change written by the platform on behalf of an external system (a pull or a booking), not typed by a user. */
+export interface SystemChange {
+  data: FormData;
+  /** Source of new or updated rows; null clears the source (the row becomes an ordinary user row). */
+  rowSources: Map<string, { system: string; ref: string } | null>;
+  header?: { borrowerName?: string };
+}
+export type SystemValue = { ok: true; value: Value } | { ok: false; reason: string };
+export interface SystemContext {
+  request: CreditRequest; model: Model; before: FormData; rows: FormRow[];
+  /** Validate one incoming value as if a user had entered it: list codes, currencies, types, length and format. */
+  value: (key: string, raw: unknown, grid: string | null, row: Record<string, Value>, record: Record<string, Value>) => SystemValue;
+  label: (key: string) => string;
+  placed: (key: string) => PlacedField | undefined;
 }
 
 export interface SaveInput { expectedVersion: number; record?: Record<string, unknown>; grids?: Record<string, { rowKey?: string; values: Record<string, unknown> }[]> }
@@ -79,6 +105,11 @@ export class FormsService implements OnModuleInit {
               private readonly governance: GovernanceService, private readonly rules: RulesService, private readonly workflow: WorkflowService,
               private readonly audit: AuditService, private readonly requests: CreditRequestService,
               private readonly attributes: FieldAttributesService) {}
+
+  private lockProvider?: LockProvider;
+  /** The integrations module tells the form which values came from an external system and are read-only. */
+  useLocks(fn: LockProvider) { this.lockProvider = fn; }
+  private locks(m: EntityManager, id: string) { return this.lockProvider ? this.lockProvider(m, id) : Promise.resolve(null); }
 
   onModuleInit() {
     this.requests.useMandatoryCheck((id, m) => this.mandatoryCheck(id, m));
@@ -234,11 +265,11 @@ export class FormsService implements OnModuleInit {
     const mgr = m ?? this.ds.manager;
     const r = await this.loadRequest(id, mgr);
     const model = await this.model(mgr);
-    const { data } = await this.stored(id, mgr, model);
-    return this.view(r, model, data, await this.mode(mgr), mgr);
+    const { data, rows } = await this.stored(id, mgr, model);
+    return this.view(r, model, data, await this.mode(mgr), mgr, rows);
   }
 
-  private async view(r: CreditRequest, model: Model, data: FormData, mode: MandatoryMode, m: EntityManager) {
+  private async view(r: CreditRequest, model: Model, data: FormData, mode: MandatoryMode, m: EntityManager, rows: FormRow[]) {
     const { def } = await this.workflow.definition(r.requestType, m);
     const record = { ...data.record };
     for (const p of model.placed.values()) if (p.bind) record[p.key] = r[p.bind];
@@ -248,8 +279,15 @@ export class FormsService implements OnModuleInit {
     for (const [g, rows] of Object.entries(data.grids)) {
       grids[g] = rows.map(row => ({ rowKey: row.rowKey, values: Object.fromEntries(Object.entries(row.values).filter(([k]) => !model.fields.get(this.baseKey(k))?.hidden)) }));
     }
+    const locks = await this.locks(m, r.id);
+    const sourced = rows.filter(x => x.sourceSystem);
+    const integration = locks || sourced.length ? {
+      label: locks?.label ?? null, pulledAt: locks?.pulledAt ?? null, bookedAt: locks?.bookedAt ?? null,
+      record: locks?.record ?? [], columns: locks?.columns ?? {},
+      rows: Object.fromEntries(sourced.map(x => [x.id, { system: x.sourceSystem, ref: x.sourceRef ?? null }])),
+    } : null;
     return { requestId: r.id, rowVersion: r.rowVersion, editable: !!def.states.find(s => s.code === r.status && s.editable),
-      record, grids, completeness: { mode, ...this.completeness(model, data) } };
+      record, grids, completeness: { mode, ...this.completeness(model, data) }, integration };
   }
 
   private baseKey(k: string) { return k.split(':')[0]; }
@@ -431,6 +469,10 @@ export class FormsService implements OnModuleInit {
         list.forEach((row, i) => this.checkAttributes(model, next.grids[grid][i].values, next.grids[grid][i].rowKey, new Set(Object.keys(row.values)), next.record));
       }
 
+      // values that came from an external system stay as that system sent them
+      const locks = await this.locks(m, id);
+      if (locks) this.enforceLocks(model, locks, before, next, rows, input);
+
       // recompute calculated fields
       const computed = evaluate(model.compiled, next, await this.formulaContext(m, model));
 
@@ -454,9 +496,77 @@ export class FormsService implements OnModuleInit {
       if (res.affected === 0) throw new ConflictError('This credit request was changed by someone else — reload to see the latest version');
       await this.audit.append(m, { action: 'credit_request_data_updated', entityType: ENTITY, entityRef: r.requestNumber, before: changes.before, after: changes.after });
       const fresh = await this.loadRequest(id, m);
-      const after = (await this.stored(id, m, model)).data;
-      return { ...(await this.view(fresh, model, after, await this.mode(m), m)), warnings: outcome.warnings.map(w => w.message) };
+      const after = await this.stored(id, m, model);
+      return { ...(await this.view(fresh, model, after.data, await this.mode(m), m, after.rows)), warnings: outcome.warnings.map(w => w.message) };
     });
+  }
+
+  private enforceLocks(model: Model, locks: DataLocks, before: FormData, next: FormData, rows: FormRow[], input: SaveInput) {
+    const same = (a: Value | undefined, b: Value | undefined) => (isEmpty(a) && isEmpty(b)) || a === b;
+    const label = (k: string) => model.fields.get(this.baseKey(k))?.label ?? k;
+    const refuse = (k: string, rowKey: string | null): never => {
+      throw new DomainError('read_only_field', `"${label(k)}" comes from ${locks.label.toLowerCase()} — change it there and refresh the request`, undefined, { field: k, rowKey });
+    };
+    const record = new Set(locks.record);
+    for (const k of Object.keys(input.record ?? {})) if (record.has(this.baseKey(k)) && !same(before.record[k], next.record[k])) refuse(k, null);
+    const sourced = new Map(rows.filter(r => r.sourceSystem).map(r => [r.id, r]));
+    for (const grid of Object.keys(input.grids ?? {})) {
+      const kept = new Set((next.grids[grid] ?? []).map(r => r.rowKey));
+      for (const r of sourced.values()) {
+        if (r.gridCode === grid && !kept.has(r.id)) {
+          throw new DomainError('read_only_row', `A ${(model.doc.grids[grid]?.rowLabel ?? 'row').toLowerCase()} from ${locks.label.toLowerCase()} cannot be removed here`, undefined, { grid, rowKey: r.id });
+        }
+      }
+      const cols = locks.columns[grid] ?? [];
+      const prior = new Map((before.grids[grid] ?? []).map(g => [g.rowKey, g.values]));
+      for (const row of next.grids[grid] ?? []) {
+        if (!sourced.has(row.rowKey)) continue;
+        for (const c of cols) if (!same(prior.get(row.rowKey)?.[c], row.values[c])) refuse(c, row.rowKey);
+      }
+    }
+  }
+
+  /**
+   * Write values on behalf of an external system (core banking pull or booking) through the same validation,
+   * calculation and audit as a user's save. The caller builds the new data from the current data and decides
+   * which rows came from the system. Runs inside the caller's transaction.
+   */
+  async systemUpdate(m: EntityManager, id: string, opts: { action: string; requireEditable: boolean; audit?: Record<string, unknown> },
+                     build: (ctx: SystemContext) => Promise<SystemChange> | SystemChange) {
+    const r = await this.loadRequest(id, m);
+    const { def } = await this.workflow.definition(r.requestType, m);
+    if (opts.requireEditable && !def.states.find(s => s.code === r.status && s.editable)) {
+      throw new DomainError('not_editable', `A request in state "${r.status}" cannot be updated`);
+    }
+    const model = await this.model(m);
+    const { data: before, rows, values } = await this.stored(id, m, model);
+    const check = await this.validator(m, model);
+    const value = (key: string, raw: unknown, grid: string | null, row: Record<string, Value>, record: Record<string, Value>): SystemValue => {
+      try {
+        let v = check(key, raw, grid);
+        if (v !== null) {
+          const tmp: Record<string, Value> = { ...row, [key]: v };
+          this.checkAttributes(model, tmp, null, new Set([key]), record);
+          v = tmp[key];
+        }
+        return { ok: true, value: v };
+      } catch (e) {
+        return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+      }
+    };
+    const change = await build({ request: r, model, before, rows, value, label: k => model.fields.get(this.baseKey(k))?.label ?? k, placed: k => model.placed.get(k) });
+    const computed = evaluate(model.compiled, change.data, await this.formulaContext(m, model));
+    const changes = await this.persist(m, id, model, before, computed, rows, values);
+    const rowRepo = m.getRepository(FormRow);
+    for (const [rowKey, src] of change.rowSources) {
+      await rowRepo.update(tenantWhere<FormRow>({ id: rowKey }), { sourceSystem: src?.system ?? null, sourceRef: src?.ref ?? null });
+    }
+    const header = change.header?.borrowerName && change.header.borrowerName !== r.borrowerName ? { borrowerName: change.header.borrowerName } : {};
+    if ('borrowerName' in header) { changes.before.borrowerName = r.borrowerName; changes.after.borrowerName = header.borrowerName; }
+    const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: r.rowVersion }), { ...header, rowVersion: r.rowVersion + 1, updatedAt: new Date() });
+    if (res.affected === 0) throw new ConflictError('This credit request was changed by someone else — try again');
+    await this.audit.append(m, { action: opts.action, entityType: ENTITY, entityRef: r.requestNumber, before: changes.before, after: { ...changes.after, ...(opts.audit ?? {}) } });
+    return { request: r, before, after: computed, changed: changes };
   }
 
   private async formulaContext(m: EntityManager, model: Model): Promise<FormulaContext> {

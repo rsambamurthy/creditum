@@ -23,6 +23,13 @@ hierarchy, workflows, field labels and rules — never by changing code. The des
 | Engineering guardrails enforced in CI | `tools/guardrails` | 25.4 |
 | Web console in the Integrata design language | `apps/web` | 20 |
 
+## Integrations
+
+- **Core banking connector** — fills a Credit Request from core banking (customer, group, partners, existing facilities,
+  security package, guarantees, collateral), keeps those values read-only with their source, refreshes on demand, and
+  books approved limits and collateral back. Contract, settings and behaviour: `docs/integrations/core-banking-connector.md`.
+  Build/test environments run `apps/corebank-sim`.
+
 ## Non-negotiables (enforced by the build)
 
 - **Nothing hardcoded.** No currency code or symbol, threshold, limit, fee or rate appears in application code. `node tools/guardrails/check.mjs` fails the build otherwise; `--self-test` proves every rule fires.
@@ -70,6 +77,7 @@ or on-premise. See `docs/deployment.md`.
 ```
 apps/api          NestJS + TypeORM API (TypeScript)
 apps/web          React console (Vite)
+apps/corebank-sim Core banking simulator for build/test (fictional data; docs/integrations/core-banking-connector.md)
 tools/guardrails  Static checks for SDD 25.4
 docs/             SDD, Core Field Library, design reference, ADRs, deployment notes
 .github/workflows CI: guardrails, build, integration on 3 databases, security scans, containers

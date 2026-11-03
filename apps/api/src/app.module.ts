@@ -12,19 +12,20 @@ import { CreditRequestService } from './modules/credit-request/credit-request.se
 import { AuthGuard, AuthService } from './modules/auth/auth';
 import { FormsService } from './modules/forms/forms.service';
 import { FieldAttributesService } from './modules/field-registry/field-attributes.service';
+import { CoreBankingService } from './modules/integrations/core-banking.service';
 import { ErrorFilter } from './common/errors';
 import { runWithContext } from './common/request-context';
 import {
   AuditController, AuthController, ConfigController, CreditRequestController, FieldsController, FormulasController, HealthController, LayoutController,
-  RulesController, WorkflowController,
+  IntegrationsController, RulesController, WorkflowController,
 } from './modules/controllers';
 
 @Module({
   imports: [DatabaseModule],
   controllers: [HealthController, AuthController, ConfigController, FieldsController, RulesController, WorkflowController, CreditRequestController, AuditController,
-    LayoutController, FormulasController],
+    LayoutController, FormulasController, IntegrationsController],
   providers: [
-    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, FieldAttributesService, AuthService,
+    AuditService, ConfigurationService, GovernanceService, FieldRegistryService, RulesService, WorkflowService, CreditRequestService, FormsService, FieldAttributesService, CoreBankingService, AuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },
   ],

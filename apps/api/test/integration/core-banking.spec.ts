@@ -1,0 +1,184 @@
+/**
+ * Core banking connector, end to end against the simulator (apps/corebank-sim) started in this process:
+ * a new request is filled from core banking, pulled values are read-only, a refresh updates them, and an
+ * approved request is booked back. CI runs this on PostgreSQL, Microsoft SQL Server and Oracle.
+ */
+import 'reflect-metadata';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { randomBytes } from 'node:crypto';
+import { INestApplication } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import request from 'supertest';
+import { AppModule } from '../../src/app.module';
+import { configureApp } from '../../src/main';
+import { createDataSource } from '../../src/database/data-source';
+import { loadDbEnv } from '../../src/config/env';
+import { seedAll } from '../../src/database/seed';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { createSimulator } = require('../../../corebank-sim/src/server.js') as { createSimulator: (o: { apiKey: string }) => Server };
+
+let app: INestApplication;
+let sim: Server;
+const http = () => request(app.getHttpServer());
+const tokens = new Map<string, string>();
+async function as(tenantCode: string, loginName: string) {
+  const k = `${tenantCode}/${loginName}`;
+  if (!tokens.has(k)) tokens.set(k, (await http().post('/api/auth/dev-login').send({ tenantCode, loginName }).expect(200)).body.token);
+  return { Authorization: `Bearer ${tokens.get(k)}` };
+}
+const CF = 'b.credit_facilities';
+const GI = 'a.general_information.';
+const SAVED_ENV = ['CONNECTOR_CORE_BANKING_URL', 'CONNECTOR_CORE_BANKING_KEY', 'CONNECTOR_TIMEOUT_MS'].map(k => [k, process.env[k]] as const);
+
+beforeAll(async () => {
+  const apiKey = randomBytes(24).toString('hex');
+  sim = createSimulator({ apiKey });
+  await new Promise<void>(resolve => sim.listen(0, '127.0.0.1', resolve));
+  process.env.CONNECTOR_CORE_BANKING_URL = `http://127.0.0.1:${(sim.address() as AddressInfo).port}`;
+  process.env.CONNECTOR_CORE_BANKING_KEY = apiKey;
+  process.env.CONNECTOR_TIMEOUT_MS = '5000';
+  const setup = createDataSource(loadDbEnv());
+  await setup.initialize();
+  await setup.dropDatabase();
+  await setup.runMigrations();
+  await seedAll(setup);
+  await setup.destroy();
+  app = await NestFactory.create(AppModule, { logger: ['error'] });
+  configureApp(app);
+  await app.listen(0, '127.0.0.1');
+});
+afterAll(async () => {
+  await app?.close();
+  await new Promise(resolve => sim?.close(resolve));
+  for (const [k, v] of SAVED_ENV) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+});
+
+async function create(tenant: string, ro: string, cif: string, currencyCode: string, requestedAmount = '100000') {
+  return (await http().post('/api/credit-requests').set(await as(tenant, ro)).send({ borrowerName: 'Typed name', borrowerRef: cif,
+    requestType: 'new', requestedAmount, currencyCode }).expect(201)).body;
+}
+
+describe('core banking connector', () => {
+  let id = '';
+  let version = 0;
+
+  it('reports the connection and looks a customer up by customer number', async () => {
+    const st = (await http().get('/api/integrations/core-banking/status').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
+    expect(st).toMatchObject({ configured: true, enabled: true, reachable: true, institution: 'xyz-bank' });
+    const c = (await http().get('/api/integrations/core-banking/customers/CIF00418823').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
+    expect(c).toMatchObject({ name: 'Zelvaro Marine Logistics W.L.L.', segment: 'mid_corporate' });
+    await http().get('/api/integrations/core-banking/customers/CIF-UNKNOWN').set(await as('xyz-bank', 'ro.ahmed')).expect(404);
+  });
+
+  it('fills a new request from core banking: customer, group, facilities, package, guarantees, collateral', async () => {
+    const res = await create('xyz-bank', 'ro.ahmed', 'CIF00418823', 'KWD');
+    expect(res.integration).toMatchObject({ pulled: true });
+    expect(res.request.borrowerName).toBe('Zelvaro Marine Logistics W.L.L.');
+    id = res.request.id;
+    const d = (await http().get(`/api/credit-requests/${id}/data`).set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body;
+    expect(d.record).toMatchObject({ [`${GI}customer_name`]: 'Zelvaro Marine Logistics W.L.L.', [`${GI}customer_segment`]: 'mid_corporate',
+      [`${GI}customer_id_number`]: '4521873', [`${GI}customer_is_a_board_member_of_the_bank`]: false, 'b.credit_facilities.group_id': 'GRP0091',
+      'b.security_package.package_number_existing_package': 'PKG-0418823-A' });
+    expect(d.grids[CF]).toHaveLength(3);
+    const od = d.grids[CF].find((r: { values: Record<string, unknown> }) => r.values[`${CF}.facility_identifier_product_code_reference_number`] === 'XYZ-OD-0418823-01');
+    expect(od.values).toMatchObject({ [`${CF}.current_limit`]: '500000', [`${CF}.current_utilization`]: '312450.25', [`${CF}.limit_currency`]: 'KWD' });
+    expect(d.grids['a.partners']).toHaveLength(2);
+    expect(d.grids['b.sp_existing_collateral']).toHaveLength(2);
+    expect(d.grids['b.guarantees']).toHaveLength(1);
+    expect(d.grids['b.collateral_not_in_a_package']).toHaveLength(1);
+    // provenance: what came from core banking is listed, and calculated fields use the pulled values
+    expect(d.integration.label).toBe('Core banking');
+    expect(d.integration.pulledAt).toBeTruthy();
+    expect(d.integration.record).toEqual(expect.arrayContaining([`${GI}customer_name`, `${GI}customer_segment`]));
+    expect(d.integration.rows[od.rowKey]).toEqual({ system: 'core_banking', ref: 'XYZ-OD-0418823-01' });
+    expect(d.record['b.security_package.total_existing_facility_value_base_reporting_currency_existing_package']).toBe('1700000');
+    version = d.rowVersion;
+    const audit = (await http().get('/api/audit').set(await as('xyz-bank', 'auditor.hana')).expect(200)).body;
+    expect(JSON.stringify(audit)).toContain('credit_request_core_banking_pulled');
+  });
+
+  it('keeps pulled values read-only and lets users work on their own columns and rows', async () => {
+    const h = await as('xyz-bank', 'ro.ahmed');
+    const d = (await http().get(`/api/credit-requests/${id}/data`).set(h).expect(200)).body;
+    const bad = await http().put(`/api/credit-requests/${id}/data`).set(h).send({ expectedVersion: version, record: { [`${GI}customer_name`]: 'Changed' } }).expect(422);
+    expect(bad.body).toMatchObject({ error: 'read_only_field', details: { field: `${GI}customer_name` } });
+    expect(bad.body.message).toMatch(/comes from core banking/);
+    const rows = d.grids[CF] as { rowKey: string; values: Record<string, unknown> }[];
+    const od = rows.find(r => r.values[`${CF}.facility_identifier_product_code_reference_number`] === 'XYZ-OD-0418823-01')!;
+    // a pulled column cannot be edited, a pulled row cannot be removed
+    await http().put(`/api/credit-requests/${id}/data`).set(h).send({ expectedVersion: version, grids: { [CF]: rows.map(r => r.rowKey === od.rowKey
+      ? { rowKey: r.rowKey, values: { [`${CF}.current_limit`]: '1' } } : { rowKey: r.rowKey, values: {} }) } }).expect(422);
+    expect((await http().put(`/api/credit-requests/${id}/data`).set(h).send({ expectedVersion: version,
+      grids: { [CF]: rows.filter(r => r.rowKey !== od.rowKey).map(r => ({ rowKey: r.rowKey, values: {} })) } }).expect(422)).body.error).toBe('read_only_row');
+    // the user's own columns on a pulled row, and a new facility of their own, are fine
+    const saved = (await http().put(`/api/credit-requests/${id}/data`).set(h).send({ expectedVersion: version, grids: {
+      [CF]: [...rows.map(r => ({ rowKey: r.rowKey, values: r.rowKey === od.rowKey ? { [`${CF}.request_action`]: 'increase', [`${CF}.proposed_limit`]: '650000' } : {} })),
+        { values: { [`${CF}.request_action`]: 'new', [`${CF}.proposed_limit`]: '250000', [`${CF}.limit_currency`]: 'KWD', [`${CF}.purpose_code`]: 'working_capital',
+          [`${CF}.proposed_maturity_expiry`]: '2028-12-31' } }],
+      'b.sp_new_collateral': [{ values: { 'b.security_package.collateral_type_reference_new_package': 'real_estate', 'b.security_package.collateral_currency_new_package': 'KWD',
+        'b.security_package.collateral_current_value_new_package': '400000', 'b.security_package.collateral_request_new_package': 'add' } }],
+    } }).expect(200)).body;
+    expect(saved.grids[CF]).toHaveLength(4);
+    version = saved.rowVersion;
+  });
+
+  it('refreshes from core banking without touching what users entered', async () => {
+    const h = await as('xyz-bank', 'analyst.sara');
+    const r = (await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(h).expect(200)).body;
+    expect(r.changes).toEqual([]);
+    expect(r.tables).toEqual([]);
+    const d = (await http().get(`/api/credit-requests/${id}/data`).set(h).expect(200)).body;
+    expect(d.grids[CF]).toHaveLength(4);
+    const od = d.grids[CF].find((x: { values: Record<string, unknown> }) => x.values[`${CF}.facility_identifier_product_code_reference_number`] === 'XYZ-OD-0418823-01');
+    expect(od.values[`${CF}.proposed_limit`]).toBe('650000');
+    version = d.rowVersion;
+    await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(await as('xyz-bank', 'ops.zainab')).expect(403);
+  });
+
+  it('books approved limits and collateral in core banking once, and only when approved', async () => {
+    await http().post(`/api/credit-requests/${id}/core-banking/booking`).set(await as('xyz-bank', 'ops.zainab')).expect(422); // still a draft
+    const step = async (user: string, action: string) => {
+      const r = (await http().post(`/api/credit-requests/${id}/transitions`).set(await as('xyz-bank', user)).send({ action, expectedVersion: version }).expect(200)).body;
+      version = r.request?.rowVersion ?? r.rowVersion;
+    };
+    await step('ro.ahmed', 'submit');
+    // pulling is for requests still being prepared
+    await http().post(`/api/credit-requests/${id}/core-banking/pull`).set(await as('xyz-bank', 'analyst.sara')).expect(422);
+    await step('analyst.sara', 'recommend');
+    await step('risk.omar', 'endorse');
+    await step('committee.layla', 'approve');
+    await http().post(`/api/credit-requests/${id}/core-banking/booking`).set(await as('xyz-bank', 'ro.ahmed')).expect(403);
+    const b = (await http().post(`/api/credit-requests/${id}/core-banking/booking`).set(await as('xyz-bank', 'ops.zainab')).expect(200)).body;
+    expect(b.limits).toHaveLength(2);
+    expect(b.limits).toContain('XYZ-OD-0418823-01'); // an increase keeps the existing limit reference
+    expect(b.collateral).toHaveLength(1);
+    const d = (await http().get(`/api/credit-requests/${id}/data`).set(await as('xyz-bank', 'ops.zainab')).expect(200)).body;
+    const booked = d.grids['g.facility_booking_maintenance'] as { values: Record<string, unknown> }[];
+    expect(booked).toHaveLength(2);
+    const inc = booked.find(r => r.values['g.facility_booking_maintenance.limit_reference'] === 'XYZ-OD-0418823-01')!;
+    expect(inc.values).toMatchObject({ 'g.facility_booking_maintenance.limit_amount': '650000', 'g.facility_booking_maintenance.limit_type': 'overdraft',
+      'g.facility_booking_maintenance.account_number': 'KW81XYZB0000000000001234560101', 'g.facility_booking_maintenance.action': 'increase' });
+    expect(d.grids['g.collateral_booking_maintenance'][0].values['g.collateral_booking_maintenance.linked_limits']).toContain('XYZ-OD-0418823-01');
+    expect(d.integration.bookedAt).toBeTruthy();
+    await http().post(`/api/credit-requests/${id}/core-banking/booking`).set(await as('xyz-bank', 'ops.zainab')).expect(409);
+  });
+
+  it('reports a customer core banking does not know, and keeps the request', async () => {
+    const res = await create('xyz-bank', 'ro.ahmed', 'CIF-UNKNOWN', 'KWD');
+    expect(res.integration.pulled).toBe(false);
+    expect(res.integration.warnings[0]).toMatch(/not found in core banking/);
+    expect(res.request.borrowerName).toBe('Typed name');
+  });
+
+  it('uses the other institution\'s data and formats for ABC Finance (PAN, INR, Indian account numbers)', async () => {
+    const res = await create('abc-finance', 'ro.priya', 'C10045821', 'INR');
+    expect(res.integration.pulled).toBe(true);
+    const d = (await http().get(`/api/credit-requests/${res.request.id}/data`).set(await as('abc-finance', 'ro.priya')).expect(200)).body;
+    expect(d.record).toMatchObject({ [`${GI}customer_id_type`]: 'pan', [`${GI}customer_id_number`]: 'AAKCT4821M', [`${GI}risk_rating`]: 'ABC-3' });
+    expect(d.grids[CF].map((r: { values: Record<string, unknown> }) => r.values[`${CF}.settlement_account`])).toEqual(['502100045821', '502100045821']);
+    // XYZ users never see ABC's customers
+    await http().get(`/api/credit-requests/${res.request.id}/data`).set(await as('xyz-bank', 'ro.ahmed')).expect(404);
+  });
+});

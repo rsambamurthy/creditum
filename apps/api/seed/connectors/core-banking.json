@@ -1,0 +1,234 @@
+{
+ "connector": "core_banking",
+ "label": "Core banking",
+ "version": 1,
+ "note": "Product mapping between the Creditum core banking connector contract (docs/integrations/core-banking-connector.md) and Credit Request fields. Paths read the documents the connector fetches; values are checked against the bank's value lists and field attributes before they are stored.",
+ "sources": {
+  "customer": "customers/{cif}",
+  "facilities": "customers/{cif}/facilities",
+  "securityPackages": "customers/{cif}/security-packages",
+  "guarantees": "customers/{cif}/guarantees",
+  "collateral": "customers/{cif}/collateral"
+ },
+ "header": {
+  "borrowerName": "customer.name"
+ },
+ "record": {
+  "a.general_information.new_existing_customer": "customer.newOrExisting",
+  "a.general_information.individual_entity": "customer.partyType",
+  "a.general_information.customer_name": "customer.name",
+  "a.general_information.customer_segment": "customer.segment",
+  "a.general_information.customer_type": "customer.customerType",
+  "a.general_information.legal_status": "customer.legalStatus",
+  "a.general_information.customer_id_type": "customer.idType",
+  "a.general_information.customer_id_number": "customer.idNumber",
+  "a.general_information.customer_id_expiry_date": "customer.idExpiry",
+  "a.general_information.customer_nationality": "customer.nationality",
+  "a.general_information.legal_entity": "customer.legalEntity",
+  "a.general_information.establishment_date": "customer.establishedOn",
+  "a.general_information.borrower_since": "customer.customerSince",
+  "a.general_information.last_review_date": "customer.lastReviewOn",
+  "a.general_information.economic_sector_code": "customer.sector",
+  "a.general_information.account_conduct": "customer.accountConduct",
+  "a.general_information.major_owner_group": "customer.ownerGroup",
+  "a.general_information.official_email_address": "customer.email",
+  "a.general_information.company_website": "customer.website",
+  "a.general_information.relationship_with_the_bank_since": "customer.relationshipSince",
+  "a.general_information.risk_rating": "customer.internalRating",
+  "a.general_information.risk_grade": "customer.riskGrade",
+  "a.general_information.customer_is_a_board_member_of_the_bank": "customer.boardMember",
+  "a.group_information.primary_group_name_and_id": "customer.group.nameAndId",
+  "a.group_information.sub_group_account_numbers": "customer.group.subGroupAccounts",
+  "a.group_information.sub_group_names": "customer.group.subGroupNames",
+  "b.credit_facilities.group_id": "customer.group.id",
+  "b.security_package.package_number_existing_package": "securityPackages[0].packageNumber",
+  "b.security_package.committee_decision_date_existing_package": "securityPackages[0].committeeDecisionDate",
+  "b.security_package.review_date_existing_package": "securityPackages[0].reviewDate",
+  "b.security_package.internally_accepted_coverage_ratio_existing_package": "securityPackages[0].internallyAcceptedCoverageRatio",
+  "b.security_package.credit_request_number_existing_package": "securityPackages[0].creditRequestNumber",
+  "b.security_package.package_value_date_existing_package": "securityPackages[0].valueDate",
+  "f.esg_classification_transitional_rating.borrower_customer_id": "customer.cif",
+  "f.esg_classification_transitional_rating.client": "customer.name",
+  "f.esg_classification_transitional_rating.client_name": "customer.name",
+  "f.esg_classification_transitional_rating.segment": "customer.segment",
+  "f.esg_classification_transitional_rating.country_dominant": "customer.nationality",
+  "f.esg_classification_transitional_rating.industry": "customer.sector",
+  "b.pricing.client_name": "customer.name",
+  "b.credit_facilities.borrower_customer_id": "customer.cif",
+  "b.pricing_header.borrower_customer_id": "customer.cif"
+ },
+ "grids": {
+  "a.partners": {
+   "from": "customer.partners",
+   "key": [
+    "idNumber"
+   ],
+   "columns": {
+    "a.partners.partner_is_an_existing_customer": "existingCustomer",
+    "a.partners.partner_customer_id_cif": "cif",
+    "a.partners.partner_name": "name",
+    "a.partners.partner_id_type": "idType",
+    "a.partners.partner_id_number": "idNumber",
+    "a.partners.partner_id_expiry_date": "idExpiry",
+    "a.partners.partner_nationality": "nationality",
+    "a.partners.partner_designation": "designation",
+    "a.partners.partner_ownership": "ownershipPct",
+    "a.partners.partner_is_a_board_member_of_the_bank": "boardMember",
+    "a.partners.partner_is_board_related": "boardRelated"
+   }
+  },
+  "b.credit_facilities": {
+   "from": "facilities",
+   "key": [
+    "facilityId"
+   ],
+   "columns": {
+    "b.credit_facilities.legal_entity": "legalEntity",
+    "b.credit_facilities.facility_identifier_product_code_reference_number": "facilityId",
+    "b.credit_facilities.settlement_account": "settlementAccount",
+    "b.credit_facilities.limit_currency": "limitCurrency",
+    "b.credit_facilities.utilization_currency": "utilizationCurrency",
+    "b.credit_facilities.fixed_or_revolving": "structure",
+    "b.credit_facilities.disbursement_single_multiple_tranches": "disbursement",
+    "b.credit_facilities.amortizing_or_bullet": "repayment",
+    "b.credit_facilities.interest_frequency": "interestFrequency",
+    "b.credit_facilities.current_limit": "limit",
+    "b.credit_facilities.current_utilization": "utilization",
+    "b.credit_facilities.is_the_facility_secured": "secured",
+    "b.credit_facilities.own_package_number_if_secured": "packageNumber",
+    "b.credit_facilities.extension_count": "extensions",
+    "b.credit_facilities.original_maturity_expiry": "originalMaturity",
+    "b.credit_facilities.existing_maturity_expiry": "maturity",
+    "b.credit_facilities.purpose_code": "purpose",
+    "b.credit_facilities.commodity_code": "commodity",
+    "b.credit_facilities.esg_linked_facility": "esgLinked",
+    "b.credit_facilities.booking_entity_branch": "bookingBranch"
+   }
+  },
+  "b.sp_existing_facilities": {
+   "from": "securityPackages[0].facilities",
+   "key": [
+    "type",
+    "currency"
+   ],
+   "columns": {
+    "b.security_package.facility_type_existing_package": "type",
+    "b.security_package.facility_currency_existing_package": "currency",
+    "b.security_package.facility_value_existing_package": "value",
+    "b.security_package.calculation_method_existing_package": "coverageMethod"
+   }
+  },
+  "b.sp_existing_collateral": {
+   "from": "securityPackages[0].collateral",
+   "key": [
+    "type",
+    "currency",
+    "chargeNature"
+   ],
+   "columns": {
+    "b.security_package.collateral_type_reference_existing_package": "type",
+    "b.security_package.collateral_currency_existing_package": "currency",
+    "b.security_package.collateral_current_value_existing_package": "currentValue",
+    "b.security_package.nature_of_charge_existing_package": "chargeNature",
+    "b.security_package.assigned_existing_package": "assignedPct",
+    "b.security_package.current_collateral_assigned_value_existing_package": "assignedValue",
+    "b.security_package.own_or_other_collateral_existing_package": "ownership"
+   }
+  },
+  "b.guarantees": {
+   "from": "guarantees",
+   "key": [
+    "idNumber",
+    "packageNumber"
+   ],
+   "columns": {
+    "b.guarantees.guarantor_name": "guarantorName",
+    "b.guarantees.guarantor_type": "guarantorType",
+    "b.guarantees.rating_agency": "ratingAgency",
+    "b.guarantees.risk_rating": "rating",
+    "b.guarantees.as_of_date": "ratingAsOf",
+    "b.guarantees.identification_document_type": "idType",
+    "b.guarantees.id_number": "idNumber",
+    "b.guarantees.guarantee_coverage_amount": "coverageAmount",
+    "b.guarantees.of_asset_covered": "assetCoveredPct",
+    "b.guarantees.package_number": "packageNumber"
+   }
+  },
+  "b.collateral_not_in_a_package": {
+   "from": "collateral",
+   "key": [
+    "collateralNumber"
+   ],
+   "columns": {
+    "b.collateral_not_in_a_package.serial_no": "serialNo",
+    "b.collateral_not_in_a_package.collateral_number": "collateralNumber",
+    "b.collateral_not_in_a_package.collateral_type": "type",
+    "b.collateral_not_in_a_package.collateral_currency": "currency",
+    "b.collateral_not_in_a_package.collateral_value": "value",
+    "b.collateral_not_in_a_package.collateral_status": "status"
+   }
+  }
+ },
+ "booking": {
+  "limits": {
+   "endpoint": "bookings/limits",
+   "fromGrid": "b.credit_facilities",
+   "actionField": "b.credit_facilities.request_action",
+   "actionsParam": "integration.core_banking.booking_line_actions",
+   "requires": [
+    "b.credit_facilities.proposed_limit"
+   ],
+   "line": {
+    "amount": "row:b.credit_facilities.proposed_limit",
+    "currency": "row:b.credit_facilities.limit_currency",
+    "maturityDate": "row:b.credit_facilities.proposed_maturity_expiry",
+    "purpose": "row:b.credit_facilities.purpose_code",
+    "commodity": "row:b.credit_facilities.commodity_code",
+    "action": "row:b.credit_facilities.request_action",
+    "contractType": "record:a.general_information.contract_type",
+    "facilityId": "rowRef:"
+   },
+   "toGrid": "g.facility_booking_maintenance",
+   "key": "limitReference",
+   "columns": {
+    "g.facility_booking_maintenance.limit_reference": "booked:limitReference",
+    "g.facility_booking_maintenance.limit_type": "booked:limitType",
+    "g.facility_booking_maintenance.limit_amount": "line:amount",
+    "g.facility_booking_maintenance.limit_currency": "line:currency",
+    "g.facility_booking_maintenance.committee_approved_limit_by_purpose": "line:amount",
+    "g.facility_booking_maintenance.account_number": "booked:accountNumber",
+    "g.facility_booking_maintenance.maturity_date": "booked:maturityDate",
+    "g.facility_booking_maintenance.contract_date": "booked:contractDate",
+    "g.facility_booking_maintenance.contract_reference": "booked:contractReference",
+    "g.facility_booking_maintenance.contract_type": "line:contractType",
+    "g.facility_booking_maintenance.purpose": "line:purpose",
+    "g.facility_booking_maintenance.commodity_code": "line:commodity",
+    "g.facility_booking_maintenance.action": "line:action"
+   }
+  },
+  "collateral": {
+   "endpoint": "bookings/collateral",
+   "fromGrid": "b.sp_new_collateral",
+   "actionField": "b.security_package.collateral_request_new_package",
+   "actionsParam": "integration.core_banking.booking_collateral_actions",
+   "requires": [
+    "b.security_package.collateral_type_reference_new_package"
+   ],
+   "line": {
+    "type": "row:b.security_package.collateral_type_reference_new_package",
+    "currency": "row:b.security_package.collateral_currency_new_package",
+    "amount": "row:b.security_package.collateral_current_value_new_package",
+    "action": "row:b.security_package.collateral_request_new_package"
+   },
+   "toGrid": "g.collateral_booking_maintenance",
+   "key": "collateralNo",
+   "columns": {
+    "g.collateral_booking_maintenance.collateral_no": "booked:collateralNo",
+    "g.collateral_booking_maintenance.collateral_type": "line:type",
+    "g.collateral_booking_maintenance.collateral_amount": "line:amount",
+    "g.collateral_booking_maintenance.proposed_collateral_amount": "line:amount",
+    "g.collateral_booking_maintenance.linked_limits": "limits:"
+   }
+  }
+ }
+}

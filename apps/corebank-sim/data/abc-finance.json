@@ -1,0 +1,217 @@
+{
+ "institution": "abc-finance",
+ "note": "Fictional data for build and test. Names, identifiers and accounts are invented.",
+ "booking": {
+  "limitPrefix": "AL",
+  "contractPrefix": "AC",
+  "collateralPrefix": "AK",
+  "accountPrefix": "5021",
+  "accountDigits": 10,
+  "defaultLimitType": "term_loan"
+ },
+ "customers": {
+  "C10045821": {
+   "customer": {
+    "cif": "C10045821",
+    "name": "Tarvenna Auto Components Pvt Ltd",
+    "newOrExisting": "existing",
+    "partyType": "entity",
+    "segment": "mid_corporate",
+    "customerType": "corporate",
+    "legalStatus": "active",
+    "idType": "pan",
+    "idNumber": "AAKCT4821M",
+    "idExpiry": null,
+    "nationality": "IN",
+    "legalEntity": "abc_finance",
+    "establishedOn": "2009-07-01",
+    "customerSince": "2016-04-12",
+    "lastReviewOn": "2025-10-02",
+    "sector": "manufacturing",
+    "accountConduct": "satisfactory",
+    "ownerGroup": "Tarvenna Group",
+    "email": "cfo@tarvenna.example",
+    "website": "https://www.tarvenna.example",
+    "relationshipSince": "2016-04-12",
+    "internalRating": "ABC-3",
+    "riskGrade": "standard",
+    "boardMember": false,
+    "group": {
+     "id": "GRP-IN-017",
+     "nameAndId": "Tarvenna Group (GRP-IN-017)",
+     "subGroupAccounts": "C10045821",
+     "subGroupNames": "Tarvenna Auto Components Pvt Ltd"
+    },
+    "partners": [
+     {
+      "cif": null,
+      "existingCustomer": false,
+      "name": "Arvind Rao",
+      "idType": "pan",
+      "idNumber": "AFZPR7310K",
+      "idExpiry": null,
+      "nationality": "IN",
+      "designation": "Managing Director",
+      "ownershipPct": "55",
+      "boardMember": false,
+      "boardRelated": false
+     },
+     {
+      "cif": null,
+      "existingCustomer": false,
+      "name": "Meenal Rao",
+      "idType": "pan",
+      "idNumber": "AGBPR1958Q",
+      "idExpiry": null,
+      "nationality": "IN",
+      "designation": "Director",
+      "ownershipPct": "45",
+      "boardMember": false,
+      "boardRelated": false
+     }
+    ]
+   },
+   "facilities": [
+    {
+     "facilityId": "ABC-CC-45821-01",
+     "type": "cash_credit",
+     "legalEntity": "abc_finance",
+     "settlementAccount": "502100045821",
+     "limitCurrency": "INR",
+     "utilizationCurrency": "INR",
+     "structure": "revolving",
+     "disbursement": "single",
+     "repayment": "bullet",
+     "interestFrequency": "monthly",
+     "limit": "150000000",
+     "utilization": "98500000.75",
+     "secured": true,
+     "packageNumber": "PKG-45821-1",
+     "extensions": "0",
+     "originalMaturity": "2026-03-31",
+     "maturity": "2026-03-31",
+     "purpose": "working_capital",
+     "commodity": "auto_components",
+     "esgLinked": false,
+     "bookingBranch": "pune_branch"
+    },
+    {
+     "facilityId": "ABC-TL-45821-02",
+     "type": "term_loan",
+     "legalEntity": "abc_finance",
+     "settlementAccount": "502100045821",
+     "limitCurrency": "INR",
+     "utilizationCurrency": "INR",
+     "structure": "fixed",
+     "disbursement": "multiple_tranches",
+     "repayment": "amortizing",
+     "interestFrequency": "monthly",
+     "limit": "250000000",
+     "utilization": "180000000",
+     "secured": true,
+     "packageNumber": "PKG-45821-1",
+     "extensions": "0",
+     "originalMaturity": "2030-09-30",
+     "maturity": "2030-09-30",
+     "purpose": "capital_expenditure",
+     "commodity": "auto_components",
+     "esgLinked": true,
+     "bookingBranch": "pune_branch"
+    }
+   ],
+   "securityPackages": [
+    {
+     "packageNumber": "PKG-45821-1",
+     "committeeDecisionDate": "2024-02-20",
+     "reviewDate": "2026-02-20",
+     "internallyAcceptedCoverageRatio": "1.33",
+     "creditRequestNumber": "ABC/2024/00087",
+     "valueDate": "2025-09-30",
+     "facilities": [
+      {
+       "type": "cash_credit",
+       "currency": "INR",
+       "value": "150000000",
+       "coverageMethod": "facility_limit"
+      },
+      {
+       "type": "term_loan",
+       "currency": "INR",
+       "value": "250000000",
+       "coverageMethod": "facility_outstanding"
+      }
+     ],
+     "collateral": [
+      {
+       "type": "hypothecation_of_stock_and_debtors",
+       "currency": "INR",
+       "currentValue": "210000000",
+       "chargeNature": "first_charge",
+       "assignedPct": "100",
+       "assignedValue": "210000000",
+       "ownership": "own"
+      },
+      {
+       "type": "plant_and_machinery",
+       "currency": "INR",
+       "currentValue": "320000000",
+       "chargeNature": "first_charge",
+       "assignedPct": "100",
+       "assignedValue": "320000000",
+       "ownership": "own"
+      }
+     ]
+    }
+   ],
+   "guarantees": [
+    {
+     "guarantorName": "Arvind Rao",
+     "guarantorType": "personal",
+     "ratingAgency": "not_rated",
+     "rating": "ABC-3",
+     "ratingAsOf": "2025-09-30",
+     "idType": "pan",
+     "idNumber": "AFZPR7310K",
+     "coverageAmount": "400000000",
+     "assetCoveredPct": "100",
+     "packageNumber": "PKG-45821-1"
+    }
+   ],
+   "collateral": []
+  },
+  "C10051307": {
+   "customer": {
+    "cif": "C10051307",
+    "name": "Nilvara Textiles Pvt Ltd",
+    "newOrExisting": "new",
+    "partyType": "entity",
+    "segment": "msme",
+    "customerType": "sme",
+    "legalStatus": "active",
+    "idType": "pan",
+    "idNumber": "AAFCN6604B",
+    "idExpiry": null,
+    "nationality": "IN",
+    "legalEntity": "abc_finance",
+    "establishedOn": "2017-11-15",
+    "customerSince": "2026-08-20",
+    "lastReviewOn": null,
+    "sector": "manufacturing",
+    "accountConduct": "satisfactory",
+    "ownerGroup": null,
+    "email": "accounts@nilvara.example",
+    "website": null,
+    "relationshipSince": "2026-08-20",
+    "internalRating": "ABC-4",
+    "riskGrade": "standard",
+    "boardMember": false,
+    "group": null,
+    "partners": []
+   },
+   "facilities": [],
+   "securityPackages": [],
+   "guarantees": [],
+   "collateral": []
+  }
+ }
+}

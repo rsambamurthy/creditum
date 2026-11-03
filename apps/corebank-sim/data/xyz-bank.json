@@ -1,0 +1,326 @@
+{
+ "institution": "xyz-bank",
+ "note": "Fictional data for build and test. Names, identifiers and accounts are invented.",
+ "booking": {
+  "limitPrefix": "XL",
+  "contractPrefix": "XC",
+  "collateralPrefix": "XK",
+  "accountPrefix": "KW81XYZB",
+  "accountDigits": 22,
+  "defaultLimitType": "term_loan"
+ },
+ "customers": {
+  "CIF00418823": {
+   "customer": {
+    "cif": "CIF00418823",
+    "name": "Zelvaro Marine Logistics W.L.L.",
+    "newOrExisting": "existing",
+    "partyType": "entity",
+    "segment": "mid_corporate",
+    "customerType": "corporate",
+    "legalStatus": "active",
+    "idType": "commercial_registration",
+    "idNumber": "4521873",
+    "idExpiry": "2028-03-31",
+    "nationality": "KW",
+    "legalEntity": "xyz_bank",
+    "establishedOn": "2004-03-14",
+    "customerSince": "2011-06-01",
+    "lastReviewOn": "2025-11-20",
+    "sector": "transport_and_logistics",
+    "accountConduct": "satisfactory",
+    "ownerGroup": "Zelvaro Holding Group",
+    "email": "treasury@zelvaro.example",
+    "website": "https://www.zelvaro.example",
+    "relationshipSince": "2011-06-01",
+    "internalRating": "4",
+    "riskGrade": "performing",
+    "boardMember": false,
+    "group": {
+     "id": "GRP0091",
+     "nameAndId": "Zelvaro Holding Group (GRP0091)",
+     "subGroupAccounts": "CIF00418823, CIF00418901",
+     "subGroupNames": "Zelvaro Marine Logistics W.L.L.; Zelvaro Port Services Co."
+    },
+    "partners": [
+     {
+      "cif": "CIF00102244",
+      "existingCustomer": true,
+      "name": "Faisal Al-Rashed",
+      "idType": "civil_id",
+      "idNumber": "279031512345",
+      "idExpiry": "2029-01-15",
+      "nationality": "KW",
+      "designation": "Chairman",
+      "ownershipPct": "60",
+      "boardMember": false,
+      "boardRelated": false
+     },
+     {
+      "cif": "CIF00418901",
+      "existingCustomer": true,
+      "name": "Zelvaro Port Services Co.",
+      "idType": "commercial_registration",
+      "idNumber": "3318840",
+      "idExpiry": "2027-09-30",
+      "nationality": "KW",
+      "designation": "Corporate shareholder",
+      "ownershipPct": "40",
+      "boardMember": false,
+      "boardRelated": false
+     }
+    ]
+   },
+   "facilities": [
+    {
+     "facilityId": "XYZ-OD-0418823-01",
+     "type": "overdraft",
+     "legalEntity": "xyz_bank",
+     "settlementAccount": "KW81XYZB0000000000001234560101",
+     "limitCurrency": "KWD",
+     "utilizationCurrency": "KWD",
+     "structure": "revolving",
+     "disbursement": "single",
+     "repayment": "bullet",
+     "interestFrequency": "monthly",
+     "limit": "500000",
+     "utilization": "312450.250",
+     "secured": true,
+     "packageNumber": "PKG-0418823-A",
+     "extensions": "1",
+     "originalMaturity": "2025-06-30",
+     "maturity": "2026-06-30",
+     "purpose": "working_capital",
+     "commodity": "not_applicable",
+     "esgLinked": false,
+     "bookingBranch": "head_office"
+    },
+    {
+     "facilityId": "XYZ-TL-0418823-02",
+     "type": "term_loan",
+     "legalEntity": "xyz_bank",
+     "settlementAccount": "KW81XYZB0000000000001234560101",
+     "limitCurrency": "KWD",
+     "utilizationCurrency": "KWD",
+     "structure": "fixed",
+     "disbursement": "multiple_tranches",
+     "repayment": "amortizing",
+     "interestFrequency": "quarterly",
+     "limit": "1200000",
+     "utilization": "860000",
+     "secured": true,
+     "packageNumber": "PKG-0418823-A",
+     "extensions": "0",
+     "originalMaturity": "2029-12-31",
+     "maturity": "2029-12-31",
+     "purpose": "capital_expenditure",
+     "commodity": "vehicles",
+     "esgLinked": false,
+     "bookingBranch": "head_office"
+    },
+    {
+     "facilityId": "XYZ-LG-0418823-03",
+     "type": "letter_of_guarantee",
+     "legalEntity": "xyz_bank",
+     "settlementAccount": "KW81XYZB0000000000001234560101",
+     "limitCurrency": "USD",
+     "utilizationCurrency": "USD",
+     "structure": "revolving",
+     "disbursement": "single",
+     "repayment": "bullet",
+     "interestFrequency": "at_maturity",
+     "limit": "750000",
+     "utilization": "420000",
+     "secured": false,
+     "packageNumber": null,
+     "extensions": "2",
+     "originalMaturity": "2024-12-31",
+     "maturity": "2026-12-31",
+     "purpose": "trade_finance",
+     "commodity": "not_applicable",
+     "esgLinked": false,
+     "bookingBranch": "city_branch"
+    }
+   ],
+   "securityPackages": [
+    {
+     "packageNumber": "PKG-0418823-A",
+     "committeeDecisionDate": "2024-05-12",
+     "reviewDate": "2026-05-12",
+     "internallyAcceptedCoverageRatio": "1.25",
+     "creditRequestNumber": "CR-2024-000311",
+     "valueDate": "2025-12-31",
+     "facilities": [
+      {
+       "type": "overdraft",
+       "currency": "KWD",
+       "value": "500000",
+       "coverageMethod": "facility_limit"
+      },
+      {
+       "type": "term_loan",
+       "currency": "KWD",
+       "value": "1200000",
+       "coverageMethod": "facility_outstanding"
+      }
+     ],
+     "collateral": [
+      {
+       "type": "real_estate",
+       "currency": "KWD",
+       "currentValue": "1650000",
+       "chargeNature": "first_charge",
+       "assignedPct": "100",
+       "assignedValue": "1650000",
+       "ownership": "own"
+      },
+      {
+       "type": "cash_margin",
+       "currency": "KWD",
+       "currentValue": "150000",
+       "chargeNature": "lien",
+       "assignedPct": "100",
+       "assignedValue": "150000",
+       "ownership": "own"
+      }
+     ]
+    }
+   ],
+   "guarantees": [
+    {
+     "guarantorName": "Faisal Al-Rashed",
+     "guarantorType": "personal",
+     "ratingAgency": "not_rated",
+     "rating": "3",
+     "ratingAsOf": "2025-09-30",
+     "idType": "civil_id",
+     "idNumber": "279031512345",
+     "coverageAmount": "1700000",
+     "assetCoveredPct": "100",
+     "packageNumber": "PKG-0418823-A"
+    }
+   ],
+   "collateral": [
+    {
+     "serialNo": "1",
+     "collateralNumber": "COL-0418823-07",
+     "type": "listed_shares",
+     "currency": "KWD",
+     "value": "95000",
+     "status": "pending_perfection"
+    }
+   ]
+  },
+  "CIF00377104": {
+   "customer": {
+    "cif": "CIF00377104",
+    "name": "Ambertide Contracting Co. K.S.C.C.",
+    "newOrExisting": "existing",
+    "partyType": "entity",
+    "segment": "contracting",
+    "customerType": "corporate",
+    "legalStatus": "active",
+    "idType": "commercial_registration",
+    "idNumber": "2290417",
+    "idExpiry": "2027-07-31",
+    "nationality": "KW",
+    "legalEntity": "xyz_bank",
+    "establishedOn": "1998-10-05",
+    "customerSince": "2005-02-14",
+    "lastReviewOn": "2025-08-11",
+    "sector": "construction_and_contracting",
+    "accountConduct": "watch",
+    "ownerGroup": "Ambertide Group",
+    "email": "finance@ambertide.example",
+    "website": "https://www.ambertide.example",
+    "relationshipSince": "2005-02-14",
+    "internalRating": "6",
+    "riskGrade": "watch_list",
+    "boardMember": false,
+    "group": {
+     "id": "GRP0042",
+     "nameAndId": "Ambertide Group (GRP0042)",
+     "subGroupAccounts": "CIF00377104",
+     "subGroupNames": "Ambertide Contracting Co. K.S.C.C."
+    },
+    "partners": [
+     {
+      "cif": null,
+      "existingCustomer": false,
+      "name": "Khalid Al-Mutairi",
+      "idType": "civil_id",
+      "idNumber": "268110412345",
+      "idExpiry": "2028-04-30",
+      "nationality": "KW",
+      "designation": "Managing partner",
+      "ownershipPct": "100",
+      "boardMember": false,
+      "boardRelated": false
+     }
+    ]
+   },
+   "facilities": [
+    {
+     "facilityId": "XYZ-LG-0377104-01",
+     "type": "letter_of_guarantee",
+     "legalEntity": "xyz_bank",
+     "settlementAccount": "KW81XYZB0000000000003771040101",
+     "limitCurrency": "KWD",
+     "utilizationCurrency": "KWD",
+     "structure": "revolving",
+     "disbursement": "single",
+     "repayment": "bullet",
+     "interestFrequency": "at_maturity",
+     "limit": "2000000",
+     "utilization": "1740000",
+     "secured": false,
+     "packageNumber": null,
+     "extensions": "3",
+     "originalMaturity": "2023-12-31",
+     "maturity": "2026-12-31",
+     "purpose": "trade_finance",
+     "commodity": "construction_materials",
+     "esgLinked": false,
+     "bookingBranch": "industrial_area_branch"
+    }
+   ],
+   "securityPackages": [],
+   "guarantees": [],
+   "collateral": []
+  },
+  "CIF00502231": {
+   "customer": {
+    "cif": "CIF00502231",
+    "name": "Corvessa Trading Est.",
+    "newOrExisting": "new",
+    "partyType": "entity",
+    "segment": "sme",
+    "customerType": "sme",
+    "legalStatus": "active",
+    "idType": "commercial_registration",
+    "idNumber": "5120988",
+    "idExpiry": "2029-02-28",
+    "nationality": "KW",
+    "legalEntity": "xyz_bank",
+    "establishedOn": "2019-01-20",
+    "customerSince": "2026-09-01",
+    "lastReviewOn": null,
+    "sector": "trade",
+    "accountConduct": "satisfactory",
+    "ownerGroup": null,
+    "email": "owner@corvessa.example",
+    "website": null,
+    "relationshipSince": "2026-09-01",
+    "internalRating": "5",
+    "riskGrade": "performing",
+    "boardMember": false,
+    "group": null,
+    "partners": []
+   },
+   "facilities": [],
+   "securityPackages": [],
+   "guarantees": [],
+   "collateral": []
+  }
+ }
+}

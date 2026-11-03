@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, errorMessage, type CreditRequestDetail, type FormValue, type Layout, type MissingEntry, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
+import { api, ApiError, errorMessage, type BookingResult, type CoreBankingStatus, type PullResult, type RequestIntegration, type CreditRequestDetail, type FormValue, type Layout, type MissingEntry, type RuleMessage, type TransitionAction, type WfDefinition, type WorkflowEvent } from '../api';
 import { useAuth } from '../auth';
 import { useReference } from '../reference';
 import { formatDateTime, humanize, initials, trimDecimal } from '../format';
@@ -43,6 +43,57 @@ function MissingFieldsModal({ missing, layout, onGo, onClose }: {
           </section>
         ))}
       </div>
+    </Modal>
+  );
+}
+
+const show = (v: FormValue | undefined) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
+
+/** What a refresh from core banking changed. */
+function PullResultModal({ result, label, onClose }: { result: PullResult; label: string; onClose: () => void }) {
+  const nothing = !result.changes.length && !result.tables.length;
+  return (
+    <Modal wide title={`Refreshed from ${label.toLowerCase()}`} onClose={onClose} footer={<button type="button" className="btn btn-primary" onClick={onClose}>Close</button>}>
+      <p style={{ marginTop: 0 }}>{nothing ? `Everything already matched ${label.toLowerCase()} — nothing changed.` : `Values from ${label.toLowerCase()} as of ${formatDateTime(result.pulledAt)}. Values entered by users were kept.`}</p>
+      {result.changes.length > 0 && (
+        <table className="cb-changes"><thead><tr><th>Field</th><th>Section</th><th>Before</th><th>Now</th></tr></thead>
+          <tbody>{result.changes.map(c => <tr key={c.field}><td>{c.label}</td><td className="muted">{c.section}</td><td className="muted">{show(c.before)}</td><td><strong>{show(c.after)}</strong></td></tr>)}</tbody></table>
+      )}
+      {result.tables.length > 0 && (
+        <ul style={{ margin: '12px 0 0', paddingInlineStart: 18 }}>
+          {result.tables.map(t => <li key={t.grid}>{t.label} rows: {[t.added && `${t.added} added`, t.updated && `${t.updated} updated`, t.removed && `${t.removed} no longer in ${label.toLowerCase()}`].filter(Boolean).join(', ')}</li>)}
+        </ul>
+      )}
+      {result.warnings.length > 0 && <Alert tone="warning"><strong>Not taken over</strong><ul>{result.warnings.map(w => <li key={w}>{w}</li>)}</ul></Alert>}
+    </Modal>
+  );
+}
+
+function BookingModal({ label, requestNumber, result, onConfirm, onClose }: {
+  label: string; requestNumber: string; result: BookingResult | null; onConfirm: () => Promise<void>; onClose: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const go = async () => { setBusy(true); setError(null); try { await onConfirm(); } catch (e) { setError(e); } finally { setBusy(false); } };
+  return (
+    <Modal title={result ? `Booked in ${label.toLowerCase()}` : `Book in ${label.toLowerCase()}`} onClose={onClose} footer={result
+      ? <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
+      : <><button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="btn btn-primary" onClick={go} disabled={busy}>{busy ? 'Booking…' : 'Book limits and collateral'}</button></>}>
+      {error ? <Alert tone="error">{errorMessage(error)}</Alert> : null}
+      {!result ? (
+        <p style={{ marginTop: 0 }}>The approved facility lines (new, increased, renewed or extended, with a proposed limit) and the new collateral of {requestNumber} are
+          sent to {label.toLowerCase()}. The limit references, accounts and contract references come back into Credit Administration. A request is booked once.</p>
+      ) : (
+        <>
+          <p style={{ marginTop: 0 }}>{formatDateTime(result.bookedAt)} — see Credit Administration for the booked lines.</p>
+          <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+            {result.limits.length > 0 && <li>Limits: <span className="icode">{result.limits.join(', ')}</span></li>}
+            {result.collateral.length > 0 && <li>Collateral: <span className="icode">{result.collateral.join(', ')}</span></li>}
+          </ul>
+          {result.warnings.length > 0 && <Alert tone="warning"><ul>{result.warnings.map(w => <li key={w}>{w}</li>)}</ul></Alert>}
+        </>
+      )}
     </Modal>
   );
 }
@@ -91,6 +142,12 @@ export function RequestDetailPage() {
   const modulesRef = useRef<ModulesHandle>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [integ, setInteg] = useState<RequestIntegration | null>(null);
+  const [cb, setCb] = useState<CoreBankingStatus | null>(null);
+  const [pulling, setPulling] = useState(false);
+  const [pullResult, setPullResult] = useState<PullResult | null>(null);
+  const [booking, setBooking] = useState<{ result: BookingResult | null } | null>(null);
+  useEffect(() => { api.coreBankingStatus().then(setCb).catch(() => setCb(null)); }, []);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const closeMenu = () => { if (menuRef.current) menuRef.current.open = false; };
   const onVersion = useCallback((v: number) => setReq(r => (r && r.rowVersion !== v ? { ...r, rowVersion: v } : r)), []);
@@ -117,6 +174,27 @@ export function RequestDetailPage() {
   const base = ref.baseCurrency?.code;
   const formExtra = formFields(layout);
   const canEdit = req.editable && hasRole('relationship_officer', 'credit_analyst');
+  const cbLabel = cb?.label ?? integ?.label ?? 'Core banking';
+  const cbReady = !!cb?.configured && cb.enabled;
+  const canPull = cbReady && canEdit;
+  const canBook = cbReady && hasRole('credit_admin') && cb!.bookingStates.includes(req.status) && !integ?.bookedAt;
+  const doPull = async () => {
+    if (dataDirty) { toast.show('Save or discard your changes before refreshing', 'info'); return; }
+    setPulling(true); setActionError(null);
+    try {
+      const res = await api.pullCoreBanking(req.id);
+      setPullResult(res);
+      await load();
+      await modulesRef.current?.reload();
+    } catch (e) { setActionError(e); } finally { setPulling(false); }
+  };
+  const doBook = async () => {
+    const res = await api.bookCoreBanking(req.id);
+    setBooking({ result: res });
+    toast.show(`${req.requestNumber} booked in ${cbLabel.toLowerCase()}`, 'ok');
+    await load();
+    await modulesRef.current?.reload();
+  };
   const missing = actionError instanceof ApiError ? actionError.missingFields : [];
 
   const doTransition = async (a: TransitionAction, remarks: string) => {
@@ -172,10 +250,12 @@ export function RequestDetailPage() {
           {req.actions.map((a, i) => (
             <button key={a.action} type="button" className={`btn btn-sm ${actionClass(a, i)}`} onClick={() => setPending(a)} disabled={blocked}>{a.label}</button>
           ))}
+          {canBook && <button type="button" className="btn btn-sm btn-primary" onClick={() => setBooking({ result: null })}>Book in {cbLabel.toLowerCase()}</button>}
           <details className="menu" ref={menuRef}>
             <summary className="btn btn-sm btn-secondary" aria-label="More actions">More <span aria-hidden="true">▾</span></summary>
             <div className="menu-list" role="menu">
               <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowDetails(true); }}>{canEdit ? 'Edit request details' : 'Request details'}</button>
+              {canPull && <button type="button" role="menuitem" onClick={() => { closeMenu(); void doPull(); }} disabled={pulling}>Refresh from {cbLabel.toLowerCase()}</button>}
               <button type="button" role="menuitem" onClick={() => { closeMenu(); setShowHistory(true); }}>Workflow history ({history.length})</button>
               {hasRole('auditor', 'config_admin') && <button type="button" role="menuitem" onClick={() => { closeMenu(); navigate('/admin/audit'); }}>Audit trail</button>}
             </div>
@@ -188,6 +268,13 @@ export function RequestDetailPage() {
             <div><dt>FX rate</dt><dd className="mono-num">{trimDecimal(req.fxRateUsed)}</dd></div>
           </>}
           <div><dt>Authority</dt><dd>{ref.levelName(req.requiredLevel)} <span className="rb-muted">({req.requiredLevel})</span></dd></div>
+          {(integ?.pulledAt || integ?.bookedAt || canPull) && (
+            <div><dt>{cbLabel}</dt><dd className="rb-cb">
+              {pulling ? 'Refreshing…' : integ?.pulledAt ? <span title="Values from core banking are read-only on the request">Pulled {formatDateTime(integ.pulledAt)}</span> : <span className="rb-muted">Not pulled</span>}
+              {integ?.bookedAt && <span>· Booked {formatDateTime(integ.bookedAt)}</span>}
+              {canPull && !pulling && <button type="button" className="link-btn small" onClick={doPull}>Refresh</button>}
+            </dd></div>
+          )}
           <div><dt>Updated</dt><dd>{formatDateTime(req.updatedAt)} <span className="rb-muted" title="Version">v{req.rowVersion}</span></dd></div>
           {formExtra.map(f => {
             const v = (req.fields as Record<string, unknown>)[f.key];
@@ -215,7 +302,7 @@ export function RequestDetailPage() {
       ) : null}
 
       <CreditRequestModules handle={modulesRef} requestId={req.id} header={{ borrowerName: req.borrowerName, borrowerRef: req.borrowerRef }}
-        headerVersion={req.rowVersion} canEdit={hasRole('relationship_officer', 'credit_analyst')} onVersion={onVersion} onDirtyChange={setDataDirty}
+        headerVersion={req.rowVersion} canEdit={hasRole('relationship_officer', 'credit_analyst')} onVersion={onVersion} onDirtyChange={setDataDirty} onIntegration={setInteg}
         navFooter={<>
           <button type="button" className="rn-extra" onClick={() => setShowHistory(true)}>Workflow history <span className="rn-count">{history.length}</span></button>
           {hasRole('auditor', 'config_admin') && <button type="button" className="rn-extra" onClick={() => navigate('/admin/audit')}>Audit trail</button>}
@@ -263,6 +350,8 @@ export function RequestDetailPage() {
       )}
       {mandatory && <MissingFieldsModal missing={mandatory} layout={layout} onClose={() => setMandatory(null)}
         onGo={m => { setMandatory(null); modulesRef.current?.focusField(m); }} />}
+      {pullResult && <PullResultModal result={pullResult} label={cbLabel} onClose={() => setPullResult(null)} />}
+      {booking && <BookingModal label={cbLabel} requestNumber={req.requestNumber} result={booking.result} onConfirm={doBook} onClose={() => setBooking(null)} />}
       {pending && <TransitionModal action={pending} onCancel={() => setPending(null)} onConfirm={r => doTransition(pending, r)} />}
     </div>
   );

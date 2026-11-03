@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ApiError, errorMessage, type CreditRequestDetail, type CreditRequestInput, type FieldMeta, type FormValue, type Layout, type RuleMessage } from '../api';
+import { api, ApiError, errorMessage, type CoreBankingCustomer, type CoreBankingStatus, type CreditRequestDetail, type CreditRequestInput, type FieldMeta, type FormValue, type Layout, type RuleMessage } from '../api';
 import { useReference } from '../reference';
 import { isNonZeroDecimal, isUnsignedDecimalText, scaleOf, trimDecimal } from '../format';
 import { Field, Group } from './Field';
@@ -9,6 +9,8 @@ import { isDecimalText } from '../forms/formState';
 import { checkValue, ruleFor, transformText, type FieldAttributes } from '../forms/attributes';
 
 /** Attributes of the library field a header input is bound to (borrower name ← Name of Borrower, reference ← Customer Number). */
+const humanizeCode = (c: string) => c.replace(/_/g, ' ').replace(/^./, x => x.toUpperCase());
+
 function boundField(layout: Layout | null, bind: 'borrowerName' | 'borrowerRef'): { key?: string; attrs?: FieldAttributes } {
   for (const m of layout?.modules ?? []) for (const s of m.sections) for (const f of s.fields) if (f.bind === bind) return { key: f.key, attrs: f.attrs };
   return {};
@@ -51,6 +53,26 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   const [serverError, setServerError] = useState<unknown>(null);
   const [ruleMessages, setRuleMessages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // core banking look-up by customer number (new requests only); the request is filled from core banking when saved
+  const [cb, setCb] = useState<CoreBankingStatus | null>(null);
+  const [found, setFound] = useState<CoreBankingCustomer | null>(null);
+  const [lookupMsg, setLookupMsg] = useState<string | null>(null);
+  const [looking, setLooking] = useState(false);
+  useEffect(() => { if (!initial) api.coreBankingStatus().then(setCb).catch(() => setCb(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const canLookup = !initial && !!cb?.configured && cb.enabled;
+  const lookup = async () => {
+    const cif = borrowerRef.trim();
+    if (!cif) { setErrors(e => ({ ...e, borrowerRef: 'Enter the customer number first' })); return; }
+    setLooking(true); setLookupMsg(null); setFound(null);
+    try {
+      const c = await api.coreBankingCustomer(cif);
+      setFound(c);
+      if (c.name) setBorrowerName(transformText(c.name, nameRule));
+      setErrors(e => ({ ...e, borrowerName: undefined, borrowerRef: undefined }));
+    } catch (e) {
+      setLookupMsg(e instanceof ApiError && e.status === 404 ? `${cif} was not found in core banking — you can still save and enter the details by hand.` : errorMessage(e));
+    } finally { setLooking(false); }
+  };
 
   // Defaults from configuration: base currency, first request type.
   useEffect(() => {
@@ -150,9 +172,19 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
             </Field>
             <Field label="Borrower reference" required error={errors.borrowerRef}
               help={`Customer or CIF reference in the core banking system${refRule.patternHint ? ` · Format: ${refRule.patternHint}` : ''}${refRule.maxLength ? ` · up to ${refRule.maxLength} characters` : ''}`}>
-              <input value={borrowerRef} onChange={e => setBorrowerRef(transformText(e.target.value, refRule))} maxLength={refRule.maxLength ?? 80}
-                placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr" />
+              <div className={canLookup ? 'input-action' : undefined}>
+                <input value={borrowerRef} onChange={e => { setBorrowerRef(transformText(e.target.value, refRule)); setFound(null); setLookupMsg(null); }} maxLength={refRule.maxLength ?? 80}
+                  placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr"
+                  onKeyDown={e => { if (canLookup && e.key === 'Enter') { e.preventDefault(); void lookup(); } }} />
+                {canLookup && <button type="button" className="btn btn-secondary btn-sm" onClick={lookup} disabled={looking}>{looking ? 'Finding…' : `Find in ${cb!.label.toLowerCase()}`}</button>}
+              </div>
             </Field>
+            {(found || lookupMsg) && (
+              <div className={`lookup-note${found ? ' ok' : ''}`} role="status">
+                {found ? <>Found in {cb!.label.toLowerCase()}: <strong>{found.name}</strong>{found.segment && <> · {humanizeCode(found.segment)}</>}.
+                  {' '}When you save, the request is filled with the customer, facilities and collateral from {cb!.label.toLowerCase()}.</> : lookupMsg}
+              </div>
+            )}
           </div>
         </Group>
         <Group title="Facility request">

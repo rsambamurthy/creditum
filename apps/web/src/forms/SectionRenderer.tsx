@@ -20,11 +20,22 @@ export interface FormCtx {
   missing: Set<string>;
   /** Server messages for one field: "key" or "key@rowKey". */
   messages?: Map<string, string>;
+  /** The external system a value came from (e.g. "Core banking"), when it is read-only on the request. */
+  sourceOf?: (key: string, rowKey?: string | null) => string | undefined;
+  /** Rows that came from an external system: their system label, keyed by row key. */
+  sourcedRow?: (rowKey?: string | null) => string | undefined;
 }
 
 /** Columns shown in a grid table before switching to a row-card editor. */
 const INLINE_MAX_COLUMNS = 6;
 const TABLE_PREVIEW_COLUMNS = 5;
+
+/** "1 facility", "3 facilities", "2 shareholders" — English plural of a row label. */
+export function countLabel(n: number, label: string) {
+  const w = label.toLowerCase();
+  if (n === 1) return `${n} ${w}`;
+  return `${n} ${/[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : /(s|x|ch|sh)$/.test(w) ? `${w}es` : `${w}s`}`;
+}
 
 export const fieldDomId = (key: string, rowKey?: string | null) => `fld-${key}${rowKey ? `-${rowKey}` : ''}`.replace(/[^A-Za-z0-9_-]/g, '_');
 export const sectionDomId = (code: string) => `sec-${code}`.replace(/[^A-Za-z0-9_-]/g, '_');
@@ -35,7 +46,7 @@ function RecordFields({ fields, ctx }: { fields: FieldMeta[]; ctx: FormCtx }) {
     <div className="form-2col">
       {fields.map(f => (
         <FieldInput key={f.key} meta={f} values={ctx.record} onChange={ctx.setRecord} layout={ctx.layout} header={ctx.header}
-          disabled={ctx.disabled} domId={fieldDomId(f.key)} missing={ctx.missing.has(f.key)} message={ctx.messages?.get(f.key)} />
+          disabled={ctx.disabled} domId={fieldDomId(f.key)} missing={ctx.missing.has(f.key)} message={ctx.messages?.get(f.key)} source={ctx.sourceOf?.(f.key)} />
       ))}
     </div>
   );
@@ -61,7 +72,7 @@ function RowEditor({ section, row, index, ctx, onApply, onClose }: {
         {(section.columns ?? []).map(c => (
           <FieldInput key={c.key} meta={c} values={values} onChange={(k, v) => setValues(x => ({ ...x, [k]: v }))} layout={ctx.layout}
             header={ctx.header} disabled={ctx.disabled} missing={!!row.rowKey && ctx.missing.has(`${c.key}@${row.rowKey}`)}
-            message={row.rowKey ? ctx.messages?.get(`${c.key}@${row.rowKey}`) : undefined} />
+            message={row.rowKey ? ctx.messages?.get(`${c.key}@${row.rowKey}`) : undefined} source={ctx.sourceOf?.(c.key, row.rowKey ?? null)} />
         ))}
       </div>
       {!ctx.disabled && <p className="muted small" style={{ margin: '14px 0 0' }}>Apply keeps the change on screen; use Save to store it.</p>}
@@ -106,13 +117,14 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
               {rows.length === 0 && <tr className="no-hover"><td colSpan={shown.length + (inline ? 2 : 3)}><div className="empty small" style={{ padding: 18 }}>No {label.toLowerCase()} rows yet.</div></td></tr>}
               {rows.map((r, i) => (
                 <tr key={r.id} id={r.rowKey ? `row-${fieldDomId(section.code, r.rowKey)}` : undefined} className={rowMissing(r) ? 'has-issue' : undefined}>
-                  <td className="num muted">{i + 1}</td>
+                  <td className="num muted">{i + 1}{ctx.sourcedRow?.(r.rowKey) && <span className="src-dot" title={`From ${ctx.sourcedRow(r.rowKey)!.toLowerCase()}`} aria-label={`From ${ctx.sourcedRow(r.rowKey)!.toLowerCase()}`} />}</td>
                   {shown.map(c => (
                     <td key={c.key} className={`${c.valueKind === 'decimal' ? 'num ' : ''}cw-${widthOf(c)}`}>
                       {inline ? (
                         <FieldInput cell meta={c} values={r.values} onChange={(k, v) => setCell(i, k, v)} layout={ctx.layout} header={ctx.header}
                           disabled={ctx.disabled} cellLabel={`${c.label}, ${label} ${i + 1}`} domId={r.rowKey ? fieldDomId(c.key, r.rowKey) : undefined}
-                          missing={!!r.rowKey && ctx.missing.has(`${c.key}@${r.rowKey}`)} message={r.rowKey ? ctx.messages?.get(`${c.key}@${r.rowKey}`) : undefined} />
+                          missing={!!r.rowKey && ctx.missing.has(`${c.key}@${r.rowKey}`)} message={r.rowKey ? ctx.messages?.get(`${c.key}@${r.rowKey}`) : undefined}
+                          source={ctx.sourceOf?.(c.key, r.rowKey ?? null)} />
                       ) : <CellText meta={c} v={r.values[c.key]} ctx={ctx} />}
                     </td>
                   ))}
@@ -123,7 +135,9 @@ function GridSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
                       {!ctx.disabled && <>
                         <button type="button" className="icon-btn" onClick={() => setRows(move(rows, i, -1))} disabled={i === 0} aria-label={`Move ${label} ${i + 1} up`}>↑</button>
                         <button type="button" className="icon-btn" onClick={() => setRows(move(rows, i, 1))} disabled={i === rows.length - 1} aria-label={`Move ${label} ${i + 1} down`}>↓</button>
-                        <button type="button" className="icon-btn danger" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove ${label} ${i + 1}`}>✕</button>
+                        {ctx.sourcedRow?.(r.rowKey)
+                          ? <span className="icon-btn placeholder" aria-hidden="true" />
+                          : <button type="button" className="icon-btn danger" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove ${label} ${i + 1}`}>✕</button>}
                       </>}
                     </div>
                   </td>
@@ -237,7 +251,7 @@ function PeriodsSection({ section, ctx }: { section: SectionMeta; ctx: FormCtx }
 export function SectionRenderer({ section, ctx }: { section: SectionMeta; ctx: FormCtx }) {
   return (
     <fieldset className="group form-section" id={sectionDomId(section.code)}>
-      <legend><span className="grow">{section.title}</span>{section.kind !== 'record' && <span className="badge badge-neutral sm">{section.kind === 'periods' ? 'By period' : `${(ctx.grids[section.grid!] ?? []).length} ${(section.rowLabel ?? 'row').toLowerCase()}${(ctx.grids[section.grid!] ?? []).length === 1 ? '' : 's'}`}</span>}</legend>
+      <legend><span className="grow">{section.title}</span>{section.kind !== 'record' && <span className="badge badge-neutral sm">{section.kind === 'periods' ? 'By period' : countLabel((ctx.grids[section.grid!] ?? []).length, section.rowLabel ?? 'row')}</span>}</legend>
       {section.kind === 'record' && <RecordFields fields={section.fields} ctx={ctx} />}
       {section.kind === 'grid' && <GridSection section={section} ctx={ctx} />}
       {section.kind === 'periods' && <PeriodsSection section={section} ctx={ctx} />}

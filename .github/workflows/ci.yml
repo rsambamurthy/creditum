@@ -164,20 +164,30 @@ jobs:
       - name: Build web image
         if: hashFiles('apps/web/Dockerfile') != ''
         run: docker build -f apps/web/Dockerfile -t creditum-web:ci .
+      - name: Build core banking simulator image
+        run: docker build -f apps/corebank-sim/Dockerfile -t creditum-corebank-sim:ci .
       - name: Smoke test — migrate, seed, start and sign in using the built image
         run: |
-          report() { for c in api web web-early; do docker logs "$c" 2>&1 | tail -6 | tr '\n' ' ' | sed "s/^/::error title=$c logs::/"; echo; done; }
+          report() { for c in api web web-early corebank; do docker logs "$c" 2>&1 | tail -6 | tr '\n' ' ' | sed "s/^/::error title=$c logs::/"; echo; done; }
           trap report ERR
           SECRET=$(openssl rand -hex 32)
           ENVS="-e DB_TYPE=postgres -e DATABASE_URL=postgres://creditum:creditum@127.0.0.1:5432/creditum_smoke -e PORT=3000 -e AUTH_MODE=dev \
             -e ALLOW_DEV_AUTH=true -e DEV_JWT_SECRET=$SECRET -e TOKEN_TTL_SECONDS=600 \
             -e RATE_LIMIT_WINDOW_SECONDS=60 -e RATE_LIMIT_MAX=1000"
+          SIM_KEY=$(openssl rand -hex 24)
+          docker run -d --name corebank --network host -e PORT=4000 -e SIM_API_KEY=$SIM_KEY creditum-corebank-sim:ci
+          for i in $(seq 1 15); do curl -fsS http://127.0.0.1:4000/health && break; sleep 1; done
+          ENVS="$ENVS -e CONNECTOR_CORE_BANKING_URL=http://127.0.0.1:4000 -e CONNECTOR_CORE_BANKING_KEY=$SIM_KEY -e CONNECTOR_TIMEOUT_MS=5000"
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js migrate
           docker run --rm --network host $ENVS creditum-api:ci node dist/database/cli.js seed
           docker run -d --name api --network host $ENVS creditum-api:ci
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && break; sleep 2; done
           curl -fsS -X POST http://127.0.0.1:3000/api/auth/dev-login -H 'content-type: application/json' \
             -d '{"tenantCode":"xyz-bank","loginName":"ro.ahmed"}' | jq -e '.token' > /dev/null
+          # a new request is filled from the core banking simulator through the connector
+          TOKEN=$(curl -fsS -X POST http://127.0.0.1:3000/api/auth/dev-login -H 'content-type: application/json' -d '{"tenantCode":"xyz-bank","loginName":"ro.ahmed"}' | jq -r .token)
+          curl -fsS -X POST http://127.0.0.1:3000/api/credit-requests -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+            -d '{"borrowerName":"Smoke","borrowerRef":"CIF00418823","requestType":"new","requestedAmount":"1000","currencyCode":"KWD"}' | jq -e '.integration.pulled == true' > /dev/null
           # start the web tier before checking it, and prove it starts even if the upstream name is unknown
           docker run -d --name web-early --network host -e API_UPSTREAM=http://not-yet-deployed.invalid:3000 creditum-web:ci
           sleep 3; docker ps --filter name=web-early --format '{{.Status}}' | grep -q Up
@@ -189,7 +199,7 @@ jobs:
       - name: Scan images (fail on critical, fixable vulnerabilities)
         run: |
           status=0
-          for img in creditum-api:ci creditum-web:ci; do
+          for img in creditum-api:ci creditum-web:ci creditum-corebank-sim:ci; do
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":/out aquasec/trivy:0.57.1 image \
               --severity CRITICAL --ignore-unfixed --no-progress --format json --output "/out/trivy-${img%%:*}.json" "$img"
             count=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "trivy-${img%%:*}.json")

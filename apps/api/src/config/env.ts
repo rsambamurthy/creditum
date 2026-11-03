@@ -31,6 +31,8 @@ export interface Env {
   corsOrigins: string[];
   rateLimit: { windowSeconds: number; max: number };
   migrateOnStart: boolean;
+  /** Outbound connectors. Absent when the deployment has none configured (the tenant setting alone cannot enable one). */
+  connectors: { coreBanking?: { url: string; apiKey: string; timeoutMs: number } };
 }
 
 export function loadEnv(): Env {
@@ -57,6 +59,7 @@ export function loadEnv(): Env {
     corsOrigins: (process.env.CORS_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),
     rateLimit: { windowSeconds: requiredInt('RATE_LIMIT_WINDOW_SECONDS'), max: requiredInt('RATE_LIMIT_MAX') },
     migrateOnStart: process.env.MIGRATE_ON_START === 'true',
+    connectors: loadConnectors(),
   };
   if (authMode === 'dev') {
     env.devJwtSecret = required('DEV_JWT_SECRET');
@@ -68,6 +71,22 @@ export function loadEnv(): Env {
     };
   }
   return env;
+}
+
+/**
+ * Core banking connector: its endpoint and credential belong to the deployment (the bank's network and secrets
+ * store), never to tenant configuration — so a configuration change cannot point Creditum at another host.
+ */
+function loadConnectors(): Env['connectors'] {
+  const url = process.env.CONNECTOR_CORE_BANKING_URL?.trim();
+  if (!url) return {};
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { throw new Error('CONNECTOR_CORE_BANKING_URL must be an absolute URL'); }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('CONNECTOR_CORE_BANKING_URL must use http or https');
+  const apiKey = required('CONNECTOR_CORE_BANKING_KEY');
+  // guardrail-allow: minimum credential length, a security rule rather than a business value
+  if (apiKey.length < 24) throw new Error('CONNECTOR_CORE_BANKING_KEY must be at least 24 characters');
+  return { coreBanking: { url: url.replace(/\/+$/, ''), apiKey, timeoutMs: requiredInt('CONNECTOR_TIMEOUT_MS') } };
 }
 
 /** Database settings only — used by the migration / seed command line. */

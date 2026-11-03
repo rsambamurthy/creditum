@@ -27,6 +27,10 @@ Project **Creditum** (production environment):
   variables: `DB_TYPE=postgres`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `AUTH_MODE=dev`,
   `ALLOW_DEV_AUTH=true`, `DEV_JWT_SECRET=${{secret(48)}}`, `PORT`, `TOKEN_TTL_SECONDS`, rate-limit settings.
   Private network name `creditum-api`.
+- `creditum-corebank-sim` — Dockerfile `apps/corebank-sim/Dockerfile`; fictional core banking for testing the
+  connector (`docs/integrations/core-banking-connector.md`); variables `PORT=4000`, `SIM_API_KEY=${{secret(48)}}`;
+  private network only (no public domain). The API gets `CONNECTOR_CORE_BANKING_URL=http://creditum-corebank-sim.railway.internal:4000`,
+  `CONNECTOR_CORE_BANKING_KEY=${{creditum-corebank-sim.SIM_API_KEY}}`, `CONNECTOR_TIMEOUT_MS`.
 - `creditum-web` — Dockerfile `apps/web/Dockerfile`; `API_UPSTREAM=http://creditum-api.railway.internal:3000`;
   public domain.
 

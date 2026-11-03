@@ -185,6 +185,11 @@ export async function syncTenantConfig(ds: DataSource, seed: TenantSeed): Promis
   const tenantId = t.id;
   return runWithContext({ tenantId, tenantCode: seed.tenant.code, actor: SYSTEM_ACTOR }, () => ds.transaction(async m => {
     const added: string[] = [];
+    const logins = new Set((await m.getRepository(AppUser).find({ where: { tenantId } })).map(u => u.loginName));
+    for (const [loginName, displayName, roles] of seed.users.filter(([l]) => !logins.has(l))) {
+      await m.getRepository(AppUser).insert({ id: newId(), tenantId, loginName, displayName, roleCodes: roles, isActive: true, createdAt: new Date() });
+      added.push(`user ${loginName}`);
+    }
     const params = new Set((await m.getRepository(ConfigParameter).find({ where: { tenantId } })).map(p => p.paramKey));
     for (const p of seed.parameters.filter(x => !params.has(x.key))) {
       await m.getRepository(ConfigParameter).insert({ id: newId(), tenantId, paramKey: p.key, valueType: p.valueType, paramValue: p.value,
