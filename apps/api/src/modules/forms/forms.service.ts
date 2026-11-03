@@ -38,6 +38,9 @@ const STORED_SCALE = Number(STORED.scale);
 const MAX_INTEGER_DIGITS = Number(STORED.precision) - STORED_SCALE;
 const MAX_TEXT = 20000; // guardrail-allow: input size bound against oversized payloads (operational), not a business limit
 const CHUNK = 500; // keeps IN lists well below Oracle's 1000-item limit
+// SQL Server accepts at most 2100 parameters per statement: rows per multi-row insert are bounded by the column count.
+const MAX_STATEMENT_PARAMS = 2000; // guardrail-allow: driver parameter limit (SQL Server), not a business value
+const insertChunk = (columns: number) => Math.max(1, Math.floor(MAX_STATEMENT_PARAMS / columns));
 
 type ValueKind = 'text' | 'decimal' | 'date' | 'bool' | 'composite' | 'none';
 const KIND: Record<string, ValueKind> = {
@@ -632,7 +635,8 @@ export class FormsService implements OnModuleInit {
     }
     for (const x of rows) if (removed.includes(x.id)) audit.before[`${x.gridCode}#${x.id}`] = 'row removed';
     for (const x of reordered) await rowRepo.update(tenantWhere<FormRow>({ id: x.id }), { orderNo: x.orderNo });
-    for (let i = 0; i < rowInserts.length; i += CHUNK) await rowRepo.insert(rowInserts.slice(i, i + CHUNK));
+    const rowStep = insertChunk(m.connection.getMetadata(FormRow).columns.length);
+    for (let i = 0; i < rowInserts.length; i += rowStep) await rowRepo.insert(rowInserts.slice(i, i + rowStep));
 
     // values
     const stored = new Map(values.filter(v => v.rowKey === RECORD_ROW || keep.has(v.rowKey)).map(v => [`${v.rowKey}|${v.fieldKey}`, v]));
@@ -655,7 +659,8 @@ export class FormsService implements OnModuleInit {
       else inserts.push(valRepo.create({ id: newId(), tenantId, entityType: ENTITY, entityId: id, fieldKey, rowKey, ...cols }));
     }
     for (let i = 0; i < deletes.length; i += CHUNK) await valRepo.delete(tenantWhere<FieldValue>({ id: In(deletes.slice(i, i + CHUNK)) }));
-    for (let i = 0; i < inserts.length; i += CHUNK) await valRepo.insert(inserts.slice(i, i + CHUNK));
+    const valueStep = insertChunk(m.connection.getMetadata(FieldValue).columns.length);
+    for (let i = 0; i < inserts.length; i += valueStep) await valRepo.insert(inserts.slice(i, i + valueStep));
     return audit;
   }
 
