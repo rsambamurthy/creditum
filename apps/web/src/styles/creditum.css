@@ -1131,7 +1131,8 @@ td.num, th.num { text-align: end }
 /* New or existing customer — first choice on the New Credit Request form */
 .choice-row { border: 0; padding: 0; margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
 .choice-row legend { width: 100%; margin-bottom: 6px }
-.choice { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+.choice { flex: none; width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
   background: #fff; cursor: pointer; font-size: 14px; color: var(--ink-2) }
 .choice.on { border-color: var(--brand); background: var(--brand-50); color: var(--ink); font-weight: 600 }
-.choice input { accent-color: var(--brand); margin: 0 }
+.choice input[type=radio] { accent-color: var(--brand); margin: 0; width: auto; height: auto; padding: 0; flex: none; box-shadow: none }
+.choice-row .field-help { width: 100%; margin: 2px 0 0 }

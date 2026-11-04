@@ -198,9 +198,10 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
               {typeOptions.map(o => (
                 <label key={o.code} className={`choice${customerType === o.code ? ' on' : ''}`}>
                   <input type="radio" name="customer-type" value={o.code} checked={customerType === o.code} onChange={() => chooseType(o.code)} disabled={busy} />
-                  {o.label}{rule && o.code === rule.newCode ? ' customer — not yet in core banking' : ' customer'}
+                  {o.label} customer
                 </label>
               ))}
+              <span className="field-help">{isNew ? 'Not yet in core banking — identify the borrower by ID type and number.' : 'Pick the customer from core banking by name or customer number.'}</span>
             </fieldset>
           )}
           <div className="field-grid">
