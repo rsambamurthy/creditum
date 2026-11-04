@@ -44,6 +44,34 @@
           "message": "The requested amount exceeds the configured single-request ceiling"
         }
       ]
+    },
+    {
+      "ruleKey": "CR-003",
+      "name": "New customers are identified by ID type and number",
+      "entityType": "credit_request",
+      "triggerOn": "on_save",
+      "condition": {
+        "==": [
+          {
+            "var": "a.general_information.new_existing_customer"
+          },
+          {
+            "cfg": "credit_request.new_customer_code"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "require",
+          "field": "a.general_information.customer_id_type",
+          "message": "Choose the ID type of a new customer"
+        },
+        {
+          "type": "require",
+          "field": "a.general_information.customer_id_number",
+          "message": "Enter the ID number of a new customer"
+        }
+      ]
     }
   ]
 }

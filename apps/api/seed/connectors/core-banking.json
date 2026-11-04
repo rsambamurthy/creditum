@@ -248,5 +248,17 @@
     "g.collateral_booking_maintenance.linked_limits": "limits:"
    }
   }
+ },
+ "customerCreation": {
+  "note": "A new customer (no customer number on the request) is created in core banking when the request is booked; the customer number it returns is written to the request.",
+  "endpoint": "customers",
+  "key": "cif",
+  "body": {
+   "name": "header:borrowerName",
+   "idType": "record:a.general_information.customer_id_type",
+   "idNumber": "record:a.general_information.customer_id_number",
+   "segment": "record:a.general_information.customer_segment",
+   "creditRequestNumber": "header:requestNumber"
+  }
  }
 }

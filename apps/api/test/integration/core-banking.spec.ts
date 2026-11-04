@@ -6,7 +6,7 @@
 import 'reflect-metadata';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import request from 'supertest';
@@ -15,6 +15,9 @@ import { configureApp } from '../../src/main';
 import { createDataSource } from '../../src/database/data-source';
 import { loadDbEnv } from '../../src/config/env';
 import { seedAll } from '../../src/database/seed';
+import { DataSource } from 'typeorm';
+import { FxRate } from '../../src/modules/configuration/configuration.entities';
+import { Tenant } from '../../src/modules/tenancy/tenancy.entities';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createSimulator } = require('../../../corebank-sim/src/server.js') as { createSimulator: (o: { apiKey: string }) => Server };
@@ -62,6 +65,30 @@ async function create(tenant: string, ro: string, cif: string, currencyCode: str
   return (await http().post('/api/credit-requests').set(await as(tenant, ro)).send({ borrowerName: 'Typed name', borrowerRef: cif,
     requestType: 'new', requestedAmount, currencyCode }).expect(201)).body;
 }
+
+describe('base currency (before any credit request exists)', () => {
+  const base = async (t: string, u: string) => (await http().get('/api/config/currencies').set(await as(t, u)).expect(200)).body.find((c: { isBase: boolean }) => c.isBase).code;
+
+  it('is changed by a configuration administrator, needs rates to the new base, and is audited', async () => {
+    const admin = await as('abc-finance', 'admin.anita');
+    await http().put('/api/config/base-currency').set(await as('abc-finance', 'ro.priya')).send({ code: 'USD' }).expect(403);
+    expect((await http().put('/api/config/base-currency').set(admin).send({ code: 'INR' }).expect(422)).body.message).toMatch(/already the base currency/);
+    expect((await http().put('/api/config/base-currency').set(admin).send({ code: 'USD' }).expect(422)).body).toMatchObject({ error: 'fx_rate_missing' });
+    const ds = app.get(DataSource);
+    const abc = await ds.getRepository(Tenant).findOneByOrFail({ code: 'abc-finance' });
+    await ds.getRepository(FxRate).insert({ id: randomUUID(), tenantId: abc.id,
+      fromCode: 'INR', toCode: 'USD', rate: '0.0119', asOf: new Date() });
+    expect((await http().put('/api/config/base-currency').set(admin).send({ code: 'USD' }).expect(200)).body).toEqual({ status: 'applied' });
+    expect(await base('abc-finance', 'ro.priya')).toBe('USD');
+    await http().put('/api/config/base-currency').set(admin).send({ code: 'INR' }).expect(200);
+    expect(await base('abc-finance', 'ro.priya')).toBe('INR');
+  });
+
+  it('waits for a second administrator where maker-checker is on', async () => {
+    const r = (await http().put('/api/config/base-currency').set(await as('xyz-bank', 'admin.fatima')).send({ code: 'USD' }).expect(422)).body;
+    expect(r.error).toBe('fx_rate_missing'); // EUR has no rate to USD
+  });
+});
 
 describe('core banking connector', () => {
   let id = '';
@@ -218,5 +245,62 @@ describe('core banking connector', () => {
     expect(d.grids[CF].map((r: { values: Record<string, unknown> }) => r.values[`${CF}.settlement_account`])).toEqual(['502100045821', '502100045821']);
     // XYZ users never see ABC's customers
     await http().get(`/api/credit-requests/${res.request.id}/data`).set(await as('xyz-bank', 'ro.ahmed')).expect(404);
+  });
+});
+
+describe('new customers (not yet in core banking)', () => {
+  const NEW = { [`${GI}new_existing_customer`]: 'new' };
+  const ID = { [`${GI}customer_id_type`]: 'commercial_registration', [`${GI}customer_id_number`]: '7781204' };
+  let ro: Record<string, string> = {};
+  beforeAll(async () => { ro = await as('xyz-bank', 'ro.ahmed'); });
+  const post = (body: Record<string, unknown>) => http().post('/api/credit-requests').set(ro)
+    .send({ borrowerName: 'Halvorn Desalination K.S.C.', requestType: 'new', requestedAmount: '100000', currencyCode: 'KWD', ...body });
+
+  it('needs the customer number for an existing customer, and the ID type and number for a new one', async () => {
+    const existing = (await post({ fields: { [`${GI}new_existing_customer`]: 'existing' } }).expect(422)).body;
+    expect(existing.error).toBe('required_fields');
+    expect(existing.details.missing.map((x: { field: string }) => x.field)).toEqual(['borrower_ref']);
+    const unset = (await post({}).expect(422)).body; // not said: treated as existing
+    expect(unset.details.missing.map((x: { field: string }) => x.field)).toEqual(['borrower_ref']);
+    const noId = (await post({ fields: NEW }).expect(422)).body;
+    expect(noId.details.missing.map((x: { field: string }) => x.field).sort()).toEqual([`${GI}customer_id_number`, `${GI}customer_id_type`]);
+  });
+
+  it('can make the customer number required for every request (tenant setting, maker-checker)', async () => {
+    const set = async (value: string) => {
+      const r = (await http().put('/api/config/parameters/credit_request.customer_number_required').set(await as('xyz-bank', 'admin.fatima')).send({ value }).expect(200)).body;
+      await http().post(`/api/config/changes/${r.changeId}/decision`).set(await as('xyz-bank', 'admin.yusuf')).send({ approve: true }).expect(200);
+    };
+    await http().put('/api/config/parameters/credit_request.customer_number_required').set(await as('xyz-bank', 'admin.fatima')).send({ value: 'sometimes' }).expect(422);
+    await http().put('/api/config/parameters/credit_request.new_customer_code').set(await as('xyz-bank', 'admin.fatima')).send({ value: 'prospect' }).expect(422);
+    await set('always');
+    const r = (await post({ fields: { ...NEW, ...ID } }).expect(422)).body;
+    expect(r.details.missing.map((x: { field: string }) => x.field)).toEqual(['borrower_ref']);
+    await set('existing_customers');
+  });
+
+  it('opens the request without a customer number; core banking creates the customer when it is booked', async () => {
+    const res = (await post({ fields: { ...NEW, ...ID } }).expect(201)).body;
+    expect(res.request.borrowerRef).toBeNull();
+    const id = res.request.id as string;
+    const h = await as('xyz-bank', 'ro.ahmed');
+    let d = (await http().get(`/api/credit-requests/${id}/data`).set(h).expect(200)).body;
+    expect(d.record).toMatchObject({ ...NEW, ...ID });
+    d = (await http().put(`/api/credit-requests/${id}/data`).set(h).send({ expectedVersion: d.rowVersion, grids: { [CF]: [{ values: {
+      [`${CF}.request_action`]: 'new', [`${CF}.proposed_limit`]: '300000', [`${CF}.limit_currency`]: 'KWD', [`${CF}.proposed_maturity_expiry`]: '2029-06-30' } }] } }).expect(200)).body;
+    let version = d.rowVersion as number;
+    for (const [user, action] of [['ro.ahmed', 'submit'], ['analyst.sara', 'recommend'], ['risk.omar', 'endorse'], ['committee.layla', 'approve']]) {
+      const r = (await http().post(`/api/credit-requests/${id}/transitions`).set(await as('xyz-bank', user)).send({ action, expectedVersion: version }).expect(200)).body;
+      version = r.request?.rowVersion ?? r.rowVersion;
+    }
+    const b = (await http().post(`/api/credit-requests/${id}/core-banking/booking`).set(await as('xyz-bank', 'ops.zainab')).expect(200)).body;
+    expect(b).toMatchObject({ customerCreated: true });
+    expect(b.customer).toMatch(/^CIF\d{8}$/);
+    expect(b.limits).toHaveLength(1);
+    const after = (await http().get(`/api/credit-requests/${id}`).set(h).expect(200)).body;
+    expect(after.borrowerRef).toBe(b.customer);
+    // the new customer is now known to core banking
+    const c = (await http().get(`/api/integrations/core-banking/customers/${b.customer}`).set(h).expect(200)).body;
+    expect(c).toMatchObject({ name: 'Halvorn Desalination K.S.C.', idType: 'commercial_registration', idNumber: '7781204' });
   });
 });

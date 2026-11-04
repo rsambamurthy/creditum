@@ -33,13 +33,13 @@ export function RequestsPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (rows ?? []).filter(r => (!status || r.status === status) &&
-      (!needle || [r.requestNumber, r.borrowerName, r.borrowerRef].some(v => v.toLowerCase().includes(needle))));
+      (!needle || [r.requestNumber, r.borrowerName, r.borrowerRef ?? ''].some(v => v.toLowerCase().includes(needle))));
   }, [rows, status, q]);
 
   const base = ref.baseCurrency?.code;
   const columns: Column<CreditRequest>[] = [
     { key: 'num', header: 'Number', cell: r => <span className="strong nowrap">{r.requestNumber}</span> },
-    { key: 'borrower', header: 'Borrower', cell: r => <><div>{r.borrowerName}</div><div className="muted small">{r.borrowerRef}</div></> },
+    { key: 'borrower', header: 'Borrower', cell: r => <><div>{r.borrowerName}</div><div className="muted small">{r.borrowerRef ?? 'New customer'}</div></> },
     { key: 'type', header: 'Type', cell: r => ref.requestTypeLabel(r.requestType), hideSm: true },
     { key: 'amount', header: 'Amount', num: true, cell: r => <Amount value={r.requestedAmount} code={r.currencyCode} /> },
     { key: 'base', header: `Base amount${base ? ` (${base})` : ''}`, num: true, hideSm: true, cell: r => <Amount value={r.baseAmount} code={base} showCode={false} /> },

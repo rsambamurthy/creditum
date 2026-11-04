@@ -51,7 +51,8 @@ in front of its core banking system; build and test environments use the simulat
 | A request is created | If the connector is available, the request is filled from core banking for the customer number (borrower reference). A failure is reported as a warning; the request is still created. |
 | **Refresh from core banking** (relationship officer, credit analyst; editable states) | Pulls again. Pulled values are updated; values users entered are kept. Rows that are no longer in core banking are removed, or kept as ordinary rows if users added values to them. The change list is shown. |
 | Users edit the request | Values from core banking are read-only (422 `read_only_field`); rows from core banking cannot be removed (422 `read_only_row`). Users fill their own columns on those rows (request action, proposed limit) and add their own rows. |
-| **Book in core banking** (credit administration; states in `integration.core_banking.booking_states`) | Facility lines whose request action is in `booking_line_actions` and that have a proposed limit, and new-package collateral whose action is in `booking_collateral_actions`, are booked once (409 `already_booked` afterwards). Limit references, accounts and contract references are written into Credit Administration. |
+| **New customer** (New / Existing = new on the New Credit Request form) | The customer number may be left empty when `credit_request.customer_number_required` is `existing_customers` (`always` makes it required for every request); the borrower is identified by ID type and number instead (core rule CR-003). Core banking is not pulled — there is nothing to pull yet; the other systems run as usual. The field and its "new" code are `credit_request.customer_type_field` and `credit_request.new_customer_code`. |
+| **Book in core banking** (credit administration; states in `integration.core_banking.booking_states`) | Facility lines whose request action is in `booking_line_actions` and that have a proposed limit, and new-package collateral whose action is in `booking_collateral_actions`, are booked once (409 `already_booked` afterwards). Limit references, accounts and contract references are written into Credit Administration. A request without a customer number first opens the customer (`customerCreation` in the mapping) and keeps the customer number core banking returns. |
 
 Every value received is checked like a user's entry (value lists, currencies, data type, length and format by market);
 a value that fails is skipped and named in the warnings. Every pull and booking is audited
@@ -79,6 +80,7 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 | `GET customers/{cif}/security-packages` | `[{ packageNumber, committeeDecisionDate, reviewDate, internallyAcceptedCoverageRatio, creditRequestNumber, valueDate, facilities: [{ type, currency, value, coverageMethod }], collateral: [{ type, currency, currentValue, chargeNature, assignedPct, assignedValue, ownership }] }]` |
 | `GET customers/{cif}/guarantees` | `[{ guarantorName, guarantorType, ratingAgency, rating, ratingAsOf, idType, idNumber, coverageAmount, assetCoveredPct, packageNumber }]` |
 | `GET customers/{cif}/collateral` | collateral not in a package: `[{ serialNo, collateralNumber, type, currency, value, status }]` |
+| `POST customers` `{ name, idType, idNumber, segment, creditRequestNumber }` | `{ cif, created }` — the same ID type and number return the same customer, so a retried booking does not open it twice |
 | `POST bookings/limits` `{ cif, creditRequestNumber, lines: [{ lineRef, facilityId?, amount, currency, maturityDate, purpose, commodity, action, contractType }] }` | `{ bookedAt, lines: [{ lineRef, limitReference, limitType, accountNumber, contractReference, contractDate, maturityDate }] }` — idempotent per `creditRequestNumber` + `lineRef`; an existing `facilityId` keeps its limit reference |
 | `POST bookings/collateral` `{ cif, creditRequestNumber, items: [{ itemRef, type, currency, amount, action, linkedLimits }] }` | `{ bookedAt, items: [{ itemRef, collateralNo }] }` |
 
@@ -89,7 +91,7 @@ decimal strings; dates are `YYYY-MM-DD`; codes are the institution's value-list 
 - `GET /api/integrations/core-banking/customers/:cif` → `{ cif, name, segment, newOrExisting, idType, idNumber }` (New Credit Request look-up)
 - `POST /api/credit-requests` → also `{ integration: { pulled, systems, warnings, changes } }`
 - `POST /api/credit-requests/:id/integrations/pull` → `{ pulledAt, systems: [{ system, label, status: pulled|skipped|failed, message?, changes: [{ field, label, section, before, after }], tables: [{ grid, label, added, updated, removed }], warnings }] }` (all available systems)
-- `POST /api/credit-requests/:id/core-banking/booking` → `{ bookedAt, limits, collateral, warnings }`
+- `POST /api/credit-requests/:id/core-banking/booking` → `{ bookedAt, customer, customerCreated, limits, collateral, warnings }`
 - `GET /api/credit-requests/:id/data` → also `integration: { pulledAt, bookedAt, sources: [{ system, label, pulledAt, record: [keys], columns: { grid: [keys] } }], rows: { rowKey: { system, ref } } }`
 
 ## Simulator (build and test only)

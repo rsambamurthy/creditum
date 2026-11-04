@@ -12,7 +12,8 @@ export class CreditRequest {
   @Column({ ...T.id(), name: 'tenant_id' }) tenantId: string;
   @Column({ ...T.str(60), name: 'request_number' }) requestNumber: string;
   @Column({ ...T.str(250), name: 'borrower_name' }) borrowerName: string;
-  @Column({ ...T.str(80), name: 'borrower_ref' }) borrowerRef: string;
+  /** Customer number in core banking; empty for a new customer until core banking creates the customer at booking. */
+  @Column({ ...T.str(80, { nullable: true }), name: 'borrower_ref' }) borrowerRef: string | null;
   @Column({ ...T.str(60), name: 'request_type' }) requestType: string;
   @Column({ ...T.str(60), name: 'status' }) status: string;
   @Column({ ...T.dec(28, 8), name: 'requested_amount' }) requestedAmount: string;

@@ -30,6 +30,7 @@ class ParamDto {
   @IsOptional() @IsString() @MaxLength(500) description?: string;
   @IsOptional() @IsInt() expectedVersion?: number;
 }
+class BaseCurrencyDto { @Matches(/^[A-Z]{3}$/) code: string; }
 class DecisionDto { @IsBoolean() approve: boolean; @IsOptional() @IsString() @MaxLength(1000) note?: string; }
 class OverrideDto {
   @IsOptional() @IsString() @MaxLength(250) labelOverride?: string;
@@ -50,7 +51,7 @@ class RuleDto {
 class RuleTestDto { @IsObject() rule: { ruleKey: string; name: string; condition: unknown; actions: [] }; @IsObject() record: Record<string, unknown>; }
 class WorkflowDto { @IsObject() definition: object; @IsOptional() @IsInt() expectedVersion?: number; }
 class CreateRequestDto {
-  @IsString() @IsNotEmpty() @MaxLength(250) borrowerName: string; @IsString() @IsNotEmpty() @MaxLength(80) borrowerRef: string;
+  @IsString() @IsNotEmpty() @MaxLength(250) borrowerName: string; @IsOptional() @IsString() @MaxLength(80) borrowerRef?: string;
   @IsString() @IsNotEmpty() requestType: string; @Matches(DECIMAL, { message: 'requestedAmount must be a decimal number sent as text' }) requestedAmount: string;
   @Matches(/^[A-Z]{3}$/) currencyCode: string; @IsOptional() @IsObject() fields?: Record<string, unknown>;
 }
@@ -107,6 +108,7 @@ export class ConfigController {
   @Get('parameters') params() { return this.config.listParams(); }
   @Put('parameters/:key') @Roles(ROLE.configAdmin) setParam(@Param('key') key: string, @Body() b: ParamDto) { return this.gov.submit('parameter', key, { ...b }); }
   @Get('currencies') currencies() { return this.config.listCurrencies(); }
+  @Put('base-currency') @Roles(ROLE.configAdmin) setBase(@Body() b: BaseCurrencyDto) { return this.gov.submit('base_currency', b.code, { code: b.code }); }
   @Get('value-lists') listKeys() { return this.config.listKeys(); }
   @Get('value-lists/:key') valueList(@Param('key') key: string) { return this.config.valueList(key); }
   @Get('value-lists/:key/entries') @Roles(ROLE.configAdmin, ROLE.auditor) entries(@Param('key') key: string) { return this.config.allEntries(key); }

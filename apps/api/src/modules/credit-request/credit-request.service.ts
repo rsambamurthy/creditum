@@ -16,7 +16,7 @@ import { Outcome } from '../rules/rule-evaluator';
 import type { FormsService } from '../forms/forms.service';
 
 export interface CreditRequestInput {
-  borrowerName: string; borrowerRef: string; requestType: string; requestedAmount: string; currencyCode: string;
+  borrowerName: string; borrowerRef?: string | null; requestType: string; requestedAmount: string; currencyCode: string;
   fields?: Record<string, unknown>;
 }
 
@@ -62,6 +62,23 @@ export class CreditRequestService {
     };
   }
 
+  /**
+   * The customer number is required unless the tenant makes it optional for new customers
+   * (credit_request.customer_number_required = existing_customers) and the form says the borrower is new.
+   * Added to the rule outcome so it is reported with the other missing fields.
+   */
+  private async customerNumberRule(m: EntityManager, outcome: Outcome, record: Record<string, unknown>) {
+    const mode = await this.config.text('credit_request.customer_number_required', m);
+    let optional = false;
+    if (mode === 'existing_customers') {
+      const typeField = await this.config.text('credit_request.customer_type_field', m);
+      optional = record[typeField] === await this.config.text('credit_request.new_customer_code', m);
+    } else if (mode !== 'always') {
+      throw new DomainError('config_invalid', 'credit_request.customer_number_required must be always or existing_customers');
+    }
+    if (!optional) outcome.required.push({ rule: 'customer_number', field: 'borrower_ref', message: 'Enter the customer number of an existing customer' });
+  }
+
   /** Validate amount against the currency's configured scale; derive base amount and required authority level. */
   private async money(m: EntityManager, amount: string, currencyCode: string) {
     if (!isDecimalText(amount)) throw new DomainError('invalid_decimal', 'requestedAmount must be a decimal number sent as text');
@@ -78,15 +95,17 @@ export class CreditRequestService {
   async create(input: CreditRequestInput) {
     return this.ds.transaction(async m => {
       await this.config.requireValue('request_type', input.requestType, m);
-      if (!input.borrowerName?.trim() || !input.borrowerRef?.trim()) throw new DomainError('invalid_value', 'borrowerName and borrowerRef are required');
+      if (!input.borrowerName?.trim()) throw new DomainError('invalid_value', 'borrowerName is required');
       const money = await this.money(m, input.requestedAmount, input.currencyCode);
       const { def } = await this.workflow.definition(input.requestType, m);
-      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName.trim(), borrowerRef: input.borrowerRef.trim() }, input.fields) : null;
-      const draft = { borrowerName: form?.header.borrowerName ?? input.borrowerName.trim(), borrowerRef: form?.header.borrowerRef ?? input.borrowerRef.trim(), requestType: input.requestType,
+      const ref = input.borrowerRef?.trim() || undefined;
+      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName.trim(), borrowerRef: ref }, input.fields) : null;
+      const draft = { borrowerName: form?.header.borrowerName ?? input.borrowerName.trim(), borrowerRef: form?.header.borrowerRef || ref || null, requestType: input.requestType,
         currencyCode: input.currencyCode, ...money };
       const fields = form?.fields ?? input.fields ?? {};
       const record = recordView(draft, fields);
       const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);
+      await this.customerNumberRule(m, outcome, record);
       enforce(outcome, record);
       const scheme = await this.scheme(m);
       const year = new Date().getUTCFullYear();
@@ -113,14 +132,16 @@ export class CreditRequestService {
       const requestType = input.requestType ?? current.requestType;
       if (input.requestType) await this.config.requireValue('request_type', requestType, m);
       const money = await this.money(m, input.requestedAmount ?? current.requestedAmount, input.currencyCode ?? current.currencyCode);
-      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName?.trim(), borrowerRef: input.borrowerRef?.trim() }, input.fields) : null;
-      if (form) input = { ...input, borrowerName: form.header.borrowerName, borrowerRef: form.header.borrowerRef, fields: input.fields ? form.fields : undefined };
-      const next = { borrowerName: input.borrowerName?.trim() ?? current.borrowerName, borrowerRef: input.borrowerRef?.trim() ?? current.borrowerRef,
+      const form = this.formCheck ? await this.formCheck(m, { borrowerName: input.borrowerName?.trim(), borrowerRef: input.borrowerRef?.trim() || undefined }, input.fields) : null;
+      if (form) input = { ...input, borrowerName: form.header.borrowerName, borrowerRef: input.borrowerRef === undefined ? undefined : form.header.borrowerRef ?? '', fields: input.fields ? form.fields : undefined };
+      const next = { borrowerName: input.borrowerName?.trim() ?? current.borrowerName,
+        borrowerRef: input.borrowerRef === undefined ? current.borrowerRef : input.borrowerRef?.trim() || null,
         requestType, currencyCode: input.currencyCode ?? current.currencyCode, ...money };
       const existingFields = await this.registry.values(ENTITY, id, m);
       const fields = { ...existingFields, ...(input.fields ?? {}) };
       const record = recordView(next, fields);
       const outcome = await this.rules.evaluateIn({ trigger: 'on_save', contexts: [REQUEST_CONTEXT] }, record, m);
+      await this.customerNumberRule(m, outcome, record);
       enforce(outcome, record);
       const res = await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id, rowVersion: expectedVersion }),
         { ...next, rowVersion: expectedVersion + 1, updatedAt: new Date() });

@@ -32,7 +32,16 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   const [layout, setLayout] = useState<Layout | null>(null);
   const [layoutError, setLayoutError] = useState<unknown>(null);
   useEffect(() => { ref.loadLayout().then(setLayout).catch(setLayoutError); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const extra: FieldMeta[] = useMemo(() => formFields(layout), [layout]);
+  const allExtra: FieldMeta[] = useMemo(() => formFields(layout), [layout]);
+  // New or existing customer (tenant configuration): its field is shown first, as a choice
+  const rule = layout?.customer ?? null;
+  const typeField = useMemo(() => allExtra.find(f => f.key === rule?.field && f.list), [allExtra, rule]);
+  const typeOptions = typeField ? layout?.lists[typeField.list!] ?? [] : [];
+  // borrower fields (module A, e.g. ID type and number) sit with the borrower; the rest under Request details
+  const borrowerKeys = useMemo(() => new Set(layout?.modules[0]?.sections.flatMap(sec => sec.fields.map(f => f.key)) ?? []), [layout]);
+  const extra = useMemo(() => allExtra.filter(f => f.key !== typeField?.key), [allExtra, typeField]);
+  const borrowerExtra = extra.filter(f => borrowerKeys.has(f.key));
+  const detailExtra = extra.filter(f => !borrowerKeys.has(f.key));
   const nameBound = useMemo(() => boundField(layout, 'borrowerName'), [layout]);
   const refBound = useMemo(() => boundField(layout, 'borrowerRef'), [layout]);
   const nameAttrs = nameBound.attrs;
@@ -47,6 +56,10 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
   const [amount, setAmount] = useState(initial ? trimDecimal(initial.requestedAmount) : '');
   // Values of the form's extra fields, as the API stores them (text, decimal text, YYYY-MM-DD, booleans).
   const [values, setValues] = useState<Record<string, FormValue>>(() => ({ ...((initial?.fields ?? {}) as Record<string, FormValue>) }));
+  const customerType = typeField ? (values[typeField.key] as string | undefined) ?? '' : '';
+  const isNew = !!rule && !!typeField && customerType === rule.newCode;
+  // the customer number is required unless the tenant makes it optional for new customers
+  const numberRequired = !(isNew && rule!.numberRequired === 'existing_customers');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Errors>({});
   const [serverError, setServerError] = useState<unknown>(null);
@@ -73,6 +86,18 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     } finally { setLooking(false); }
   };
 
+  // A new request starts as an existing customer (the first choice that is not "new").
+  useEffect(() => {
+    if (initial || !typeField || !rule || values[typeField.key]) return;
+    const first = typeOptions.find(o => o.code !== rule.newCode);
+    if (first) setValues(v => ({ ...v, [typeField.key]: first.code }));
+  }, [typeField, rule]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chooseType = (code: string) => {
+    setValues(v => ({ ...v, [typeField!.key]: code }));
+    if (rule && code === rule.newCode && rule.numberRequired === 'existing_customers' && !initial) { setBorrowerRef(''); setFound(null); setLookupMsg(null); }
+    setErrors(e => ({ ...e, borrowerRef: undefined }));
+  };
+
   // Defaults from configuration: base currency, first request type.
   useEffect(() => {
     if (!currencyCode && ref.baseCurrency) setCurrencyCode(ref.baseCurrency.code);
@@ -86,7 +111,7 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     const e: Errors = {};
     if (!borrowerName.trim()) e.borrowerName = 'Enter the borrower name';
     else { const why = checkValue(borrowerName.trim(), nameAttrs, 'text', undefined); if (why) e.borrowerName = why; }
-    if (!borrowerRef.trim()) e.borrowerRef = 'Enter the customer number';
+    if (!borrowerRef.trim()) { if (numberRequired) e.borrowerRef = 'Enter the customer number'; }
     else { const why = checkValue(borrowerRef.trim(), refAttrs, 'text', undefined); if (why) e.borrowerRef = why; }
     if (!requestType) e.requestType = 'Choose a request type';
     if (!currencyCode) e.currencyCode = 'Choose a currency';
@@ -109,11 +134,13 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
     const badNumbers = extra.filter(f => f.valueKind === 'decimal' && typeof values[f.key] === 'string' && (values[f.key] as string).trim() !== '' && !isDecimalText((values[f.key] as string).trim()));
     if (Object.keys(e).length || badNumbers.length) return;
     const input: Partial<CreditRequestInput> = {
-      borrowerName: borrowerName.trim(), borrowerRef: borrowerRef.trim(), requestType, currencyCode, requestedAmount: amount.trim(),
+      borrowerName: borrowerName.trim(), requestType, currencyCode, requestedAmount: amount.trim(),
     };
+    // an empty customer number is left out on a new request and sent as empty to clear it on an edit
+    if (borrowerRef.trim() || initial?.borrowerRef) input.borrowerRef = borrowerRef.trim();
     // Only the form's own fields are sent; blank ones are sent only to clear a value that was there before.
     const fields: Record<string, FormValue> = {};
-    for (const f of extra) {
+    for (const f of allExtra) {
       for (const k of f.valueKind === 'composite' && f.parts?.length ? f.parts.map(p => `${f.key}:${p}`) : [f.key]) {
         const v = values[k];
         const blank = v === undefined || v === null || v === '';
@@ -131,8 +158,9 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
         const fe: Record<string, string> = {};
         const other: string[] = [];
         for (const m of err.missingFields) {
-          const onForm = extra.find(f => f.key === m.field);
-          if (onForm) fe[m.field] = m.message; else other.push(`${m.field}: ${m.message}`);
+          const onForm = allExtra.find(f => f.key === m.field);
+          if (m.field === 'borrower_ref') setErrors(x => ({ ...x, borrowerRef: m.message }));
+          else if (onForm) fe[m.field] = m.message; else other.push(`${m.field}: ${m.message}`);
         }
         setFieldErrors(fe); setRuleMessages(other);
         setServerError(new ApiError(err.status, err.code, 'Some information is required before this request can be saved.'));
@@ -143,7 +171,7 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
         const why = err.message.replace(/^[^:]+:\s*/, '');
         if (f === nameBound.key || f === 'borrower_name') setErrors({ borrowerName: why });
         else if (f === refBound.key || f === 'borrower_ref') setErrors({ borrowerRef: why });
-        else if (extra.some(x => x.key === f)) setFieldErrors({ [f]: why });
+        else if (allExtra.some(x => x.key === f)) setFieldErrors({ [f]: why });
         else setServerError(err);
       } else if (err instanceof ApiError && ['amount_scale', 'invalid_amount', 'invalid_decimal'].includes(err.code)) {
         setErrors({ requestedAmount: err.message });
@@ -164,12 +192,28 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
       {ref.error ? <ErrorAlert error={ref.error} /> : null}
       <div className="section-groups">
         <Group title="Borrower">
+          {typeField && (
+            <fieldset className="choice-row" aria-label={typeField.label}>
+              <legend className="field-label">{typeField.label}</legend>
+              {typeOptions.map(o => (
+                <label key={o.code} className={`choice${customerType === o.code ? ' on' : ''}`}>
+                  <input type="radio" name="customer-type" value={o.code} checked={customerType === o.code} onChange={() => chooseType(o.code)} disabled={busy} />
+                  {o.label}{rule && o.code === rule.newCode ? ' customer — not yet in core banking' : ' customer'}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <div className="field-grid">
             <Field label="Borrower name" required error={errors.borrowerName}>
               <input value={borrowerName} onChange={e => setBorrowerName(transformText(e.target.value, nameRule))} maxLength={nameRule.maxLength ?? 250}
                 placeholder={nameRule.placeholder ?? undefined} autoComplete="off" />
             </Field>
-            <Field label="Customer number" required error={errors.borrowerRef}
+            {!numberRequired && !borrowerRef ? (
+              <Field label="Customer number" help="Core banking opens the customer and returns the customer number when the approved request is booked. Identify the borrower by ID type and number below.">
+                <div className="lookup-note" role="note">New customer — the customer number is assigned at booking.</div>
+              </Field>
+            ) : (
+            <Field label="Customer number" required={numberRequired} error={errors.borrowerRef}
               help={`${canLookup ? 'Type part of the name or number and pick the customer from the list' : 'Customer or CIF reference in the core banking system'}${refRule.patternHint ? ` · Format: ${refRule.patternHint}` : ''}${refRule.maxLength ? ` · up to ${refRule.maxLength} characters` : ''}`}>
               {canLookup ? (
                 <div className="input-action">
@@ -188,6 +232,7 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
                   placeholder={refRule.placeholder ?? undefined} autoComplete="off" className="ltr" />
               )}
             </Field>
+            )}
             {(found || lookupMsg) && (
               <div className={`lookup-note${found ? ' ok' : ''}`} role="status">
                 {found ? <>Found in {cb!.label.toLowerCase()}: <strong>{found.name}</strong> ({found.cif}).
@@ -195,6 +240,15 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
               </div>
             )}
           </div>
+          {borrowerExtra.length > 0 && layout && (
+            <div className="form-2col" style={{ marginTop: 14 }}>
+              {borrowerExtra.map(f => (
+                <FieldInput key={f.key} meta={f} values={values} layout={layout} disabled={busy}
+                  header={{ borrowerName, borrowerRef }} message={fieldErrors[f.key]}
+                  onChange={(k, v) => { setValues(x => ({ ...x, [k]: v })); setFieldErrors(x => { const n = { ...x }; delete n[k]; return n; }); }} />
+              ))}
+            </div>
+          )}
         </Group>
         <Group title="Facility request">
           <div className="field-grid">
@@ -215,10 +269,10 @@ export function RequestForm({ initial, submitLabel, onSubmit, onCancel, onReload
             </Field>
           </div>
         </Group>
-        {layoutError ? <ErrorAlert error={layoutError} /> : !layout ? <Spinner label="Loading the form…" /> : extra.length > 0 && (
+        {layoutError ? <ErrorAlert error={layoutError} /> : !layout ? <Spinner label="Loading the form…" /> : detailExtra.length > 0 && (
           <Group title="Request details">
             <div className="form-2col">
-              {extra.map(f => (
+              {detailExtra.map(f => (
                 <FieldInput key={f.key} meta={f} values={values} layout={layout} disabled={busy}
                   header={{ borrowerName, borrowerRef }} message={fieldErrors[f.key]}
                   onChange={(k, v) => { setValues(x => ({ ...x, [k]: v })); setFieldErrors(x => { const n = { ...x }; delete n[k]; return n; }); }} />

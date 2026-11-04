@@ -1127,3 +1127,11 @@ td.num, th.num { text-align: end }
 .cb-system { padding: 10px 0; border-top: 1px solid var(--line-2, #f1f5f9) }
 .cb-system:first-of-type { border-top: 0 }
 .cb-system .sub-head { display: flex; gap: 8px; align-items: center; margin: 0 0 6px }
+
+/* New or existing customer — first choice on the New Credit Request form */
+.choice-row { border: 0; padding: 0; margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
+.choice-row legend { width: 100%; margin-bottom: 6px }
+.choice { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; cursor: pointer; font-size: 14px; color: var(--ink-2) }
+.choice.on { border-color: var(--brand); background: var(--brand-50); color: var(--ink); font-weight: 600 }
+.choice input { accent-color: var(--brand); margin: 0 }

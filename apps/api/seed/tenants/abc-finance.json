@@ -142,6 +142,24 @@
       "description": "Mandatory fields at submission: off, warn or block"
     },
     {
+      "key": "credit_request.customer_type_field",
+      "valueType": "text",
+      "value": "a.general_information.new_existing_customer",
+      "description": "Field on the New Credit Request form that says whether the borrower is a new or an existing customer"
+    },
+    {
+      "key": "credit_request.new_customer_code",
+      "valueType": "text",
+      "value": "new",
+      "description": "Code of that field which means a new customer (not yet in core banking)"
+    },
+    {
+      "key": "credit_request.customer_number_required",
+      "valueType": "text",
+      "value": "existing_customers",
+      "description": "Customer number on the New Credit Request form: always, or existing_customers (optional for new customers)"
+    },
+    {
       "key": "display.percentage_places",
       "valueType": "integer",
       "value": "2",

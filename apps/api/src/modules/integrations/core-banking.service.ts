@@ -13,6 +13,7 @@ import { ENTITY } from '../credit-request/credit-request.service';
 import { IntegrationRun } from './integration.entities';
 import { BookingMap, ConnectorsService, csv, raw } from './connectors.service';
 import { DomainError, NotFoundError } from '../../common/errors';
+import { AuditService } from '../audit/audit.service';
 import { newId, tenantWhere } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
 
@@ -22,6 +23,7 @@ const PARAM = {
   bookingStates: 'integration.core_banking.booking_states',
 };
 const HTTP_NOT_FOUND = 404;
+const HTTP_BAD_GATEWAY = 502;
 // guardrail-allow: list-of-values paging and input bounds (operational), not business values
 const SEARCH = { page: 20, minChars: 2, maxChars: 100 };
 type Doc = Record<string, unknown>;
@@ -31,7 +33,7 @@ const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
 @Injectable()
 export class CoreBankingService {
   constructor(private readonly ds: DataSource, private readonly forms: FormsService, private readonly config: ConfigurationService,
-              private readonly connectors: ConnectorsService) {}
+              private readonly connectors: ConnectorsService, private readonly audit: AuditService) {}
 
   private call<T>(method: 'GET' | 'POST', path: string, body?: unknown, allowNotFound = false) {
     return this.connectors.call<T>(CORE_BANKING, method, path, body, allowNotFound);
@@ -71,6 +73,21 @@ export class CoreBankingService {
   }
 
   // ---------------------------------------------------------------- booking
+  /** Create a new customer in core banking from the request (mapping: customerCreation); returns its customer number. */
+  private async createCustomer(request: CreditRequest, record: Record<string, Value>): Promise<string> {
+    const spec = this.mapping.customerCreation;
+    if (!spec) throw new DomainError('customer_number_missing', 'This request has no customer number and core banking cannot create customers here — enter the customer number first');
+    const body: Record<string, unknown> = {};
+    for (const [name, src] of Object.entries(spec.body)) {
+      const [kind, key] = src.split(/:(.*)/s);
+      body[name] = kind === 'header' ? (request as unknown as Record<string, unknown>)[key] ?? null : kind === 'record' ? record[key] ?? null : null;
+    }
+    const res = await this.call<Doc>('POST', spec.endpoint, body);
+    const cif = res?.[spec.key];
+    if (typeof cif !== 'string' || !cif) throw new DomainError('integration_failed', 'Core banking did not return a customer number for the new customer', HTTP_BAD_GATEWAY);
+    return cif;
+  }
+
   async book(id: string) {
     const startedAt = new Date();
     const request = await this.ds.manager.getRepository(CreditRequest).findOne({ where: tenantWhere<CreditRequest>({ id }) });
@@ -102,18 +119,21 @@ export class CoreBankingService {
         throw new DomainError('nothing_to_book', 'Nothing to book: no facility line has a booking action and a proposed limit, and no new collateral has a booking action');
       }
       type Booked = Record<string, unknown> & { lineRef?: string; itemRef?: string };
+      // a new customer is created in core banking first; its customer number is used for the booking and kept on the request
+      const created = request.borrowerRef ? null : await this.createCustomer(request, data.record);
+      const cif = request.borrowerRef ?? created!;
       const bookedLimits = limitLines.length ? (await this.call<{ lines: Booked[] }>('POST', limits.endpoint, {
-        cif: request.borrowerRef, creditRequestNumber: request.requestNumber, lines: limitLines.map(l => ({ lineRef: l.ref, ...l.line })) }))?.lines ?? [] : [];
+        cif, creditRequestNumber: request.requestNumber, lines: limitLines.map(l => ({ lineRef: l.ref, ...l.line })) }))?.lines ?? [] : [];
       const limitRefs = bookedLimits.map(b => String(b[limits.key] ?? '')).filter(Boolean);
       const bookedCollateral = collateralItems.length ? (await this.call<{ items: Booked[] }>('POST', collateral.endpoint, {
-        cif: request.borrowerRef, creditRequestNumber: request.requestNumber,
+        cif, creditRequestNumber: request.requestNumber,
         items: collateralItems.map(c => ({ itemRef: c.ref, ...c.line, linkedLimits: limitRefs })) }))?.items ?? [] : [];
 
       return await this.ds.transaction(async m => {
         const warnings: string[] = [];
         const done: { limits: string[]; collateral: string[] } = { limits: [], collateral: [] };
         await this.forms.systemUpdate(m, id, { action: 'credit_request_booked_in_core_banking', requireEditable: false,
-          audit: { connector: CORE_BANKING, customer: request.borrowerRef, limits: limitRefs, collateral: bookedCollateral.map(b => b[collateral.key]) } },
+          audit: { connector: CORE_BANKING, customer: cif, customerCreated: !!created, limits: limitRefs, collateral: bookedCollateral.map(b => b[collateral.key]) } },
           ctx => {
             const grids: Record<string, GridRow[]> = { ...ctx.before.grids };
             const rowSources: Map<string, { system: string; ref: string } | null> = new Map();
@@ -143,11 +163,16 @@ export class CoreBankingService {
             write(collateral, collateralItems, bookedCollateral, 'itemRef', done.collateral);
             return { data: { record: ctx.before.record, grids }, rowSources };
           });
+        if (created) {
+          await m.getRepository(CreditRequest).update(tenantWhere<CreditRequest>({ id }), { borrowerRef: created });
+          await this.audit.append(m, { action: 'customer_created_in_core_banking', entityType: ENTITY, entityRef: request.requestNumber,
+            before: { borrower_ref: null }, after: { borrower_ref: created } });
+        }
         const finishedAt = new Date();
         await m.getRepository(IntegrationRun).insert({ id: newId(), tenantId: requireTenant(), entityType: ENTITY, entityId: id, connector: CORE_BANKING,
-          direction: 'booking', status: 'succeeded', triggerName: 'booking', recordFields: null, summaryJson: JSON.stringify({ ...done, warnings }),
+          direction: 'booking', status: 'succeeded', triggerName: 'booking', recordFields: null, summaryJson: JSON.stringify({ ...done, customer: created, warnings }),
           message: null, actorId: requireActor().userId, startedAt, finishedAt });
-        return { bookedAt: finishedAt.toISOString(), limits: done.limits, collateral: done.collateral, warnings };
+        return { bookedAt: finishedAt.toISOString(), customer: cif, customerCreated: !!created, limits: done.limits, collateral: done.collateral, warnings };
       });
     } catch (e) {
       await this.connectors.recordFailure(CORE_BANKING, id, request.requestNumber, 'booking', 'booking', startedAt, e);

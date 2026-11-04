@@ -6,6 +6,7 @@ import { compare, isDecimalText, multiply, ROUNDING_MODES, toText } from '../../
 import { newId, tenantWhere } from '../../common/tenant';
 import { requireActor, requireTenant } from '../../common/request-context';
 import { AuditService } from '../audit/audit.service';
+import { CreditRequest } from '../credit-request/credit-request.entities';
 
 export type ChangeHandler = (m: EntityManager, targetRef: string, payload: Record<string, unknown>) => Promise<{ before: unknown; after: unknown }>;
 /** Checks a proposed change without applying it, so an invalid change is rejected at submission, not at approval. */
@@ -15,6 +16,7 @@ export type ChangeValidator = (m: EntityManager, targetRef: string, payload: Rec
 /** Parameters whose value must be one of a fixed set of options (the options are behaviour, not business values). */
 const ENUMERATED_PARAMS: Record<string, string[]> = {
   'credit_request.mandatory_fields_on_submit': ['off', 'warn', 'block'],
+  'credit_request.customer_number_required': ['always', 'existing_customers'],
   'calculation.rounding_mode': Object.keys(ROUNDING_MODES),
 };
 
@@ -116,6 +118,34 @@ export class ConfigurationService {
     if (!c) throw new DomainError('config_missing', 'No base currency is configured for this tenant');
     return c;
   }
+  /**
+   * Changing the base currency (governed). Authority limits, thresholds and every stored base amount are in the base
+   * currency, so the change is refused once the tenant has credit requests, and every active currency needs a rate
+   * to the new base first.
+   */
+  async validateBaseCurrency(m: EntityManager, code: string) {
+    const next = await this.currency(code, m);
+    if (next.isBase) throw new DomainError('invalid_value', `${code} is already the base currency`);
+    const requests = await m.getRepository(CreditRequest).count({ where: tenantWhere<CreditRequest>() });
+    if (requests > 0) {
+      throw new DomainError('base_currency_in_use', `The base currency cannot change: ${requests} credit request(s) already hold amounts in the current base currency`);
+    }
+    const missing: string[] = [];
+    for (const c of await this.repo(TenantCurrency, m).find({ where: tenantWhere<TenantCurrency>({ isActive: true }) })) {
+      if (c.code !== code && !(await this.repo(FxRate, m).findOne({ where: tenantWhere<FxRate>({ fromCode: c.code, toCode: code }) }))) missing.push(c.code);
+    }
+    if (missing.length) throw new DomainError('fx_rate_missing', `Add exchange rates to ${code} first, from: ${missing.join(', ')}`);
+  }
+
+  async applyBaseCurrency(m: EntityManager, code: string) {
+    await this.validateBaseCurrency(m, code);
+    const repo = this.repo(TenantCurrency, m);
+    const current = await repo.findOne({ where: tenantWhere<TenantCurrency>({ isBase: true }) });
+    if (current) await repo.update(tenantWhere<TenantCurrency>({ id: current.id }), { isBase: false });
+    await repo.update(tenantWhere<TenantCurrency>({ code }), { isBase: true });
+    return { before: { baseCurrency: current?.code ?? null }, after: { baseCurrency: code } };
+  }
+
   /** Latest configured rate from -> to. The identity rate is the only rate not read from configuration. */
   async rate(from: string, to: string, m?: EntityManager): Promise<string> {
     if (from === to) return '1';
@@ -235,6 +265,7 @@ export class GovernanceService {
   constructor(private readonly ds: DataSource, private readonly config: ConfigurationService, private readonly audit: AuditService) {
     this.register('parameter', (m, ref, p) => this.config.applyParam(m, ref, p), (m, ref, p) => this.config.validateParam(m, ref, p));
     this.register('value_list', (m, ref, p) => this.config.applyValueList(m, ref, p), (m, ref, p) => this.config.validateValueList(m, ref, p));
+    this.register('base_currency', (m, ref) => this.config.applyBaseCurrency(m, ref), (m, ref) => this.config.validateBaseCurrency(m, ref));
   }
   register(targetType: string, handler: ChangeHandler, validator: ChangeValidator) {
     this.handlers.set(targetType, handler); this.validators.set(targetType, validator);

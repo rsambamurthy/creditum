@@ -79,7 +79,7 @@ export interface ConfigChange {
 export type WriteResult = { status: 'applied' } | { status: 'pending'; changeId: string };
 
 export interface CreditRequest {
-  id: string; requestNumber: string; borrowerName: string; borrowerRef: string; requestType: string; status: string; statusLabel: string;
+  id: string; requestNumber: string; borrowerName: string; borrowerRef: string | null; requestType: string; status: string; statusLabel: string;
   requestedAmount: string; currencyCode: string; baseAmount: string; fxRateUsed: string; requiredLevel: string; makerId: string;
   rowVersion: number; createdAt: string; updatedAt: string;
 }
@@ -93,7 +93,7 @@ export interface Outcome {
 }
 export interface SaveResult { request: CreditRequestDetail; warnings: RuleMessage[]; integration?: { pulled: boolean; warnings: string[]; changes?: number; systems?: string[] } }
 export interface CreditRequestInput {
-  borrowerName: string; borrowerRef: string; requestType: string; requestedAmount: string; currencyCode: string; fields?: Record<string, unknown>;
+  borrowerName: string; borrowerRef?: string | null; requestType: string; requestedAmount: string; currencyCode: string; fields?: Record<string, unknown>;
 }
 export interface WorkflowEvent {
   id: string; entityId: string; fromState: string; toState: string; actionCode: string; actorId: string; actorName: string;
@@ -159,6 +159,8 @@ export interface Layout {
   display?: DisplayPlaces;
   /** Record-level fields shown on the New Credit Request form besides the header (tenant-configurable). */
   createForm?: FieldMeta[];
+  /** New or existing customer: which create-form field says so, its code for a new customer, and when the customer number is required. */
+  customer?: { field: string; newCode: string; numberRequired: 'always' | 'existing_customers' | string } | null;
 }
 export interface GridMeta { rowLabel: string; ordered: boolean; /** Field whose value names a row (e.g. the period's statement date). */ labelField?: string }
 export interface DisplayPlaces {
@@ -277,6 +279,7 @@ export const api = {
   setParameter: (key: string, value: string, expectedVersion?: number) =>
     request<WriteResult>('PUT', `/config/parameters/${enc(key)}`, { value, ...(expectedVersion !== undefined ? { expectedVersion } : {}) }),
   currencies: () => request<Currency[]>('GET', '/config/currencies'),
+  setBaseCurrency: (code: string) => request<WriteResult>('PUT', '/config/base-currency', { code }),
   valueListKeys: () => request<string[]>('GET', '/config/value-lists'),
   valueList: (key: string) => request<ValueListEntry[]>('GET', `/config/value-lists/${enc(key)}`),
   valueListEntries: (key: string) => request<ValueListAdminEntry[]>('GET', `/config/value-lists/${enc(key)}/entries`),

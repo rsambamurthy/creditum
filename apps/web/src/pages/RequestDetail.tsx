@@ -254,7 +254,7 @@ export function RequestDetailPage() {
           <h1 className="rb-number">{req.requestNumber}</h1>
           <StatusBadge code={req.status} label={req.statusLabel} />
           <span className="rb-borrower" title={req.borrowerName}>{req.borrowerName}</span>
-          <span className="rb-muted mono">{req.borrowerRef}</span>
+          <span className="rb-muted mono">{req.borrowerRef ?? 'New customer'}</span>
           <span className="rb-dot" aria-hidden="true">·</span>
           <span className="rb-muted">{ref.requestTypeLabel(req.requestType)}</span>
           <span className="grow" />
@@ -337,7 +337,7 @@ export function RequestDetailPage() {
           ) : (
             <div className="form-2col">
               <ReadOnly label="Borrower name">{req.borrowerName}</ReadOnly>
-              <ReadOnly label="Borrower reference">{req.borrowerRef}</ReadOnly>
+              <ReadOnly label="Borrower reference">{req.borrowerRef ?? 'New customer — numbered by core banking at booking'}</ReadOnly>
               <ReadOnly label="Request type">{ref.requestTypeLabel(req.requestType)}</ReadOnly>
               <ReadOnly label="Currency">{req.currencyCode}{ref.currency(req.currencyCode) ? ` — ${ref.currency(req.currencyCode)!.name}` : ''}</ReadOnly>
               <ReadOnly label="Requested amount" mono><Amount value={req.requestedAmount} code={req.currencyCode} showCode={false} /></ReadOnly>

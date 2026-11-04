@@ -102,6 +102,9 @@ export interface SaveInput { expectedVersion: number; record?: Record<string, un
 
 const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
 
+const CUSTOMER = { typeField: 'credit_request.customer_type_field', newCode: 'credit_request.new_customer_code',
+  numberRequired: 'credit_request.customer_number_required' };
+
 @Injectable()
 export class FormsService implements OnModuleInit {
   constructor(private readonly ds: DataSource, private readonly registry: FieldRegistryService, private readonly config: ConfigurationService,
@@ -120,6 +123,29 @@ export class FormsService implements OnModuleInit {
     this.requests.useFormCheck((m, header, fields) => this.checkRequestForm(m, header, fields));
     this.governance.register('layout', (m, ref, p) => this.applyLayout(m, ref, p), (m, ref, p) => this.validateLayout(m, ref, p));
     this.governance.register('formula', (m, ref, p) => this.applyFormula(m, ref, p), (m, ref, p) => this.validateFormula(m, ref, p).then(() => undefined));
+    this.config.registerParamCheck(CUSTOMER.typeField, async (m, value) => { await this.customerTypeList(m, value); });
+    this.config.registerParamCheck(CUSTOMER.newCode, async (m, value) => {
+      const list = await this.customerTypeList(m, await this.config.text(CUSTOMER.typeField, m));
+      if (!(await this.lists(m)).get(list)?.some(e => e.code === value)) throw new DomainError('invalid_value', `"${value}" is not an active code of value list "${list}"`);
+    });
+  }
+
+  /** The New / Existing customer field must be a record-level dropdown on the New Credit Request form; returns its list. */
+  private async customerTypeList(m: EntityManager, fieldKey: string): Promise<string> {
+    const model = await this.model(m);
+    const p = model.placed.get(fieldKey);
+    if (!p || p.grid !== null || !p.list || !(model.doc.createFields ?? []).includes(fieldKey)) {
+      throw new DomainError('invalid_value', `"${fieldKey}" must be a dropdown on the New Credit Request form`);
+    }
+    return p.list;
+  }
+
+  /** How the New Credit Request form treats the customer number (null when the tenant has not configured it). */
+  private async customerRule(m: EntityManager) {
+    try {
+      return { field: await this.config.text(CUSTOMER.typeField, m), newCode: await this.config.text(CUSTOMER.newCode, m),
+        numberRequired: await this.config.text(CUSTOMER.numberRequired, m) };
+    } catch { return null; }
   }
 
   // ---------------------------------------------------------------- model: layout + effective fields + formulas
@@ -213,6 +239,8 @@ export class FormsService implements OnModuleInit {
       createForm,
       // display rounding of calculated percentages and ratios (stored values keep full precision)
       display: { percentagePlaces: await places('display.percentage_places'), ratioPlaces: await places('display.ratio_places') },
+      // new or existing customer: the customer number is optional for new customers when the tenant says so
+      customer: await this.customerRule(m),
       baseCurrency: currencies.find(c => c.isBase)?.code ?? null,
       currencies: currencies.map(c => ({ code: c.code, minorUnits: c.minorUnits })), grids: model.doc.grids,
       lists: Object.fromEntries([...used].filter(k => lists.has(k)).sort().map(k => [k, lists.get(k)!.map(e => ({ code: e.code, label: e.label }))])),

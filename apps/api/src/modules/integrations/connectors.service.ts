@@ -61,6 +61,8 @@ export interface ConnectorDef {
   record: Record<string, string>;
   grids: Record<string, GridMap>;
   booking?: { limits: BookingMap; collateral: BookingMap };
+  /** Creating a new customer at booking: body values are header:<column> or record:<field key>; key names the returned number. */
+  customerCreation?: { endpoint: string; key: string; body: Record<string, string> };
 }
 type Doc = Record<string, unknown>;
 

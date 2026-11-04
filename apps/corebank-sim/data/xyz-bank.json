@@ -7,7 +7,9 @@
   "collateralPrefix": "XK",
   "accountPrefix": "KW81XYZB",
   "accountDigits": 22,
-  "defaultLimitType": "term_loan"
+  "defaultLimitType": "term_loan",
+  "customerPrefix": "CIF",
+  "customerDigits": 8
  },
  "customers": {
   "CIF00418823": {

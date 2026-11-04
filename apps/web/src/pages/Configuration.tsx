@@ -75,11 +75,26 @@ function ParametersTab({ canEdit }: { canEdit: boolean }) {
   return <Loadable state={state}>{rows => <DataTable rows={rows} columns={cols} rowKey={p => p.id} caption="Configuration parameters" />}</Loadable>;
 }
 
-function CurrenciesTab() {
+function CurrenciesTab({ canEdit }: { canEdit: boolean }) {
   const ref = useReference();
+  const toast = useToast();
   const state = useApi(() => api.currencies(), []);
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const setBase = async (code: string) => {
+    setBusy(true); setError(null);
+    try {
+      toast.configResult(await api.setBaseCurrency(code), `${code} is now the base currency`);
+      setConfirm(null); void state.reload(); ref.reload();
+    } catch (e) { setError(e); } finally { setBusy(false); }
+  };
+  const base = ref.baseCurrency;
   return (
     <Loadable state={state}>{rows => (
+      <>
+      <p className="muted small" style={{ margin: '0 0 12px' }}>The base currency is the currency of authority limits, amount thresholds and every request’s base amount.
+        {canEdit && ' It can change only before the first credit request, and every active currency needs an exchange rate to the new base.'}</p>
       <DataTable rows={rows} rowKey={c => c.id} caption="Currencies" columns={[
         { key: 'code', header: 'Code', cell: c => <span className="strong mono">{c.code}</span> },
         { key: 'name', header: 'Name', cell: c => <>{c.name} {c.isBase && <Badge tone="info" small>Base</Badge>}</> },
@@ -87,7 +102,21 @@ function CurrenciesTab() {
         { key: 'rnd', header: 'Rounding', cell: c => humanize(c.roundingMode) },
         { key: 'act', header: 'Status', cell: c => c.isActive ? <Badge tone="ok">Active</Badge> : <Badge tone="neutral">Inactive</Badge> },
         { key: 'use', header: 'Base for limits', hideSm: true, cell: c => c.code === ref.baseCurrency?.code ? 'Yes — authority limits and thresholds' : '—' },
+        { key: 'set', header: <span className="sr-only">Actions</span>, className: 'actions', cell: c => canEdit && c.isActive && !c.isBase
+          ? <button type="button" className="link-btn" onClick={() => { setError(null); setConfirm(c.code); }}>Set as base</button> : null },
       ]} />
+      {confirm && (
+        <Modal title={`Make ${confirm} the base currency?`} onClose={() => setConfirm(null)} footer={<>
+          <button type="button" className="btn btn-secondary" onClick={() => setConfirm(null)} disabled={busy}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={() => setBase(confirm)} disabled={busy}>{busy ? 'Submitting…' : 'Submit change'}</button>
+        </>}>
+          <p>Authority limits, amount thresholds (such as the single-request ceiling) and base amounts are read in the base currency.
+            Moving from {base?.code ?? 'the current base'} to {confirm} does not convert them — restate them in {confirm} after the change.</p>
+          <p className="muted small">When maker-checker is on, a second configuration administrator approves the change under Pending changes.</p>
+          <ErrorAlert error={error} />
+        </Modal>
+      )}
+      </>
     )}</Loadable>
   );
 }
@@ -215,7 +244,7 @@ export function ConfigurationPage() {
         </div>
         <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} style={{ padding: tab === 'lists' || tab === 'authority' ? 16 : 0 }}>
           {tab === 'parameters' && <ParametersTab canEdit={canEdit} />}
-          {tab === 'currencies' && <CurrenciesTab />}
+          {tab === 'currencies' && <CurrenciesTab canEdit={canEdit} />}
           {tab === 'lists' && <ValueListsTab />}
           {tab === 'authority' && <AuthorityTab />}
           {tab === 'pending' && <PendingTab canDecide={canEdit} onCount={setPendingCount} />}

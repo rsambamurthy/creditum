@@ -9,7 +9,7 @@ import { RichText } from '../components/RichText';
 import { isDecimalText } from './formState';
 import { attrKind, checkValue, ruleFor, transformText, type Width } from './attributes';
 
-export interface Header { borrowerName: string; borrowerRef: string }
+export interface Header { borrowerName: string; borrowerRef: string | null }
 
 export interface FieldInputProps {
   meta: FieldMeta;

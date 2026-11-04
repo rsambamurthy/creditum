@@ -24,7 +24,7 @@ LIB = json.loads((SEED / 'creditum-core-field-library.v1.json').read_text())
 FIELDS = [f for f in LIB['fields'] if not f['module'].startswith('Workspace') and f.get('lifecycle') != 'retired']
 BY_KEY = {f['field_key']: f for f in FIELDS}
 
-LAYOUT_VERSION = 4
+LAYOUT_VERSION = 5
 FORMULA_VERSION = 1
 
 MODULES = [  # SDD module order; the letter is the field-key prefix
@@ -116,7 +116,10 @@ GRIDS = {
 PERIOD_GROUPS = ['financial_statement_header', 'income_statement', 'balance_sheet_assets', 'balance_sheet_liabilities_net_worth',
                  'contingent_liabilities_commitments', 'financial_ratios_summary']
 PERIOD_GRID = 'e.financial_periods'
-CREATE_FIELDS = ['a.client_request.client_request_details']
+# New / Existing first: it decides whether the customer number is required (credit_request.customer_number_required);
+# a new customer is identified by its ID type and number instead (core rule CR-003).
+CREATE_FIELDS = ['a.general_information.new_existing_customer', 'a.general_information.customer_id_type',
+                 'a.general_information.customer_id_number', 'a.client_request.client_request_details']
 # Field whose value names a row (column headings of the period grid).
 GRID_LABEL_FIELDS = {PERIOD_GRID: 'e.financial_statement_header.fiscal_year_financial_statement_date'}
 

@@ -7,7 +7,9 @@
   "collateralPrefix": "AK",
   "accountPrefix": "5021",
   "accountDigits": 10,
-  "defaultLimitType": "term_loan"
+  "defaultLimitType": "term_loan",
+  "customerPrefix": "C1",
+  "customerDigits": 7
  },
  "customers": {
   "C10045821": {

@@ -23,6 +23,7 @@
  *   GET  /bureau/v1/institutions/:institution/subjects/:idNumber/report
  *   GET  /spreading/v1/institutions/:institution/customers/:cif/spreads
  *   GET  /registry/v1/registries/:registry/companies/:companyId/financial-statements
+ *   POST /v1/institutions/:institution/customers                         open a new customer -> customer number
  *   POST /v1/institutions/:institution/bookings/limits                   book approved limits -> references
  *   POST /v1/institutions/:institution/bookings/collateral               book collateral -> collateral numbers
  *
@@ -160,6 +161,23 @@ function bookLimits(inst, body) {
   return [200, { bookedAt: new Date().toISOString(), creditRequestNumber: body.creditRequestNumber, lines }];
 }
 
+/** Open a new customer (booked from a credit request for a borrower not yet in core banking). The same ID type and number
+ *  return the same customer, so a retried booking does not open the customer twice. */
+function createCustomer(inst, body) {
+  const str = v => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const name = str(body?.name), idType = str(body?.idType), idNumber = str(body?.idNumber);
+  if (!name || !idType || !idNumber) return [422, { error: 'invalid_customer', message: 'name, idType and idNumber are required' }];
+  const existing = Object.entries(inst.customers).find(([, c]) => c.customer.idType === idType && c.customer.idNumber === idNumber);
+  if (existing) return [200, { cif: existing[0], created: false }];
+  let cif = `${inst.booking.customerPrefix}${digitsFrom(inst.institution, idType, idNumber).slice(0, inst.booking.customerDigits)}`;
+  for (let n = 1; inst.customers[cif]; n += 1) cif = `${inst.booking.customerPrefix}${digitsFrom(inst.institution, idType, idNumber, n).slice(0, inst.booking.customerDigits)}`;
+  inst.customers[cif] = {
+    customer: { cif, name, newOrExisting: 'existing', idType, idNumber, segment: str(body.segment), openedFrom: str(body.creditRequestNumber) },
+    facilities: [], securityPackages: [], guarantees: [], collateral: [], relationshipSummary: {},
+  };
+  return [201, { cif, created: true }];
+}
+
 function bookCollateral(inst, body) {
   if (!body || typeof body.cif !== 'string' || typeof body.creditRequestNumber !== 'string' || !Array.isArray(body.items) || body.items.length === 0) {
     return [422, { error: 'invalid_booking', message: 'cif, creditRequestNumber and at least one item are required' }];
@@ -205,6 +223,10 @@ function createSimulator({ apiKey, institutions = loadInstitutions(), registries
           'relationship-summary': c.relationshipSummary ?? {} };
         if (!(sub in lists) || parts.length > 6) return send(res, 404, { error: 'not_found' });
         return send(res, 200, lists[sub] ?? []);
+      }
+      if (req.method === 'POST' && parts[3] === 'customers' && parts.length === 4) {
+        const [status, out] = createCustomer(inst, await readJson(req));
+        return send(res, status, out);
       }
       if (req.method === 'POST' && parts[3] === 'bookings' && parts.length === 5) {
         const body = await readJson(req);
