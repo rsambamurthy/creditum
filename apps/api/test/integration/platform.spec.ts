@@ -216,7 +216,7 @@ describe('configuration governance and the field registry', () => {
     const xyz = await login('xyz-bank', 'admin.fatima');
     const xyzFields = (await http().get('/api/fields').set(auth(xyz))).body;
     expect(xyzFields.find((f: { fieldKey: string }) => f.fieldKey === NARRATIVE).label).toBe('Client Request Details');
-    expect(xyzFields.length).toBeGreaterThanOrEqual(703);
+    expect(xyzFields.length).toBeGreaterThanOrEqual(702) // 705 core library fields, 3 retired;
   });
 
   it('adds a tenant custom field and a tenant rule using it — configuration only', async () => {

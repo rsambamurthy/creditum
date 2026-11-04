@@ -349,7 +349,8 @@
        "TotalLiabilitiesAndNetWorth": "12805114",
        "LettersOfGuarantee": "380000",
        "LettersOfCredit": "110000"
-      }
+      },
+      "type": "annual_audited"
      },
      {
       "periodEnd": "2024-12-31",
@@ -402,7 +403,8 @@
        "TotalLiabilitiesAndNetWorth": "15175755",
        "LettersOfGuarantee": "400000",
        "LettersOfCredit": "125000"
-      }
+      },
+      "type": "annual_audited"
      },
      {
       "periodEnd": "2025-12-31",
@@ -455,7 +457,8 @@
        "TotalLiabilitiesAndNetWorth": "18006890",
        "LettersOfGuarantee": "129360",
        "LettersOfCredit": "140000"
-      }
+      },
+      "type": "annual_audited"
      }
     ]
    }

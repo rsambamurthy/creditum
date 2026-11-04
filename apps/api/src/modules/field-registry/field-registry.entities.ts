@@ -25,6 +25,8 @@ export class FieldDefinition {
   @Column({ ...T.str(500, { nullable: true }), name: 'review_notes' }) reviewNotes: string | null;
   @Column({ ...T.str(30), name: 'storage_location' }) storageLocation: 'core_column' | 'custom_extension';
   @Column({ ...T.int(), name: 'row_version' }) rowVersion: number;
+  /** null = active; 'retired' = kept for history and audit, no longer placed on screens or offered to rules. */
+  @Column({ ...T.str(20, { nullable: true }), name: 'lifecycle' }) lifecycle?: string | null;
 }
 
 /** Tenant-level presentation and requirement overrides of a field (no code change, SDD Section 20.1). */

@@ -20,10 +20,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SEED = ROOT / 'apps' / 'api' / 'seed'
 LIB = json.loads((SEED / 'creditum-core-field-library.v1.json').read_text())
-FIELDS = [f for f in LIB['fields'] if not f['module'].startswith('Workspace')]
+# retired fields stay in the library (their history and audit) but are no longer placed on screens
+FIELDS = [f for f in LIB['fields'] if not f['module'].startswith('Workspace') and f.get('lifecycle') != 'retired']
 BY_KEY = {f['field_key']: f for f in FIELDS}
 
-LAYOUT_VERSION = 3
+LAYOUT_VERSION = 4
 FORMULA_VERSION = 1
 
 MODULES = [  # SDD module order; the letter is the field-key prefix
@@ -53,7 +54,7 @@ LIST_KEYS = {
     'proposed_request_type': 'request_type', 'credit_request_type': 'request_type',
     'purpose': 'purpose_code', 'economic_sector_code': 'economic_sector', 'industry': 'economic_sector',
     'segment': 'customer_segment', 'customer_segment': 'customer_segment',
-    'fiscal_year_basis_standalone_consolidated': 'statement_basis', 'interim_basis_standalone_consolidated': 'statement_basis',
+    'fiscal_year_basis_standalone_consolidated': 'statement_basis', 'statement_type': 'statement_type',
     'seniority_level_trained_on_climate_risk': 'seniority_level', 'seniority_level_at_which_climate_risk_is_discussed': 'seniority_level',
     'seniority_level_receiving_regular_climate_risk_reports': 'seniority_level',
     'overall_social_risk_of_the_obligor': 'risk_level', 'overall_governance_risk_of_the_obligor': 'risk_level',
@@ -556,6 +557,8 @@ def core_attributes():
             a.update(maxLength=30)
         if s in SHARE_SLUGS or s.startswith('assigned_') or s.startswith('of_total'):
             a.update(minValue='0', maxValue='100')
+        if s == 'months_covered':
+            a.update(minValue='1', maxValue='12')
         if a:
             out[k] = a
     return OrderedDict(attributes='credit_request', version=2,

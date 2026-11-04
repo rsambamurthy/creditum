@@ -36,7 +36,7 @@ export class FieldRegistryService implements OnModuleInit {
     const defs = await mgr.getRepository(FieldDefinition).find({ where: { ownerScope: In(visibleScopes()) }, order: { libraryId: 'ASC' } });
     const overrides = await mgr.getRepository(TenantFieldOverride).find({ where: tenantWhere<TenantFieldOverride>() });
     const ov = new Map(overrides.map(o => [o.fieldKey, o]));
-    return defs.map(d => {
+    return defs.filter(d => d.lifecycle !== 'retired').map(d => {
       const o = ov.get(d.fieldKey);
       return {
         fieldKey: d.fieldKey, libraryId: d.libraryId, module: d.moduleName, group: d.groupName, label: o?.labelOverride ?? d.label, coreLabel: d.label,

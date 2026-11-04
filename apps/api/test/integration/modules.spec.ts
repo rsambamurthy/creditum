@@ -59,6 +59,17 @@ async function newRequest(tenant: string, ro: string, currencyCode: string, requ
 }
 
 describe('layout from configuration', () => {
+  it('describes each financial period once: statement date, type, months covered, basis (no separate interim date)', async () => {
+    const l = (await http().get('/api/layout').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body as Layout;
+    const header = l.modules.flatMap(m => m.sections).find(s => s.code === 'e.financial_statement_header')!;
+    expect(header.columns.map(c => c.key.split('.').pop())).toEqual(['borrower_name', 'fiscal_year_financial_statement_date', 'statement_type', 'months_covered',
+      'fiscal_year_basis_standalone_consolidated', 'auditor_name', 'auditor_s_opinion']);
+    expect(header.columns.find(c => c.key.endsWith('statement_type'))!.list).toBe('statement_type');
+    expect(l.lists.statement_type.map(e => e.code)).toEqual(['annual_audited', 'annual_unaudited', 'interim']);
+    const fields = (await http().get('/api/fields').set(await as('xyz-bank', 'admin.fatima')).expect(200)).body as { fieldKey: string }[];
+    expect(fields.some(f => f.fieldKey.endsWith('interim_financial_statement_date'))).toBe(false); // retired
+  });
+
   it('returns the seven modules with tenant value lists and calculated-field metadata', async () => {
     const xyz = (await http().get('/api/layout').set(await as('xyz-bank', 'ro.ahmed')).expect(200)).body as Layout;
     expect(xyz.modules.map(m => m.title)).toEqual(['Borrower Profile', 'Facility & Collateral', 'Exposure & Relationship', 'Business Profile',

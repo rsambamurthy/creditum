@@ -23,18 +23,29 @@ export const SEED_DIR = join(__dirname, '..', '..', 'seed');
 export const SYSTEM_ACTOR = { userId: '00000000-0000-0000-0000-000000000000', displayName: 'System (provisioning)', roles: ['system'] };
 
 interface LibraryField { field_id: string; field_key: string; module: string; group: string; label: string; data_type: string; source_type: string;
-  adapter: string | null; requirement: string; requirement_basis: string | null; configurable: string | null; origin: string; review_notes: string | null }
+  adapter: string | null; requirement: string; requirement_basis: string | null; configurable: string | null; origin: string; review_notes: string | null;
+  lifecycle?: string }
 
 export async function seedCoreLibrary(ds: DataSource): Promise<number> {
   const lib = JSON.parse(readFileSync(join(SEED_DIR, 'creditum-core-field-library.v1.json'), 'utf8')) as { fields: LibraryField[] };
   const repo = ds.getRepository(FieldDefinition);
-  const existing = new Set((await repo.find({ where: { ownerScope: CORE_SCOPE }, select: { fieldKey: true } })).map(f => f.fieldKey));
+  const existing = new Map((await repo.find({ where: { ownerScope: CORE_SCOPE } })).map(f => [f.fieldKey, f]));
+  const shape = (f: LibraryField) => ({ libraryId: f.field_id, moduleName: f.module, groupName: f.group, label: f.label, dataType: f.data_type,
+    sourceType: f.source_type, adapter: f.adapter, requirement: f.requirement, requirementBasis: f.requirement_basis, configurable: f.configurable,
+    origin: f.origin, reviewNotes: f.review_notes, lifecycle: f.lifecycle ?? null });
   const rows = lib.fields.filter(f => !existing.has(f.field_key)).map(f => repo.create({
-    id: newId(), ownerScope: CORE_SCOPE, libraryId: f.field_id, fieldKey: f.field_key, moduleName: f.module, groupName: f.group, label: f.label,
-    dataType: f.data_type, sourceType: f.source_type, adapter: f.adapter, requirement: f.requirement, requirementBasis: f.requirement_basis,
-    configurable: f.configurable, origin: f.origin, reviewNotes: f.review_notes, storageLocation: 'core_column', rowVersion: 1 }));
+    id: newId(), ownerScope: CORE_SCOPE, fieldKey: f.field_key, ...shape(f), storageLocation: 'core_column', rowVersion: 1 }));
   for (let i = 0; i < rows.length; i += 100) await repo.insert(rows.slice(i, i + 100));
-  return rows.length;
+  // a release that changes a product field (label, requirement, retirement …) updates it; tenant overrides stay separate
+  let changed = rows.length;
+  for (const f of lib.fields) {
+    const cur = existing.get(f.field_key);
+    if (!cur) continue;
+    const next = shape(f);
+    const differs = (Object.keys(next) as (keyof typeof next)[]).some(k => (cur[k] ?? null) !== (next[k] ?? null));
+    if (differs) { await repo.update({ id: cur.id, ownerScope: CORE_SCOPE }, { ...next, rowVersion: cur.rowVersion + 1 }); changed += 1; }
+  }
+  return changed;
 }
 
 /** Core screen layout: inserted, or replaced when the shipped version is newer (product configuration, owner scope core). */

@@ -114,7 +114,8 @@ describe('core banking connector', () => {
     // no company registry in Kuwait: the statements come from the bank's spreading system (CreditLens-style), by customer number
     const periods = d.grids['e.financial_periods'] as { rowKey: string; values: Record<string, unknown> }[];
     expect(periods.map(p => p.values['e.financial_statement_header.fiscal_year_financial_statement_date'])).toEqual(['2023-12-31', '2024-12-31', '2025-12-31']);
-    expect(periods[2].values).toMatchObject({ 'e.income_statement.net_sales_revenues': '21250000', 'e.balance_sheet_assets.total_assets': '18006890',
+    expect(periods[2].values).toMatchObject({ 'e.financial_statement_header.statement_type': 'annual_audited', 'e.financial_statement_header.months_covered': '12',
+      'e.income_statement.net_sales_revenues': '21250000', 'e.balance_sheet_assets.total_assets': '18006890',
       'e.contingent_liabilities_commitments.letters_of_guarantee_lg': '129360' });
     expect(d.integration.rows[periods[0].rowKey]).toMatchObject({ system: 'spreading', ref: '2023-12-31' });
     expect(d.integration.sources.map((x: { label: string }) => x.label)).toEqual(['Core banking', 'Rating system', 'Data warehouse', 'Credit bureau', 'Spreading system']);

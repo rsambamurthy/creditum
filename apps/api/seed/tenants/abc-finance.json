@@ -1178,6 +1178,20 @@
         "npa",
         "NPA"
       ]
+    ],
+    "statement_type": [
+      [
+        "annual_audited",
+        "Annual — audited"
+      ],
+      [
+        "annual_unaudited",
+        "Annual — unaudited"
+      ],
+      [
+        "interim",
+        "Interim (management accounts)"
+      ]
     ]
   },
   "authorityLevels": [

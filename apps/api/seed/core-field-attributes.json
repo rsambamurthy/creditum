@@ -1497,6 +1497,15 @@
   "e.financial_statement_header.fiscal_year_financial_statement_date": {
    "width": "s"
   },
+  "e.financial_statement_header.statement_type": {
+   "width": "m"
+  },
+  "e.financial_statement_header.months_covered": {
+   "width": "xs",
+   "maxDecimals": 0,
+   "minValue": "1",
+   "maxValue": "12"
+  },
   "e.financial_statement_header.fiscal_year_basis_standalone_consolidated": {
    "width": "m"
   },
@@ -1508,16 +1517,6 @@
    "maxLength": 4000,
    "width": "full",
    "rows": 6
-  },
-  "e.financial_statement_header.interim_financial_statement_date": {
-   "width": "s"
-  },
-  "e.financial_statement_header.interim_basis_standalone_consolidated": {
-   "width": "m"
-  },
-  "e.financial_statement_header.auditor_preparer_name": {
-   "maxLength": 140,
-   "width": "m"
   },
   "c.guarantor_personal_net_worth_position.guarantor_name": {
    "maxLength": 140,

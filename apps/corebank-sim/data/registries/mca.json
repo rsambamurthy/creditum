@@ -45,7 +45,9 @@
       "OtherEquity": "571206000",
       "Equity": "645206000",
       "EquityAndLiabilities": "1450400000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     },
     {
      "periodEnd": "2024-03-31",
@@ -85,7 +87,9 @@
       "OtherEquity": "627168750",
       "Equity": "708418750",
       "EquityAndLiabilities": "1592500000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     },
     {
      "periodEnd": "2025-03-31",
@@ -125,7 +129,9 @@
       "OtherEquity": "698569500",
       "Equity": "789069500",
       "EquityAndLiabilities": "1773800000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     }
    ]
   },
@@ -170,7 +176,9 @@
       "OtherEquity": "356914000",
       "Equity": "402914000",
       "EquityAndLiabilities": "901600000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     },
     {
      "periodEnd": "2025-03-31",
@@ -210,7 +218,9 @@
       "OtherEquity": "391324500",
       "Equity": "441824500",
       "EquityAndLiabilities": "989800000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     }
    ]
   },
@@ -255,7 +265,9 @@
       "OtherEquity": "249248000",
       "Equity": "281248000",
       "EquityAndLiabilities": "627200000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     },
     {
      "periodEnd": "2025-03-31",
@@ -295,7 +307,9 @@
       "OtherEquity": "274209750",
       "Equity": "309459750",
       "EquityAndLiabilities": "690900000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     }
    ]
   }

@@ -44,7 +44,9 @@
       "RetainedEarningsAccumulatedDeficit": "185400000",
       "StockholdersEquity": "214240000",
       "LiabilitiesAndStockholdersEquity": "370800000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     },
     {
      "periodEnd": "2024-12-31",
@@ -83,7 +85,9 @@
       "RetainedEarningsAccumulatedDeficit": "200700000",
       "StockholdersEquity": "231920000",
       "LiabilitiesAndStockholdersEquity": "401400000"
-     }
+     },
+     "type": "annual_audited",
+     "months": 12
     }
    ]
   }

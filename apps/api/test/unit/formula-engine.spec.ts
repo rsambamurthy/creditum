@@ -95,9 +95,9 @@ describe('shipped core layout and formulas', () => {
   const { formulas } = seed('core-formulas.json') as { formulas: { field: string; status: string; expression: FormulaDef['expression'] }[] };
   const placed = placements(layout);
 
-  it('places every core library field exactly once', () => {
-    const library = seed('creditum-core-field-library.v1.json') as { fields: { field_key: string; module: string }[] };
-    const expected = library.fields.filter(f => !f.module.startsWith('Workspace')).map(f => f.field_key).sort();
+  it('places every active core library field exactly once (retired fields are not placed)', () => {
+    const library = seed('creditum-core-field-library.v1.json') as { fields: { field_key: string; module: string; lifecycle?: string }[] };
+    const expected = library.fields.filter(f => !f.module.startsWith('Workspace') && f.lifecycle !== 'retired').map(f => f.field_key).sort();
     expect([...placed.keys()].sort()).toEqual(expected);
   });
 
